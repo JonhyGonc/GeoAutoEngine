@@ -363,6 +363,7 @@ public sealed class InspectionCalloutLayoutEngineTests
             placements.Select(item => (item.TextPoint.X, item.TextPoint.Y)).Distinct().Count());
         Assert.Contains(placements, item => item.Side == 1);
         Assert.Contains(placements, item => item.Side == -1);
+        Assert.Contains(placements, item => item.Level > 0 || item.LateralSlot != 0);
     }
 
     [Fact]
@@ -380,7 +381,24 @@ public sealed class InspectionCalloutLayoutEngineTests
         Assert.Equal(technicalAnchor, placement.Call.Anchor.Position);
         Assert.Equal(10, placement.Call.Anchor.CadDistance, 8);
         Assert.Equal(-1, placement.Side);
-        Assert.True(placement.TextPoint.Y < technicalAnchor.Y);
+        Assert.True(placement.LeaderEndPoint.Y < technicalAnchor.Y);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void HorizontalAndVerticalPipesProduceApproximatelyPerpendicularCalls()
+    {
+        var horizontal = Assert.Single(InspectionCalloutLayoutEngine.Arrange(
+            [Call(0, 12.35, new LinearVector(1, 0, 0))]));
+        var vertical = Assert.Single(InspectionCalloutLayoutEngine.Arrange(
+            [Call(0, 12.35, new LinearVector(0, 1, 0))]));
+
+        Assert.Equal(horizontal.Call.Anchor.Position.X, horizontal.LeaderEndPoint.X, 8);
+        Assert.NotEqual(horizontal.Call.Anchor.Position.Y, horizontal.LeaderEndPoint.Y);
+        Assert.Equal(Math.PI / 2, horizontal.TextRotationRadians, 8);
+        Assert.Equal(vertical.Call.Anchor.Position.Y, vertical.LeaderEndPoint.Y, 8);
+        Assert.NotEqual(vertical.Call.Anchor.Position.X, vertical.LeaderEndPoint.X);
+        Assert.Equal(0, vertical.TextRotationRadians, 8);
     }
 
     [Fact]
@@ -390,9 +408,43 @@ public sealed class InspectionCalloutLayoutEngineTests
         var placement = Assert.Single(InspectionCalloutLayoutEngine.Arrange(
             [Call(0, 12.35, new LinearVector(-1, 0, 0))]));
 
-        Assert.Equal(0, placement.TextRotationRadians, 8);
+        Assert.InRange(
+            placement.TextRotationRadians,
+            -Math.PI / 2,
+            Math.PI / 2);
         Assert.Equal(0.5, InspectionCalloutLayoutEngine.TextHeight, 8);
         Assert.Equal(12.35, placement.Call.Anchor.CadDistance, 8);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void LongDescriptionWrapsBetweenWordsWithoutRemovingContent()
+    {
+        var call = Call(0, 30, new LinearVector(1, 0, 0)) with
+        {
+            Cause = "ACÚMULO DE TERRA CAUSADA POR FORMIGUEIRO A 30 METROS DO INÍCIO DA FILMAGEM",
+        };
+
+        var lines = InspectionCalloutLayoutEngine.FormatTextLines(call);
+
+        Assert.Equal(call.LocationLine, lines[0]);
+        Assert.True(lines.Count > 3);
+        Assert.All(
+            lines.Skip(1),
+            line => Assert.True(
+                line.Length <= InspectionCalloutLayoutEngine.MaxCharactersPerLine ||
+                !line.Contains(' ')));
+        Assert.Equal(call.Cause, string.Join(" ", lines.Skip(1)));
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void VisualConfigurationKeepsMarkerAndSpacingCentralized()
+    {
+        Assert.Equal(0.18, InspectionCalloutLayoutEngine.MarkerRadius, 8);
+        Assert.Equal(0.15, InspectionCalloutLayoutEngine.TextGap, 8);
+        Assert.True(InspectionCalloutLayoutEngine.BaseCalloutLength > 0);
+        Assert.True(InspectionCalloutLayoutEngine.LevelSpacing > 0);
     }
 
     private static InspectionAnnotationCall Call(
