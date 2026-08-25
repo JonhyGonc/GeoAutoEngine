@@ -1,0 +1,86 @@
+<UserControl x:Class="GeoAutoEngine.Plugin.GeoAutoPaletteShell"
+             x:ClassModifier="internal"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="300" MinHeight="480"
+             Background="#080E1A">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Theme/GeoAutoTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Background="{StaticResource BackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="44" />
+            <RowDefinition Height="38" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="{StaticResource HeaderBrush}"
+                BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1">
+            <Grid Margin="12,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="27" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="28" />
+                </Grid.ColumnDefinitions>
+                <Border Width="26" Height="26" Background="#1F0EA5E9" BorderBrush="#330EA5E9"
+                        BorderThickness="1" CornerRadius="6">
+                    <Grid>
+                        <Ellipse Width="14" Height="14" Stroke="{StaticResource AccentBrush}" StrokeThickness="1" />
+                        <Path Data="M 7,0 L 7,14 M 0,7 L 14,7 M 2,3 C 5,5 9,5 12,3 M 2,11 C 5,9 9,9 12,11"
+                              Stroke="{StaticResource AccentBrush}" StrokeThickness="0.8"
+                              Stretch="Uniform" Width="14" Height="14" />
+                    </Grid>
+                </Border>
+                <StackPanel Grid.Column="1" Margin="9,0,6,0" VerticalAlignment="Center">
+                    <TextBlock Text="GeoAutoEngine" FontSize="13" FontWeight="Bold" LineHeight="14" />
+                    <TextBlock Text="Automação de levantamentos" FontSize="9"
+                               Foreground="{StaticResource VeryMutedBrush}" LineHeight="10" />
+                </StackPanel>
+                <Border Grid.Column="2" Background="{StaticResource SurfaceHoverBrush}"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                        CornerRadius="5" Padding="7,2" Margin="0,0,5,0" VerticalAlignment="Center">
+                    <TextBlock Text="v3.0" Style="{StaticResource MonoText}" FontSize="9"
+                               Foreground="{StaticResource VeryMutedBrush}" />
+                </Border>
+                <Button Grid.Column="3" Style="{StaticResource GhostButton}" Click="ShowSettings"
+                        ToolTip="Configurações" HorizontalContentAlignment="Center">
+                    <Path Data="M 8,1 L 9,3.2 L 11.4,3.4 L 12.2,5.6 L 10.4,7.1 L 11,9.5 L 9,10.8 L 7,9.5 L 5,10.8 L 3,9.5 L 3.6,7.1 L 1.8,5.6 L 2.6,3.4 L 5,3.2 L 6,1 Z M 7,4.7 A 2.1,2.1 0 1 0 7,8.9 A 2.1,2.1 0 1 0 7,4.7"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                          Fill="Transparent" StrokeThickness="1" Stretch="Uniform" Width="14" Height="14" />
+                </Button>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Background="{StaticResource HeaderBrush}"
+                BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="SurveyTabButton" Style="{StaticResource NavigationTabButton}"
+                        Click="ShowSurvey" Foreground="{StaticResource ForegroundBrush}"
+                        Content="Levantamentos" />
+                <Border x:Name="SurveyTabIndicator" Height="2" Background="{StaticResource AccentBrush}"
+                        VerticalAlignment="Bottom" />
+                <Button x:Name="InspectionTabButton" Grid.Column="1"
+                        Style="{StaticResource NavigationTabButton}" Click="ShowInspection"
+                        Foreground="{StaticResource MutedBrush}" Content="Vídeo inspeção" />
+                <Border x:Name="InspectionTabIndicator" Grid.Column="1" Height="2"
+                        Background="{StaticResource AccentBrush}" VerticalAlignment="Bottom"
+                        Visibility="Collapsed" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2" ClipToBounds="True">
+            <ContentControl x:Name="SurveyHost" />
+            <ContentControl x:Name="InspectionHost" Visibility="Collapsed" />
+        </Grid>
+    </Grid>
+</UserControl>
