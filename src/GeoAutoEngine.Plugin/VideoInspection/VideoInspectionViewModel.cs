@@ -238,6 +238,7 @@ internal sealed class VideoInspectionSectionItemViewModel : INotifyPropertyChang
     public string Reference { get; private set; } = string.Empty;
     public string InvestigatedMeters { get; private set; } = string.Empty;
     public string OccurrenceSummary { get; private set; } = string.Empty;
+    public string OccurrenceAttentionSummary { get; private set; } = string.Empty;
     public bool HasAssociation { get; private set; }
     public string Direction { get; private set; } = string.Empty;
     public string CadLength { get; private set; } = string.Empty;
@@ -280,7 +281,9 @@ internal sealed class VideoInspectionSectionItemViewModel : INotifyPropertyChang
         InvestigatedMeters = section.InvestigatedMeters.HasValue
             ? $"{section.InvestigatedMeters.Value.ToString("0.##", CultureInfo.CurrentCulture)} m"
             : "Não informada";
-        OccurrenceSummary = $"{section.Occurrences.Count} ocorrência(s)";
+        OccurrenceSummary = section.Occurrences.Count == 1
+            ? "1 ocorrência"
+            : $"{section.Occurrences.Count} ocorrências";
         HasAssociation = section.Association is not null;
         Direction = section.Association?.Direction.ToString() ?? "Não definida";
         CadLength = section.Association is null
@@ -288,6 +291,9 @@ internal sealed class VideoInspectionSectionItemViewModel : INotifyPropertyChang
             : $"{section.Association.LastKnownGeometryLength.ToString("0.00", CultureInfo.CurrentCulture)} m";
         PositionedCount = section.PositionedEvents.Count(item => item.CanCommit && item.Locations.Count > 0);
         AttentionCount = section.PositionedEvents.Count(item => !item.CanCommit);
+        OccurrenceAttentionSummary = AttentionCount > 0
+            ? $"{OccurrenceSummary} · {AttentionCount} atenção"
+            : OccurrenceSummary;
         PositionedOccurrences = PositionedCount.ToString(CultureInfo.CurrentCulture);
         AttentionOccurrences = AttentionCount.ToString(CultureInfo.CurrentCulture);
         Status = section.Status;
