@@ -1,6 +1,9 @@
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
+using Brush = System.Windows.Media.Brush;
+using Color = System.Windows.Media.Color;
+using ColorConverter = System.Windows.Media.ColorConverter;
+using SolidColorBrush = System.Windows.Media.SolidColorBrush;
+using UserControl = System.Windows.Controls.UserControl;
 using GeoAutoEngine.Plugin.VideoInspection;
 
 namespace GeoAutoEngine.Plugin;
