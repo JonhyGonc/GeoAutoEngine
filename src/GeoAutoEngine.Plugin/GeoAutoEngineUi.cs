@@ -270,6 +270,7 @@ internal static class GeoAutoEnginePalette
     private static SurveyPaletteView? _content;
     private static GeoAutoPaletteController? _controller;
     private static VideoInspectionView? _videoContent;
+    private static GeoAutoPaletteShell? _shell;
     private static VideoInspectionViewModel? _videoViewModel;
     private static VideoInspectionController? _videoController;
     private static IReadOnlyList<string> _pendingCsvFiles = [];
@@ -316,6 +317,7 @@ internal static class GeoAutoEnginePalette
         _videoController?.Dispose();
         _videoController = null;
         _videoContent = null;
+        _shell = null;
         _videoViewModel = null;
         _pendingCsvFiles = [];
         _pendingRemovalPath = null;
@@ -366,17 +368,17 @@ internal static class GeoAutoEnginePalette
                 RequestVideoAssociation,
                 RequestVideoCommit);
             _videoContent = new VideoInspectionView(_videoViewModel);
+            _shell = new GeoAutoPaletteShell(_content, _videoContent);
             _palette = new PaletteSet("GeoAutoEngine 3", PaletteId)
             {
                 DockEnabled = DockSides.Left | DockSides.Right,
-                MinimumSize = new Size(680, 560),
-                Size = new Size(900, 760),
+                MinimumSize = new Size(320, 520),
+                Size = new Size(420, 760),
                 Style = PaletteSetStyles.ShowAutoHideButton |
                     PaletteSetStyles.ShowCloseButton |
                     PaletteSetStyles.ShowPropertiesMenu,
             };
-            _palette.AddVisual("Levantamentos", _content);
-            _palette.AddVisual("Vídeo-inspeção", _videoContent);
+            _palette.AddVisual("GeoAutoEngine", _shell);
             if (VideoInspectionRuntime.CurrentSession is not null)
             {
                 _videoViewModel.Load(VideoInspectionRuntime.CurrentSession, "Inspeção carregada");
@@ -399,7 +401,7 @@ internal static class GeoAutoEnginePalette
     internal static void ShowVideo()
     {
         Show();
-        _palette!.Activate(1);
+        _shell!.SelectInspection();
     }
 
     internal static void UpdateVideoInspectionSession(
@@ -460,12 +462,14 @@ internal static class GeoAutoEnginePalette
     internal static void ShowDiagnostic()
     {
         Show();
+        _shell!.SelectSurvey();
         _content!.ShowDiagnosticPage();
     }
 
     internal static void ShowSettings()
     {
         Show();
+        _shell!.SelectSurvey();
         _content!.ShowSettingsPage();
     }
 
