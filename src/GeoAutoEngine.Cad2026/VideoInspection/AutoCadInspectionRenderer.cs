@@ -30,9 +30,13 @@ public sealed class AutoCadInspectionRenderer
     public const string RegisteredApplicationName = "GEOAUTOENGINE_VI";
     public const string EventLayerName = "GF-Rede Pluvial";
     public const string EventTextStyleName = "GEO_ARIAL";
-    private const short EventColorIndex = 3;
+    private const short MarkerColorIndex = 1;
+    private const short LeaderColorIndex = 2;
+    private const short TextColorIndex = 3;
+    private const string MarkerComponent = "MARKER";
+    private const string LeaderComponent = "LEADER";
+    private const string TextComponent = "TEXT";
     private const double TextHeight = InspectionCalloutLayoutEngine.TextHeight;
-    private const double DoglegLength = 0.75;
 
     public AutoCadInspectionCommitResult Commit(
         Document document,
@@ -65,7 +69,7 @@ public sealed class AutoCadInspectionRenderer
                 document.Database,
                 transaction,
                 EventLayerName,
-                EventColorIndex);
+                TextColorIndex);
             var eventTextStyleId = EnsureArialTextStyle(document.Database, transaction);
             var blockTable = (BlockTable)transaction.GetObject(
                 document.Database.BlockTableId,
@@ -107,32 +111,79 @@ public sealed class AutoCadInspectionRenderer
                     call.Anchor.LocationIndex,
                     call.Anchor.Role);
                 desiredKeys.Add(stableKey);
-                var anchor = polyline!.GetPointAtDist(call.Anchor.CadDistance);
-                var textPoint = TextPoint(anchor, call.Anchor.Position, placement.TextPoint);
+                var anchor = polyline.GetPointAtDist(call.Anchor.CadDistance);
+                var leaderEndPoint = RelativePoint(
+                    anchor,
+                    call.Anchor.Position,
+                    placement.LeaderEndPoint);
+                var textPoint = RelativePoint(
+                    anchor,
+                    call.Anchor.Position,
+                    placement.TextPoint);
                 var existed = existing.TryGetValue(stableKey, out var managedEntities);
-                var mleader = ExistingMLeader(managedEntities, transaction);
-                var duplicates = managedEntities;
-                if (mleader is null)
+                var retainedIds = new HashSet<ObjectId>();
+
+                var marker = ExistingEntity<Circle>(
+                    managedEntities,
+                    MarkerComponent,
+                    transaction);
+                var markerCreated = marker is null;
+                if (marker is null)
                 {
-                    Erase(managedEntities, transaction);
-                    duplicates = null;
-                    mleader = new MLeader();
-                    mleader.SetDatabaseDefaults(document.Database);
-                    modelSpace.AppendEntity(mleader);
-                    transaction.AddNewlyCreatedDBObject(mleader, true);
+                    marker = new Circle();
+                    marker.SetDatabaseDefaults(document.Database);
+                    modelSpace.AppendEntity(marker);
+                    transaction.AddNewlyCreatedDBObject(marker, true);
                 }
 
-                ApplyMLeader(
-                    mleader,
-                    anchor,
+                ApplyMarker(marker, anchor, eventLayerId);
+                SetMetadata(marker, session, section, call, stableKey, MarkerComponent);
+                retainedIds.Add(marker.ObjectId);
+                pendingEntities.Add((call.OccurrenceId, marker.ObjectId, markerCreated));
+
+                var leader = ExistingEntity<Line>(
+                    managedEntities,
+                    LeaderComponent,
+                    transaction);
+                var leaderCreated = leader is null;
+                if (leader is null)
+                {
+                    leader = new Line();
+                    leader.SetDatabaseDefaults(document.Database);
+                    modelSpace.AppendEntity(leader);
+                    transaction.AddNewlyCreatedDBObject(leader, true);
+                }
+
+                ApplyLeader(leader, anchor, leaderEndPoint, eventLayerId);
+                SetMetadata(leader, session, section, call, stableKey, LeaderComponent);
+                retainedIds.Add(leader.ObjectId);
+                pendingEntities.Add((call.OccurrenceId, leader.ObjectId, leaderCreated));
+
+                var text = ExistingEntity<MText>(
+                    managedEntities,
+                    TextComponent,
+                    transaction);
+                var textCreated = text is null;
+                if (text is null)
+                {
+                    text = new MText();
+                    text.SetDatabaseDefaults(document.Database);
+                    modelSpace.AppendEntity(text);
+                    transaction.AddNewlyCreatedDBObject(text, true);
+                }
+
+                ApplyText(
+                    text,
                     textPoint,
                     call,
                     placement,
                     eventLayerId,
                     eventTextStyleId);
-                SetMetadata(mleader, session, section, call, stableKey);
-                EraseDuplicates(duplicates, mleader.ObjectId, transaction);
-                pendingEntities.Add((call.OccurrenceId, mleader.ObjectId, !existed));
+                SetMetadata(text, session, section, call, stableKey, TextComponent);
+                retainedIds.Add(text.ObjectId);
+                pendingEntities.Add((call.OccurrenceId, text.ObjectId, textCreated));
+
+                EraseExcept(managedEntities, retainedIds, transaction);
                 if (existed)
                 {
                     updated++;
@@ -361,8 +412,8 @@ public sealed class AutoCadInspectionRenderer
             catch (System.Exception exception) when (
                 exception is not StackOverflowException and not OutOfMemoryException)
             {
-                // Some AutoCAD entities do not expose geometric extents.
-                // They remain untouched and are simply unavailable as layout obstacles.
+                // Algumas entidades do AutoCAD não expõem extents geométricos.
+                // Elas permanecem intactas e só não participam do layout.
                 continue;
             }
         }
@@ -373,9 +424,11 @@ public sealed class AutoCadInspectionRenderer
     private static bool IsFinite(double value) =>
         !double.IsNaN(value) && !double.IsInfinity(value);
 
-    private static MLeader? ExistingMLeader(
+    private static T? ExistingEntity<T>(
         IReadOnlyList<ObjectId>? objectIds,
+        string component,
         Transaction transaction)
+        where T : Entity
     {
         if (objectIds is null)
         {
@@ -384,79 +437,80 @@ public sealed class AutoCadInspectionRenderer
 
         foreach (var objectId in objectIds)
         {
-            if (transaction.GetObject(objectId, OpenMode.ForWrite, openErased: false) is MLeader mleader)
+            if (transaction.GetObject(objectId, OpenMode.ForWrite, openErased: false) is not T entity)
             {
-                return mleader;
+                continue;
+            }
+
+            using var data = entity.GetXDataForApplication(RegisteredApplicationName);
+            if (string.Equals(
+                    ReadXData(data, "COMPONENT"),
+                    component,
+                    StringComparison.Ordinal))
+            {
+                return entity;
             }
         }
 
         return null;
     }
 
-    private static void ApplyMLeader(
-        MLeader mleader,
+    private static void ApplyMarker(
+        Circle marker,
         Point3d anchor,
+        ObjectId layerId)
+    {
+        marker.LayerId = layerId;
+        marker.ColorIndex = MarkerColorIndex;
+        marker.Center = anchor;
+        marker.Normal = Vector3d.ZAxis;
+        marker.Radius = InspectionCalloutLayoutEngine.MarkerRadius;
+    }
+
+    private static void ApplyLeader(
+        Line leader,
+        Point3d anchor,
+        Point3d leaderEndPoint,
+        ObjectId layerId)
+    {
+        leader.LayerId = layerId;
+        leader.ColorIndex = LeaderColorIndex;
+        leader.StartPoint = anchor;
+        leader.EndPoint = leaderEndPoint;
+    }
+
+    private static void ApplyText(
+        MText text,
         Point3d textPoint,
         InspectionAnnotationCall call,
         InspectionCalloutPlacement placement,
         ObjectId layerId,
         ObjectId textStyleId)
     {
-        foreach (var oldLeaderIndex in mleader.GetLeaderIndexes().Cast<int>().ToArray())
-        {
-            mleader.RemoveLeader(oldLeaderIndex);
-        }
-
-        mleader.LayerId = layerId;
-        mleader.ColorIndex = EventColorIndex;
-        mleader.ContentType = ContentType.MTextContent;
-        mleader.EnableLanding = true;
-        mleader.EnableDogleg = true;
-        mleader.DoglegLength = DoglegLength;
-        mleader.LandingGap = 0.10;
-        mleader.TextHeight = TextHeight;
-        mleader.TextStyleId = textStyleId;
-        var leaderIndex = mleader.AddLeader();
-        var lineIndex = mleader.AddLeaderLine(leaderIndex);
-        mleader.AddFirstVertex(lineIndex, anchor);
-        mleader.AddLastVertex(lineIndex, textPoint);
-        using var text = new MText
-        {
-            Contents = MTextContents(call),
-            Location = textPoint,
-            TextHeight = TextHeight,
-            TextStyleId = textStyleId,
-            ColorIndex = EventColorIndex,
-            Rotation = placement.TextRotationRadians,
-            Attachment = placement.AttachAtRightEdge
-                ? AttachmentPoint.MiddleRight
-                : AttachmentPoint.MiddleLeft,
-        };
-        mleader.MText = text;
+        text.LayerId = layerId;
+        text.ColorIndex = TextColorIndex;
+        text.Contents = MTextContents(call);
+        text.Location = textPoint;
+        text.TextHeight = TextHeight;
+        text.TextStyleId = textStyleId;
+        text.Rotation = placement.TextRotationRadians;
+        text.Attachment = placement.AttachAtRightEdge
+            ? AttachmentPoint.MiddleRight
+            : AttachmentPoint.MiddleLeft;
     }
 
-    private static Point3d TextPoint(
+    private static Point3d RelativePoint(
         Point3d exactAnchor,
         LinearPoint plannedAnchor,
-        LinearPoint plannedTextPoint) => exactAnchor + new Vector3d(
-            plannedTextPoint.X - plannedAnchor.X,
-            plannedTextPoint.Y - plannedAnchor.Y,
-            plannedTextPoint.Z - plannedAnchor.Z);
+        LinearPoint plannedPoint) => exactAnchor + new Vector3d(
+            plannedPoint.X - plannedAnchor.X,
+            plannedPoint.Y - plannedAnchor.Y,
+            plannedPoint.Z - plannedAnchor.Z);
 
-    private static string MTextContents(InspectionAnnotationCall call)
-    {
-        var lines = new List<string>
-        {
-            call.LocationLine,
-            call.Cause,
-        };
-        if (!string.IsNullOrWhiteSpace(call.PositionLine))
-        {
-            lines.Add(call.PositionLine!);
-        }
-
-        return string.Join("\\P", lines.Select(EscapeMText));
-    }
+    private static string MTextContents(InspectionAnnotationCall call) =>
+        string.Join(
+            "\\P",
+            InspectionCalloutLayoutEngine.FormatTextLines(call).Select(EscapeMText));
 
     private static string EscapeMText(string value) => value
         .Replace("\\", "\\\\")
@@ -468,7 +522,8 @@ public sealed class AutoCadInspectionRenderer
         VideoInspectionSession session,
         InspectionSectionSession section,
         InspectionAnnotationCall call,
-        string stableKey)
+        string stableKey,
+        string component)
     {
         using var data = new ResultBuffer(
             new TypedValue((int)DxfCode.ExtendedDataRegAppName, RegisteredApplicationName),
@@ -487,13 +542,14 @@ public sealed class AutoCadInspectionRenderer
             Value("CAD_DISTANCE", call.Anchor.CadDistance.ToString(
                 "R",
                 System.Globalization.CultureInfo.InvariantCulture)),
+            Value("COMPONENT", component),
             Value("STABLE_KEY", stableKey));
         entity.XData = data;
     }
 
-    private static void EraseDuplicates(
+    private static void EraseExcept(
         IReadOnlyList<ObjectId>? objectIds,
-        ObjectId retainedId,
+        ISet<ObjectId> retainedIds,
         Transaction transaction)
     {
         if (objectIds is null)
@@ -501,22 +557,7 @@ public sealed class AutoCadInspectionRenderer
             return;
         }
 
-        foreach (var objectId in objectIds.Where(objectId => objectId != retainedId))
-        {
-            Erase(objectId, transaction);
-        }
-    }
-
-    private static void Erase(
-        IReadOnlyList<ObjectId>? objectIds,
-        Transaction transaction)
-    {
-        if (objectIds is null)
-        {
-            return;
-        }
-
-        foreach (var objectId in objectIds)
+        foreach (var objectId in objectIds.Where(objectId => !retainedIds.Contains(objectId)))
         {
             Erase(objectId, transaction);
         }
@@ -539,8 +580,14 @@ public sealed class AutoCadInspectionRenderer
                 }
 
                 using var data = entity.GetXDataForApplication(RegisteredApplicationName);
-                if (string.Equals(ReadXData(data, "REPORT_ID"), reportId.ToString("D"), StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(ReadXData(data, "SECTION_ID"), sectionId.ToString("D"), StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(
+                        ReadXData(data, "REPORT_ID"),
+                        reportId.ToString("D"),
+                        StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(
+                        ReadXData(data, "SECTION_ID"),
+                        sectionId.ToString("D"),
+                        StringComparison.OrdinalIgnoreCase))
                 {
                     entity.UpgradeOpen();
                     entity.Erase();
