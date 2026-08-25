@@ -176,12 +176,9 @@
                                                            Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0">
                                                     <Run Text="{Binding Route, Mode=OneWay}"/><Run Text="  ·  "/><Run Text="{Binding Diameter, Mode=OneWay}"/>
                                                 </TextBlock>
-                                                <TextBlock FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0">
-                                                    <Run Text="{Binding OccurrenceSummary, Mode=OneWay}"/>
-                                                    <Run Text="  ·  "/><Run Text="{Binding AttentionOccurrences, Mode=OneWay}"
-                                                                            Foreground="{StaticResource AttentionBrush}"/>
-                                                    <Run Text=" atenção" Foreground="{StaticResource AttentionBrush}"/>
-                                                </TextBlock>
+                                                <TextBlock Text="{Binding OccurrenceAttentionSummary}"
+                                                           FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                                           Margin="0,3,0,0" />
                                             </StackPanel>
                                             <TextBlock Grid.Column="2" Text="›" Foreground="{StaticResource VeryMutedBrush}"
                                                        FontSize="19" VerticalAlignment="Center" />
