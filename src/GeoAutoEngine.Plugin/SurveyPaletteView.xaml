@@ -2,692 +2,325 @@
              x:ClassModifier="internal"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:GeoAutoEngine.Plugin"
-             FontFamily="Segoe UI"
-             Foreground="{DynamicResource ForegroundBrush}"
-             MinWidth="300" MinHeight="520">
+             FontFamily="Inter" Foreground="#E8F0FE"
+             Background="#080E1A" MinWidth="300" MinHeight="420"
+             SizeChanged="PaletteSizeChanged">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Theme/GeoAutoTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
-
-            <Style x:Key="SectionTitle" TargetType="TextBlock">
-                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
-                <Setter Property="FontSize" Value="{StaticResource SectionFontSize}" />
-                <Setter Property="FontWeight" Value="SemiBold" />
-            </Style>
-
-            <Style x:Key="FlatButton" TargetType="Button">
-                <Setter Property="Background" Value="Transparent" />
-                <Setter Property="Foreground" Value="{StaticResource ForegroundSecondaryBrush}" />
-                <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="Cursor" Value="Hand" />
-                <Setter Property="Padding" Value="8" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="Chrome" Background="{TemplateBinding Background}"
-                                    CornerRadius="{StaticResource RadiusSmall}" Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Chrome" Property="Background" Value="#172B38" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource FlatButton}">
-                <Setter Property="Foreground" Value="White" />
-                <Setter Property="Padding" Value="18" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="Chrome" CornerRadius="{StaticResource RadiusMedium}"
-                                    BorderBrush="#43B8F4" BorderThickness="1" Padding="{TemplateBinding Padding}">
-                                <Border.Background>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                        <GradientStop Color="#126CBD" Offset="0" />
-                                        <GradientStop Color="#147FCE" Offset="0.52" />
-                                        <GradientStop Color="#0E5FAE" Offset="1" />
-                                    </LinearGradientBrush>
-                                </Border.Background>
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Chrome" Property="Opacity" Value="0.9" />
-                                </Trigger>
-                                <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="Chrome" Property="Opacity" Value="0.75" />
-                                </Trigger>
-                                <Trigger Property="IsEnabled" Value="False">
-                                    <Setter TargetName="Chrome" Property="Opacity" Value="0.38" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <Style x:Key="PresentationComboBox" TargetType="ComboBox">
-                <Setter Property="Background" Value="#102532" />
-                <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
-                <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
-                <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="Padding" Value="12,8" />
-                <Setter Property="MinHeight" Value="42" />
-                <Setter Property="FontSize" Value="13.5" />
-                <Setter Property="Cursor" Value="Hand" />
-                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-                <Setter Property="ItemContainerStyle">
-                    <Setter.Value>
-                        <Style TargetType="ComboBoxItem">
-                            <Setter Property="Background" Value="Transparent" />
-                            <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
-                            <Setter Property="Padding" Value="12,9" />
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="ComboBoxItem">
-                                        <Border x:Name="ItemChrome" Background="{TemplateBinding Background}"
-                                                Padding="{TemplateBinding Padding}" CornerRadius="5">
-                                            <ContentPresenter />
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsHighlighted" Value="True">
-                                                <Setter TargetName="ItemChrome" Property="Background" Value="#17384A" />
-                                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
-                                            </Trigger>
-                                            <Trigger Property="IsSelected" Value="True">
-                                                <Setter TargetName="ItemChrome" Property="Background" Value="#123044" />
-                                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </Setter.Value>
-                </Setter>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="ComboBox">
-                            <Grid>
-                                <ToggleButton x:Name="DropDownToggle" Focusable="False" ClickMode="Press"
-                                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
-                                    <ToggleButton.Template>
-                                        <ControlTemplate TargetType="ToggleButton">
-                                            <Border x:Name="FieldChrome" Background="#102532"
-                                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                                    CornerRadius="{StaticResource RadiusSmall}"
-                                                    Padding="{Binding Padding, RelativeSource={RelativeSource AncestorType=ComboBox}}">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="24" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="{Binding SelectedItem.Label, RelativeSource={RelativeSource AncestorType=ComboBox}}"
-                                                               Foreground="{StaticResource ForegroundBrush}"
-                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                                    <Path Grid.Column="1" Data="M 1 2 L 5 6 L 9 2"
-                                                          Stroke="{StaticResource AccentBrush}" StrokeThickness="1.6"
-                                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                </Grid>
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="FieldChrome" Property="Background" Value="#142C3A" />
-                                                    <Setter TargetName="FieldChrome" Property="BorderBrush" Value="#287FB2" />
-                                                </Trigger>
-                                                <Trigger Property="IsChecked" Value="True">
-                                                    <Setter TargetName="FieldChrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </ToggleButton.Template>
-                                </ToggleButton>
-                                <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}"
-                                       Placement="Bottom" AllowsTransparency="True" PopupAnimation="Fade"
-                                       Focusable="False">
-                                    <Border Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
-                                            Background="#0E202C" BorderBrush="#287FB2" BorderThickness="1"
-                                            CornerRadius="{StaticResource RadiusSmall}" Padding="4" Margin="0,3,0,0">
-                                        <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto"
-                                                      HorizontalScrollBarVisibility="Disabled">
-                                            <ItemsPresenter />
-                                        </ScrollViewer>
-                                    </Border>
-                                </Popup>
-                            </Grid>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsEnabled" Value="False">
-                                    <Setter TargetName="DropDownToggle" Property="Opacity" Value="0.45" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <Style x:Key="SettingsCheckBox" TargetType="CheckBox">
-                <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
-                <Setter Property="FontSize" Value="13.5" />
-                <Setter Property="Cursor" Value="Hand" />
-                <Setter Property="VerticalContentAlignment" Value="Center" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="CheckBox">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="22" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border x:Name="CheckChrome" Width="17" Height="17" HorizontalAlignment="Left"
-                                        VerticalAlignment="Center" Background="#0A1924"
-                                        BorderBrush="#47606F" BorderThickness="1" CornerRadius="4">
-                                    <Path x:Name="CheckMark" Data="M 3 8 L 7 12 L 14 4"
-                                          Stroke="White" StrokeThickness="2" StrokeStartLineCap="Round"
-                                          StrokeEndLineCap="Round" Visibility="Collapsed" />
-                                </Border>
-                                <ContentPresenter Grid.Column="1" ContentSource="Content"
-                                                  VerticalAlignment="Center" RecognizesAccessKey="True" />
-                            </Grid>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="CheckChrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                                </Trigger>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="CheckChrome" Property="Background" Value="#168BDB" />
-                                    <Setter TargetName="CheckChrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                                    <Setter TargetName="CheckMark" Property="Visibility" Value="Visible" />
-                                </Trigger>
-                                <Trigger Property="IsEnabled" Value="False">
-                                    <Setter Property="Opacity" Value="0.45" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
+            <Style x:Key="MetricCard" TargetType="Border" BasedOn="{StaticResource Card}">
+                <Setter Property="Margin" Value="3" />
+                <Setter Property="Padding" Value="10" />
+                <Setter Property="MinHeight" Value="84" />
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Border BorderBrush="#36505F" BorderThickness="1" CornerRadius="{StaticResource RadiusMedium}"
-            SnapsToDevicePixels="True">
-        <Border.Background>
-            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#0A1924" Offset="0" />
-                <GradientStop Color="#07131D" Offset="0.58" />
-                <GradientStop Color="#0B1B27" Offset="1" />
-            </LinearGradientBrush>
-        </Border.Background>
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="116" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="70" />
-            </Grid.RowDefinitions>
+    <Grid Background="{StaticResource BackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="38" />
+        </Grid.RowDefinitions>
 
-            <!-- Fixed header -->
-            <Border Grid.Row="0" BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1">
-                <Grid Margin="15,12,9,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="57" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="34" />
-                        <ColumnDefinition Width="30" />
-                    </Grid.ColumnDefinitions>
-                    <Image Width="51" Height="51" VerticalAlignment="Center" Stretch="Uniform"
-                           Source="/GeoAutoEngine.Plugin;component/Assets/logo_icone.png"
-                           RenderOptions.BitmapScalingMode="HighQuality" />
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="GeoAutoEngine" FontSize="21" FontWeight="Bold" Foreground="#F7FAFC"
-                                   TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="Automação de levantamentos" Margin="1,4,0,0" FontSize="12.5"
-                                   Foreground="{StaticResource AccentBrush}" TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
-                    <Border Grid.Column="2" Background="#0C293A" CornerRadius="7" Padding="9,6"
-                            VerticalAlignment="Center" Margin="5,0,4,0">
-                        <TextBlock Text="v3.0" FontSize="13" Foreground="{StaticResource AccentBrush}" />
-                    </Border>
-                    <Button Grid.Column="3" Style="{StaticResource FlatButton}" Click="ShowSettings"
-                            ToolTip="Configurações" HorizontalContentAlignment="Center">
-                        <TextBlock Text="⚙" FontFamily="Segoe UI Symbol" FontSize="20" Foreground="#A6B6C2" />
-                    </Button>
-                    <Button Grid.Column="4" Style="{StaticResource FlatButton}" Click="ClosePalette"
-                            ToolTip="Fechar" HorizontalContentAlignment="Center">
-                        <TextBlock Text="×" FontSize="24" FontWeight="Light" Foreground="#8FA0AD" Margin="0,-5,0,0" />
-                    </Button>
-                </Grid>
-            </Border>
-
-            <!-- Fixed footer + scrollable body -->
-            <ScrollViewer x:Name="SummaryView" Grid.Row="1" VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Margin="{StaticResource PageMargin}">
-                    <Grid Margin="0,0,0,13">
-                        <TextBlock Style="{StaticResource SectionTitle}" Text="LEVANTAMENTOS" VerticalAlignment="Center" />
-                        <Border HorizontalAlignment="Right" Background="#102736" CornerRadius="17" MinWidth="42" Padding="11,5">
-                            <TextBlock Text="{Binding FileCount}" Foreground="{StaticResource AccentBrush}"
-                                       FontSize="17" HorizontalAlignment="Center" />
-                        </Border>
-                    </Grid>
-
-                    <!-- Secondary action / drop target -->
-                    <Border x:Name="DropZone" MinHeight="96" Background="#091822" BorderBrush="#287FB2"
-                            BorderThickness="1" CornerRadius="{StaticResource RadiusMedium}"
-                            AllowDrop="True" DragEnter="CsvDragEnter" DragLeave="CsvDragLeave" Drop="CsvDrop"
-                            MouseLeftButtonUp="AddCsvFromDropZone" Cursor="Hand">
-                        <Grid Margin="15,16" VerticalAlignment="Center">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="49" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border Width="39" Height="39" BorderBrush="{StaticResource AccentBrush}" BorderThickness="2"
-                                    CornerRadius="6" VerticalAlignment="Center">
-                                <TextBlock Text="+" FontSize="29" FontWeight="Light" Foreground="{StaticResource AccentBrush}"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-6,0,0" />
-                            </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="Adicionar CSV" FontSize="16" Foreground="{StaticResource AccentBrush}" />
-                                <TextBlock Text="Arraste arquivos aqui ou clique para selecionar" FontSize="12.5"
-                                           Foreground="{StaticResource ForegroundSecondaryBrush}" Margin="0,4,0,0"
-                                           TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <!-- Loaded file rows -->
-                    <Border Visibility="{Binding LoadedFilesVisibility}" Background="#0D1C27"
+        <ScrollViewer x:Name="SummaryView" Grid.Row="0" VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <Grid Margin="12,12,12,10">
+                    <TextBlock Text="LEVANTAMENTOS" Style="{StaticResource AccentSectionLabel}"
+                               VerticalAlignment="Center" />
+                    <Border HorizontalAlignment="Right" Background="{StaticResource SurfaceHoverBrush}"
                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                            CornerRadius="{StaticResource RadiusMedium}" Margin="0,14,0,0" Padding="17,0">
-                        <ItemsControl ItemsSource="{Binding Files}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type local:SurveyFileViewModel}">
-                                    <Border BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1" Padding="0,12">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="43" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="31" />
-                                                <ColumnDefinition Width="27" />
-                                            </Grid.ColumnDefinitions>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                            </Grid.RowDefinitions>
-                                            <Grid Width="32" Height="41" HorizontalAlignment="Left" VerticalAlignment="Center">
-                                                <Path Fill="#178BD5" Stroke="#38AEF2" StrokeThickness="0.8"
-                                                      Data="M3,0 L22,0 L31,9 L31,38 Q31,41 28,41 L3,41 Q0,41 0,38 L0,3 Q0,0 3,0 Z" />
-                                                <Path Fill="#8ED2FF" Data="M22,0 L31,9 L22,9 Z" />
-                                                <TextBlock Text="CSV" FontSize="7.5" FontWeight="Bold" Foreground="White"
-                                                           HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,7" />
-                                            </Grid>
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="2,0,7,0">
-                                                <TextBlock Text="{Binding FileName}" FontSize="14.5" FontWeight="SemiBold"
-                                                           TextTrimming="CharacterEllipsis" Foreground="{StaticResource ForegroundBrush}" />
-                                            </StackPanel>
-                                            <DockPanel Grid.Row="1" Grid.Column="1" Margin="2,5,6,0" LastChildFill="False">
-                                                <TextBlock Text="{Binding PointText}" FontSize="12.5"
-                                                           Foreground="{StaticResource ForegroundSecondaryBrush}"
-                                                           VerticalAlignment="Center" Margin="0,0,8,0" />
-                                                <Border Visibility="{Binding NetworkVisibility}"
-                                                    Background="{Binding NetworkBackground}" BorderBrush="{Binding NetworkBorder}"
-                                                    BorderThickness="1" CornerRadius="11" Padding="9,2"
-                                                    VerticalAlignment="Center" ToolTip="{Binding NetworkTooltip}">
-                                                <TextBlock Text="{Binding NetworkName}" Foreground="{Binding NetworkForeground}"
-                                                           FontSize="11" TextTrimming="CharacterEllipsis" MaxWidth="100" />
-                                                </Border>
-                                            </DockPanel>
-                                            <Grid Grid.Column="2" Grid.RowSpan="2" Width="23" Height="23" VerticalAlignment="Center">
-                                                <Ellipse Fill="{Binding StatusBackground}" />
-                                                <Path Data="M5,12 L10,17 L20,7" Stroke="{Binding StatusForeground}" StrokeThickness="2.2"
-                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
-                                            </Grid>
-                                            <Button Grid.Column="3" Grid.RowSpan="2" Style="{StaticResource FlatButton}" Padding="3"
-                                                    Click="RemoveFileButton" Tag="{Binding}" HorizontalContentAlignment="Center"
-                                                    ToolTip="Remover arquivo da sessão">
-                                                <TextBlock Text="×" FontSize="22" Foreground="#A6B5C4" Margin="0,-3,0,0" />
-                                            </Button>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            CornerRadius="999" Padding="9,2">
+                        <TextBlock Text="{Binding FileCount}" Style="{StaticResource MonoText}"
+                                   FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" />
                     </Border>
+                </Grid>
 
-                    <Grid Visibility="{Binding LoadedFilesVisibility}" Margin="1,8,1,7">
-                        <Button Style="{StaticResource FlatButton}" Foreground="{StaticResource AccentBrush}"
-                                Click="AddCsvFiles" HorizontalAlignment="Left" Padding="5">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="+" FontSize="23" FontWeight="Light" Margin="0,-5,9,0" />
-                                <TextBlock Text="Adicionar mais arquivos" FontSize="14" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                        <Button Style="{StaticResource FlatButton}" Foreground="{StaticResource ForegroundSecondaryBrush}"
-                                Click="ClearAllFiles" HorizontalAlignment="Right" Padding="8,5" Content="Limpar todos" />
-                    </Grid>
-
-                    <Border BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1" Margin="0,4,0,14" />
-                    <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1" CornerRadius="{StaticResource RadiusMedium}"
-                            Padding="14,12" Margin="0,0,0,13">
-                        <StackPanel>
-                            <TextBlock Text="MODO DE PROCESSAMENTO" Style="{StaticResource SectionTitle}"
-                                       FontSize="12.5" />
-                            <TextBlock Text="Escolha quais elementos serão aplicados ao desenho"
-                                       Foreground="{StaticResource ForegroundSecondaryBrush}"
-                                       FontSize="11.5" Margin="0,4,0,10" TextWrapping="Wrap" />
-                            <ComboBox Style="{StaticResource PresentationComboBox}"
-                                      ItemsSource="{Binding ProcessingModeOptions}"
-                                      DisplayMemberPath="Label" SelectedValuePath="Value"
-                                      SelectedValue="{Binding SelectedProcessingMode, Mode=TwoWay}" />
+                <Border x:Name="DropZone" Margin="12,0,12,12" MinHeight="68"
+                        Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderEmphasisBrush}"
+                        BorderThickness="1" CornerRadius="9" Padding="14" Cursor="Hand"
+                        AllowDrop="True" DragEnter="CsvDragEnter" DragLeave="CsvDragLeave"
+                        Drop="CsvDrop" MouseLeftButtonUp="AddCsvFromDropZone">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="35" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="34" Height="34" Background="{StaticResource SurfaceHoverBrush}"
+                                BorderBrush="{StaticResource BorderEmphasisBrush}" BorderThickness="1"
+                                CornerRadius="7">
+                            <TextBlock Text="+" FontSize="19" FontWeight="Light"
+                                       Foreground="{StaticResource MutedBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="11,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Adicionar CSV" Foreground="{StaticResource ForegroundSecondaryBrush}"
+                                       FontSize="13" FontWeight="Medium" />
+                            <TextBlock Text="Arraste arquivos aqui ou clique para selecionar"
+                                       Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,3,0,0" />
                         </StackPanel>
-                    </Border>
-                    <Button Style="{StaticResource PrimaryButton}" Height="88" Click="ProcessSurveys"
+                    </Grid>
+                </Border>
+
+                <StackPanel Margin="12,0,12,12" Visibility="{Binding LoadedFilesVisibility}">
+                    <ItemsControl ItemsSource="{Binding Files}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,6">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="24" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding FileName}" Style="{StaticResource MonoText}"
+                                                       FontSize="12" FontWeight="Medium"
+                                                       Foreground="{StaticResource ForegroundSecondaryBrush}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding PointText}" FontSize="11"
+                                                       Foreground="{StaticResource MutedBrush}" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"
+                                                    Margin="8,0">
+                                            <Ellipse Width="7" Height="7" Fill="{Binding StatusBackground}"
+                                                     Margin="0,0,5,0" />
+                                            <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusBackground}"
+                                                       FontSize="11" />
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Style="{StaticResource GhostButton}"
+                                                Click="RemoveFileButton" Tag="{Binding}" ToolTip="Remover arquivo"
+                                                HorizontalContentAlignment="Center" Content="×" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Grid>
+                        <Button Style="{StaticResource GhostButton}" Click="AddCsvFiles"
+                                HorizontalAlignment="Left" Foreground="{StaticResource AccentBrush}"
+                                Content="+ Adicionar mais" />
+                        <Button Style="{StaticResource GhostButton}" Click="ClearAllFiles"
+                                HorizontalAlignment="Right" Content="Limpar todos" />
+                    </Grid>
+                </StackPanel>
+
+                <Border Height="1" Background="{StaticResource DividerBrush}" />
+
+                <StackPanel Margin="12,12,12,0">
+                    <TextBlock Text="MODO DE PROCESSAMENTO" Style="{StaticResource AccentSectionLabel}" />
+                    <TextBlock Text="Escolha quais elementos serão aplicados ao desenho"
+                               Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,3,0,10" />
+                    <ComboBox ItemsSource="{Binding ProcessingModeOptions}"
+                              DisplayMemberPath="Label" SelectedValuePath="Value"
+                              SelectedValue="{Binding SelectedProcessingMode, Mode=TwoWay}" />
+                </StackPanel>
+
+                <StackPanel Margin="12,12,12,12">
+                    <Button Style="{StaticResource PrimaryButton}" Height="47" Click="ProcessSurveys"
                             IsEnabled="{Binding CanProcess}">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <Path Data="M0,0 L0,20 L16,10 Z" Fill="White" Width="16" Height="20" Stretch="Fill" Margin="0,0,10,0" />
-                                <TextBlock Text="{Binding ProcessButtonText}" FontSize="15.5" FontWeight="Bold"
-                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
-                            <TextBlock Text="{Binding ProcessActionSummary}" FontSize="12" Foreground="#C6E6FA"
-                                       HorizontalAlignment="Center" Margin="0,7,0,0" TextTrimming="CharacterEllipsis" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="▶" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       FontSize="11" Margin="0,0,7,0" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding ProcessButtonText}"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       FontSize="12" FontWeight="Bold" />
                         </StackPanel>
                     </Button>
-                    <Border Background="#0E1D28" BorderBrush="{Binding StatusAccent}" BorderThickness="1"
-                            CornerRadius="{StaticResource RadiusMedium}" Margin="0,12,0,0" Padding="16,13">
+                    <Border Style="{StaticResource Card}" Margin="0,8,0,0">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="42" />
+                                <ColumnDefinition Width="22" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Border Width="31" Height="31" BorderBrush="{Binding StatusAccent}" BorderThickness="2"
-                                    CornerRadius="16" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding StatusGlyph}" Foreground="{Binding StatusAccent}"
-                                           FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"
-                                           VerticalAlignment="Center" Margin="0,-2,0,0" />
-                            </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding StatusTitle}" Foreground="{StaticResource ForegroundBrush}"
-                                           FontSize="14.5" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                <TextBlock Text="{Binding StatusDetail}" Foreground="{StaticResource ForegroundSecondaryBrush}"
-                                           FontSize="12.5" Margin="0,3,0,0" TextWrapping="Wrap" />
+                            <TextBlock Text="◷" Foreground="{Binding StatusAccent}" FontSize="16"
+                                       VerticalAlignment="Top" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="{Binding StatusTitle}" Foreground="{StaticResource MutedBrush}"
+                                           FontSize="12" FontWeight="Medium" />
+                                <TextBlock Text="{Binding StatusDetail}" Foreground="{StaticResource VeryMutedBrush}"
+                                           FontSize="11" Margin="0,3,0,0" />
                             </StackPanel>
                         </Grid>
                     </Border>
+                </StackPanel>
 
-                    <!-- Quick diagnostic -->
-                    <Border BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1" Margin="0,11,0,14" />
-                    <Grid Margin="0,0,0,10">
-                        <TextBlock Style="{StaticResource SectionTitle}" Text="DIAGNÓSTICO RÁPIDO" />
-                        <Button HorizontalAlignment="Right" Style="{StaticResource FlatButton}" Click="ShowDiagnostic"
-                                Foreground="{StaticResource AccentBrush}" Padding="3">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Ver detalhes" FontSize="13.5" />
-                                <TextBlock Text="⌄" FontSize="17" Margin="9,-3,0,0" />
-                            </StackPanel>
-                        </Button>
+                <Border Height="1" Background="{StaticResource DividerBrush}" />
+
+                <StackPanel Margin="9,12,9,12">
+                    <Grid Margin="3,0,3,6">
+                        <TextBlock Text="DIAGNÓSTICO RÁPIDO" Style="{StaticResource AccentSectionLabel}" />
+                        <Button HorizontalAlignment="Right" Style="{StaticResource GhostButton}"
+                                Click="ShowDiagnostic" Content="Ver detalhes⌄" />
                     </Grid>
-                    <ItemsControl ItemsSource="{Binding DiagnosticCards}">
+                    <ItemsControl x:Name="DiagnosticCardsControl" ItemsSource="{Binding DiagnosticCards}">
                         <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                            <ItemsPanelTemplate>
+                                <UniformGrid x:Name="DiagnosticPanel" Columns="2" />
+                            </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type local:DiagnosticCardViewModel}">
-                                <Border Width="123" Height="111" Background="#0E1D28" BorderBrush="{StaticResource BorderBrush}"
-                                        BorderThickness="1" CornerRadius="{StaticResource RadiusMedium}" Margin="0,0,10,10" Padding="14,12">
-                                    <Grid>
-                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding Glyph}" Foreground="{Binding Accent}" FontSize="25" FontWeight="SemiBold" />
-                                            <TextBlock Text="{Binding ValueText}" FontSize="21" FontWeight="SemiBold" Margin="12,0,0,0" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Row="1" Margin="0,6,0,0">
-                                            <TextBlock Text="{Binding Label}" FontSize="12.5" Foreground="#CCD5DC" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding PercentageText}" FontSize="12.5" Foreground="{Binding Accent}" Margin="0,3,0,0" />
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <!-- Dynamic network distribution -->
-                    <Border BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1" Margin="0,3,0,14" />
-                    <TextBlock Style="{StaticResource SectionTitle}" Text="DISTRIBUIÇÃO POR REDE" Margin="0,0,0,10" />
-                    <ItemsControl ItemsSource="{Binding Networks}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type local:NetworkDistributionViewModel}">
-                                <Border Width="211" Height="121" Background="#0E1D28" BorderBrush="{StaticResource BorderBrush}"
-                                        BorderThickness="1" CornerRadius="{StaticResource RadiusMedium}" Margin="0,0,11,11"
-                                        Padding="16,13" ToolTip="{Binding LayerTooltip}">
+                            <DataTemplate>
+                                <Border Style="{StaticResource MetricCard}">
                                     <Grid>
                                         <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="8" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
                                         </Grid.RowDefinitions>
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding IconGlyph}" Foreground="{Binding Color}" FontSize="23"
-                                                       FontWeight="SemiBold" Width="35" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding Name}" Foreground="#C9D3DA" FontSize="12.5"
-                                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding Glyph}" Foreground="{Binding Accent}"
+                                                       FontSize="14" Margin="0,0,7,0" />
+                                            <TextBlock Text="{Binding ValueText}" Style="{StaticResource MonoText}"
+                                                       FontSize="16" FontWeight="Bold" />
                                         </StackPanel>
-                                        <Grid Grid.Row="1" Margin="0,8,0,6">
-                                            <TextBlock Text="{Binding CountText}" FontSize="22" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding PercentageText}" Foreground="{Binding Color}" FontSize="13.5"
-                                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                        </Grid>
-                                        <Grid Grid.Row="2">
-                                            <Border Height="6" Background="#21333E" CornerRadius="3" />
-                                            <ProgressBar Height="6" Minimum="0" Maximum="100" Value="{Binding Percentage, Mode=OneWay}"
-                                                         Foreground="{Binding Color}" Background="Transparent" BorderThickness="0" />
-                                        </Grid>
+                                        <StackPanel Grid.Row="1" VerticalAlignment="Bottom">
+                                            <TextBlock Text="{Binding Label}" Foreground="{StaticResource MutedBrush}"
+                                                       FontSize="11" />
+                                            <TextBlock Text="{Binding PercentageText}" Foreground="{Binding Accent}"
+                                                       Style="{StaticResource MonoText}" FontSize="10" Margin="0,3,0,0" />
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <TextBlock Text="{Binding EmptyDiagnosticText}" Foreground="#778B99" FontSize="13"
-                               FontStyle="Italic" HorizontalAlignment="Center" Margin="0,5,0,0" />
                 </StackPanel>
-            </ScrollViewer>
 
-            <Grid x:Name="DiagnosticView" Grid.Row="1" Visibility="Collapsed">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <Border BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1" Padding="22,19,22,15">
-                    <Grid>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionTitle}" Text="DIAGNÓSTICO DETALHADO" />
-                            <TextBlock Text="{Binding DetailedDiagnosticSummary}" Margin="0,4,0,0"
-                                       Foreground="{StaticResource ForegroundSecondaryBrush}" FontSize="12.5" />
-                        </StackPanel>
-                        <Button HorizontalAlignment="Right" Style="{StaticResource FlatButton}" Click="ShowSummary"
-                                Foreground="{StaticResource AccentBrush}" Content="Voltar ao resumo" />
-                    </Grid>
-                </Border>
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="22,18,22,24">
-                        <Border Visibility="{Binding DetailedDiagnosticEmptyVisibility}" Background="#0D251D"
-                                BorderBrush="{StaticResource SuccessBrush}" BorderThickness="1"
-                                CornerRadius="{StaticResource RadiusMedium}" Padding="20">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="✓" Foreground="{StaticResource SuccessBrush}" FontSize="22" Margin="0,0,13,0" />
-                                <TextBlock Text="Nenhum problema que exija intervenção foi encontrado."
-                                           Foreground="{StaticResource ForegroundBrush}" FontSize="13.5"
-                                           TextWrapping="Wrap" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-                        <ItemsControl ItemsSource="{Binding DetailedDiagnostics}"
-                                      Visibility="{Binding DetailedDiagnosticListVisibility}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type local:DetailedDiagnosticViewModel}">
-                                    <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
-                                            BorderThickness="1" CornerRadius="{StaticResource RadiusMedium}"
-                                            Padding="15,13" Margin="0,0,0,10">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="35" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Width="25" Height="25" BorderBrush="{Binding Accent}" BorderThickness="1.5"
-                                                    CornerRadius="13" VerticalAlignment="Top">
-                                                <TextBlock Text="{Binding Glyph}" Foreground="{Binding Accent}" FontSize="14"
-                                                           FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                            </Border>
-                                            <StackPanel Grid.Column="1">
-                                                <DockPanel LastChildFill="True">
-                                                    <TextBlock Text="{Binding SeverityLabel}" Foreground="{Binding Accent}"
-                                                               FontWeight="SemiBold" FontSize="13" Margin="0,0,9,0" />
-                                                    <TextBlock Text="{Binding Code}" Foreground="#718795" FontSize="11"
-                                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                                </DockPanel>
-                                                <TextBlock Text="{Binding Message}" Foreground="{StaticResource ForegroundBrush}"
-                                                           FontSize="13" TextWrapping="Wrap" Margin="0,5,0,0" />
-                                                <TextBlock Text="{Binding Source}" Foreground="{StaticResource ForegroundSecondaryBrush}"
-                                                           FontSize="11.5" TextWrapping="Wrap" Margin="0,6,0,0" />
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </ScrollViewer>
-            </Grid>
+                <Border Height="1" Background="{StaticResource DividerBrush}" />
 
-            <Grid x:Name="SettingsView" Grid.Row="1" Visibility="Collapsed">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <Border BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1" Padding="22,19,22,15">
-                    <Grid>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionTitle}" Text="CONFIGURAÇÕES" />
-                            <TextBlock Text="Preferências locais do desenho" Margin="0,4,0,0"
-                                       Foreground="{StaticResource ForegroundSecondaryBrush}" FontSize="12.5" />
-                        </StackPanel>
-                        <Button HorizontalAlignment="Right" Style="{StaticResource FlatButton}" Click="ShowSummary"
-                                Foreground="{StaticResource AccentBrush}" Content="Voltar ao resumo" />
-                    </Grid>
-                </Border>
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="22,18,22,26">
-                        <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
-                                BorderThickness="1" CornerRadius="{StaticResource RadiusMedium}" Padding="20">
-                            <StackPanel>
-                                <TextBlock Text="APRESENTAÇÃO DO DESENHO" Style="{StaticResource SectionTitle}" FontSize="13" />
-
-                                <TextBlock Text="Escala da planta" Foreground="{StaticResource ForegroundBrush}"
-                                           FontSize="13" Margin="0,18,0,7" />
-                                <ComboBox Style="{StaticResource PresentationComboBox}"
-                                          ItemsSource="{Binding PlantScaleOptions}"
-                                          DisplayMemberPath="Label" SelectedValuePath="Value"
-                                          SelectedValue="{Binding PlantScaleDenominator, Mode=TwoWay}" />
-
-                                <Border Background="#0B2533" BorderBrush="#24506A" BorderThickness="1"
-                                        CornerRadius="{StaticResource RadiusMedium}" Padding="15,12" Margin="0,17,0,0">
+                <StackPanel Margin="12,12,12,18">
+                    <TextBlock Text="DISTRIBUIÇÃO POR REDE" Style="{StaticResource AccentSectionLabel}" />
+                    <ItemsControl ItemsSource="{Binding Networks}" Margin="0,8,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,6">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel>
-                                            <TextBlock Text="Altura do texto" Foreground="{StaticResource ForegroundSecondaryBrush}"
-                                                       FontSize="12.5" />
-                                            <TextBlock Text="Calculada automaticamente" Foreground="#748D9D"
-                                                       FontSize="11.5" Margin="0,4,0,0" />
+                                            <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding CountText}" Style="{StaticResource MonoText}"
+                                                       Foreground="{Binding Color}" FontSize="11" />
                                         </StackPanel>
-                                        <TextBlock Grid.Column="1" Text="{Binding CalculatedTextHeight}"
-                                                   Foreground="{StaticResource AccentBrush}" FontSize="21"
-                                                   FontWeight="SemiBold" VerticalAlignment="Center" Margin="14,0,0,0" />
+                                        <TextBlock Grid.Column="1" Text="{Binding PercentageText}"
+                                                   Style="{StaticResource MonoText}" Foreground="{Binding Color}"
+                                                   VerticalAlignment="Center" />
                                     </Grid>
                                 </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="{Binding EmptyDiagnosticText}" Foreground="{StaticResource VeryMutedBrush}"
+                               FontSize="12" FontStyle="Italic" TextAlignment="Center" Margin="12,18" />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
 
-                                <Border BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1"
-                                        Margin="0,20,0,0" />
-
-                                <TextBlock Text="Escala dos blocos" Foreground="{StaticResource ForegroundBrush}"
-                                           FontSize="13" Margin="0,18,0,7" />
-                                <ComboBox Style="{StaticResource PresentationComboBox}"
-                                          ItemsSource="{Binding BlockScaleOptions}"
-                                          DisplayMemberPath="Label" SelectedValuePath="Value"
-                                          SelectedValue="{Binding SelectedBlockScaleMode, Mode=TwoWay}" />
-
-                                <Border BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1"
-                                        Margin="0,20,0,0" />
-
-                                <CheckBox IsChecked="{Binding ShowRevisionMarks, Mode=TwoWay}"
-                                          Style="{StaticResource SettingsCheckBox}" Margin="0,18,0,0">
-                                    <TextBlock Text="Exibir marcações de revisão" TextWrapping="Wrap" />
-                                </CheckBox>
-
-                                <CheckBox IsChecked="{Binding AddStandardSheet, Mode=TwoWay}"
-                                          Style="{StaticResource SettingsCheckBox}" Margin="0,13,0,0">
-                                    <TextBlock Text="Adicionar folha padrão" TextWrapping="Wrap" />
-                                </CheckBox>
-
-                                <Border BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1"
-                                        Margin="0,20,0,0" />
-
-                                <CheckBox IsChecked="{Binding OpenPaletteOnStartup, Mode=TwoWay}"
-                                          Style="{StaticResource SettingsCheckBox}" Margin="0,18,0,0">
-                                    <TextBlock Text="Abrir GeoAutoEngine ao iniciar o Civil 3D" TextWrapping="Wrap" />
-                                </CheckBox>
-
-                                <Button Style="{StaticResource FlatButton}" Click="RestoreDrawingPresentationDefaults"
-                                        Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Right"
-                                        Margin="0,22,0,0" Padding="13,8" Content="Restaurar padrões" />
-                            </StackPanel>
-                        </Border>
+        <Grid x:Name="DiagnosticView" Grid.Row="0" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1" Padding="12,10">
+                <Grid>
+                    <StackPanel>
+                        <TextBlock Text="DIAGNÓSTICO" Style="{StaticResource AccentSectionLabel}" />
+                        <TextBlock Text="{Binding DetailedDiagnosticSummary}" Foreground="{StaticResource MutedBrush}"
+                                   FontSize="11" Margin="0,3,0,0" />
                     </StackPanel>
-                </ScrollViewer>
-            </Grid>
-
-            <!-- Fixed bottom navigation -->
-            <Border Grid.Row="2" Background="#0C1B26" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
-                <Grid Margin="9,0">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="1"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <Button x:Name="SummaryTabButton" Style="{StaticResource FlatButton}" Click="ShowSummary"
-                            Foreground="{StaticResource AccentBrush}" HorizontalContentAlignment="Center">
-                        <Grid>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="▥" FontSize="20" FontWeight="Bold" Margin="0,0,7,0" />
-                                <TextBlock Text="Resumo" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            </StackPanel>
-                            <Border x:Name="SummaryIndicator" Height="3" Width="45" Background="{StaticResource AccentBrush}"
-                                    CornerRadius="2" VerticalAlignment="Bottom" Margin="0,0,0,-7" />
-                        </Grid>
-                    </Button>
-                    <Border Grid.Column="1" Width="1" Height="38" Background="#2D424F" VerticalAlignment="Center" />
-                    <Button x:Name="DiagnosticTabButton" Grid.Column="2" Style="{StaticResource FlatButton}"
-                            Click="ShowDiagnostic" Foreground="#9AAAB7" HorizontalContentAlignment="Center">
-                        <Grid>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="☷" FontSize="20" Margin="0,0,7,0" />
-                                <TextBlock Text="Diagnóstico" FontSize="13" VerticalAlignment="Center" />
-                            </StackPanel>
-                            <Border x:Name="DiagnosticIndicator" Height="3" Width="45" Background="{StaticResource AccentBrush}"
-                                    CornerRadius="2" VerticalAlignment="Bottom" Margin="0,0,0,-7" Visibility="Collapsed" />
-                        </Grid>
-                    </Button>
+                    <Button HorizontalAlignment="Right" Style="{StaticResource GhostButton}"
+                            Click="ShowSummary" Content="Voltar ao resumo" />
                 </Grid>
             </Border>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="12">
+                    <Border Style="{StaticResource Card}" Visibility="{Binding DetailedDiagnosticEmptyVisibility}"
+                            Padding="12,30">
+                        <TextBlock Text="Nenhum diagnóstico disponível." Foreground="{StaticResource VeryMutedBrush}"
+                                   TextAlignment="Center" />
+                    </Border>
+                    <ItemsControl ItemsSource="{Binding DetailedDiagnostics}"
+                                  Visibility="{Binding DetailedDiagnosticListVisibility}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,6">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Glyph}" Foreground="{Binding Accent}" FontSize="14" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding Message}" FontSize="12" />
+                                            <TextBlock Text="{Binding Source}" Foreground="{StaticResource MutedBrush}"
+                                                       FontSize="10" Margin="0,3,0,0" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
         </Grid>
-    </Border>
+
+        <Grid x:Name="SettingsView" Grid.Row="0" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1" Padding="12,10">
+                <Grid>
+                    <TextBlock Text="CONFIGURAÇÕES" Style="{StaticResource AccentSectionLabel}"
+                               VerticalAlignment="Center" />
+                    <Button HorizontalAlignment="Right" Style="{StaticResource GhostButton}"
+                            Click="ShowSummary" Content="Voltar ao resumo" />
+                </Grid>
+            </Border>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="12">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="APRESENTAÇÃO DO DESENHO" Style="{StaticResource SectionLabel}" />
+                            <TextBlock Text="Escala da planta" Foreground="{StaticResource MutedBrush}" Margin="0,12,0,5" />
+                            <ComboBox ItemsSource="{Binding PlantScaleOptions}" DisplayMemberPath="Label"
+                                      SelectedValuePath="Value" SelectedValue="{Binding PlantScaleDenominator, Mode=TwoWay}" />
+                            <TextBlock Text="{Binding CalculatedTextHeight}" Style="{StaticResource MonoText}"
+                                       Foreground="{StaticResource AccentBrush}" Margin="0,6,0,0" />
+                            <TextBlock Text="Escala dos blocos" Foreground="{StaticResource MutedBrush}" Margin="0,14,0,5" />
+                            <ComboBox ItemsSource="{Binding BlockScaleOptions}" DisplayMemberPath="Label"
+                                      SelectedValuePath="Value" SelectedValue="{Binding SelectedBlockScaleMode, Mode=TwoWay}" />
+                            <CheckBox IsChecked="{Binding ShowRevisionMarks, Mode=TwoWay}" Margin="0,14,0,0"
+                                      Foreground="{StaticResource ForegroundSecondaryBrush}"
+                                      Content="Exibir marcas de revisão" />
+                            <CheckBox IsChecked="{Binding AddStandardSheet, Mode=TwoWay}" Margin="0,8,0,0"
+                                      Foreground="{StaticResource ForegroundSecondaryBrush}"
+                                      Content="Adicionar folha padrão" />
+                            <CheckBox IsChecked="{Binding OpenPaletteOnStartup, Mode=TwoWay}" Margin="0,8,0,0"
+                                      Foreground="{StaticResource ForegroundSecondaryBrush}"
+                                      Content="Abrir ao iniciar o Civil 3D" />
+                            <Button Style="{StaticResource SecondaryButton}" Click="RestoreDrawingPresentationDefaults"
+                                    Margin="0,16,0,0" Content="Restaurar padrões" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <Border Grid.Row="1" Background="{StaticResource HeaderBrush}"
+                BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Button x:Name="SummaryTabButton" Style="{StaticResource NavigationTabButton}"
+                        Click="ShowSummary" Foreground="{StaticResource ForegroundBrush}" Content="▥  Resumo" />
+                <Border x:Name="SummaryIndicator" Height="2" Background="{StaticResource AccentBrush}"
+                        VerticalAlignment="Top" />
+                <Button x:Name="DiagnosticTabButton" Grid.Column="1" Style="{StaticResource NavigationTabButton}"
+                        Click="ShowDiagnostic" Foreground="{StaticResource MutedBrush}" Content="☷  Diagnóstico" />
+                <Border x:Name="DiagnosticIndicator" Grid.Column="1" Height="2"
+                        Background="{StaticResource AccentBrush}" VerticalAlignment="Top" Visibility="Collapsed" />
+            </Grid>
+        </Border>
+    </Grid>
 </UserControl>
