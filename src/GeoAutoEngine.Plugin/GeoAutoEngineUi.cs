@@ -359,26 +359,41 @@ internal static class GeoAutoEnginePalette
         {
             EnsureUiExceptionBoundary();
             var viewModel = new GeoAutoPaletteViewModel();
-            _controller = new GeoAutoPaletteController(viewModel, new GeoAutoEngineWorkflow());
-            _content = new SurveyPaletteView(viewModel);
-            _videoViewModel = new VideoInspectionViewModel();
-            _videoController = new VideoInspectionController(
-                _videoViewModel,
-                RequestVideoImport,
-                RequestVideoAssociation,
-                RequestVideoCommit);
-            _videoContent = new VideoInspectionView(_videoViewModel);
-            _shell = new GeoAutoPaletteShell(_content, _videoContent);
-            _palette = new PaletteSet("GeoAutoEngine 3", PaletteId)
+            using (VideoInspectionPerformanceProbe.Measure("Survey Palette construction"))
             {
-                DockEnabled = DockSides.Left | DockSides.Right,
-                MinimumSize = new Size(320, 520),
-                Size = new Size(420, 760),
-                Style = PaletteSetStyles.ShowAutoHideButton |
-                    PaletteSetStyles.ShowCloseButton |
-                    PaletteSetStyles.ShowPropertiesMenu,
-            };
-            _palette.AddVisual("GeoAutoEngine", _shell);
+                _controller = new GeoAutoPaletteController(viewModel, new GeoAutoEngineWorkflow());
+                _content = new SurveyPaletteView(viewModel);
+            }
+
+            _videoViewModel = new VideoInspectionViewModel();
+            using (VideoInspectionPerformanceProbe.Measure("Controller/event registration"))
+            {
+                _videoController = new VideoInspectionController(
+                    _videoViewModel,
+                    RequestVideoImport,
+                    RequestVideoAssociation,
+                    RequestVideoCommit);
+            }
+
+            using (VideoInspectionPerformanceProbe.Measure("VideoInspectionView construction"))
+            {
+                _videoContent = new VideoInspectionView(_videoViewModel);
+            }
+
+            using (VideoInspectionPerformanceProbe.Measure("Palette shell/host construction"))
+            {
+                _shell = new GeoAutoPaletteShell(_content, _videoContent);
+                _palette = new PaletteSet("GeoAutoEngine 3", PaletteId)
+                {
+                    DockEnabled = DockSides.Left | DockSides.Right,
+                    MinimumSize = new Size(320, 520),
+                    Size = new Size(420, 760),
+                    Style = PaletteSetStyles.ShowAutoHideButton |
+                        PaletteSetStyles.ShowCloseButton |
+                        PaletteSetStyles.ShowPropertiesMenu,
+                };
+                _palette.AddVisual("GeoAutoEngine", _shell);
+            }
             if (VideoInspectionRuntime.CurrentSession is not null)
             {
                 _videoViewModel.Load(VideoInspectionRuntime.CurrentSession, "Inspeção carregada");
