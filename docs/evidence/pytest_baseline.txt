@@ -1,0 +1,14 @@
+Command:
+  $env:PYTHONDONTWRITEBYTECODE='1'; .\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider
+
+Result:
+  410 passed, 4 skipped, 286 subtests passed in 13.70s
+
+Skipped:
+  tests/regression/test_main_view_contract.py:84  - Teste gráfico requer DISPLAY funcional
+  tests/regression/test_main_view_contract.py:96  - Teste gráfico requer DISPLAY funcional
+  tests/regression/test_main_view_contract.py:131 - Teste gráfico requer DISPLAY funcional
+  tests/regression/test_main_view_contract.py:150 - Teste gráfico requer DISPLAY funcional
+
+Date:
+  2026-08-07 America/Sao_Paulo

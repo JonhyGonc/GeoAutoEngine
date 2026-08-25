@@ -1,0 +1,422 @@
+[
+  {
+    "Command": "GEOAUTO3IMPORT",
+    "Inputs": [
+      "stage4_cad_smoke_day1.csv",
+      "stage4_cad_smoke_day2.csv"
+    ],
+    "BatchSummary": {
+      "SourceCount": 2,
+      "TotalRecordCount": 8,
+      "ImportedRecordCount": 8,
+      "RejectedRecordCount": 0,
+      "RejectedSourceCount": 0,
+      "ProcessableRecordCount": 8,
+      "RecognizedRecordCount": 7,
+      "UnknownCodeCount": 1,
+      "DuplicateCandidateCount": 0,
+      "Sources": [
+        {
+          "SourceFileId": {
+            "Value": "51dd465c-bb43-eb97-32fb-caba552b9ae1"
+          },
+          "DisplayName": "stage4_cad_smoke_day1.csv",
+          "SelectionOrdinal": 0,
+          "Status": 0,
+          "TotalRecordCount": 3,
+          "ImportedRecordCount": 3,
+          "RejectedRecordCount": 0
+        },
+        {
+          "SourceFileId": {
+            "Value": "70cc8a8f-e90f-33c0-dd32-4b330756162b"
+          },
+          "DisplayName": "stage4_cad_smoke_day2.csv",
+          "SelectionOrdinal": 1,
+          "Status": 0,
+          "TotalRecordCount": 5,
+          "ImportedRecordCount": 5,
+          "RejectedRecordCount": 0
+        }
+      ],
+      "RecordsByNetwork": {
+        "Esgoto sanit\u00E1rio": 2,
+        "Outra": 1,
+        "\u00C1gua pot\u00E1vel": 1,
+        "\u00C1guas pluviais": 3
+      },
+      "RecordsByType": {
+        "Bloco": 5,
+        "Revisar": 1,
+        "Texto": 2
+      },
+      "RecordsByMaterial": {},
+      "UnknownCodes": {
+        "XP54": 1
+      },
+      "DiagnosticsBySeverity": {
+        "Warning": 1
+      }
+    },
+    "PlanSummary": {
+      "TextCount": 3,
+      "BlockCount": 2,
+      "RainStructureCount": 1,
+      "CircleAlertCount": 1,
+      "SuppressedCount": 0,
+      "WarningCount": 1,
+      "RejectedInputCount": 0
+    },
+    "ApplicationResult": {
+      "Succeeded": true,
+      "CreatedItemCount": 7,
+      "SkippedExistingItemCount": 0,
+      "PendingItemCount": 0,
+      "FailedItemCount": 0,
+      "RolledBack": false,
+      "Regenerated": true,
+      "Diagnostics": [
+        {
+          "Code": "CAD_NETWORK_GEOMETRY_FALLBACK",
+          "Message": "Sem associa\u00E7\u00E3o geom\u00E9trica segura para P.1.20; aplicada conting\u00EAncia horizontal.",
+          "Severity": 1,
+          "Scope": 2,
+          "SourceFileId": null,
+          "Origins": [
+            {
+              "SourceFileId": {
+                "Value": "51dd465c-bb43-eb97-32fb-caba552b9ae1"
+              },
+              "SourceFileName": "stage4_cad_smoke_day1.csv",
+              "SourceRecordIndex": 2,
+              "SourceLineNumber": 4,
+              "BatchOrdinal": 2
+            }
+          ]
+        },
+        {
+          "Code": "CAD_NETWORK_GEOMETRY_FALLBACK",
+          "Message": "Sem associa\u00E7\u00E3o geom\u00E9trica segura para \u2205150; aplicada conting\u00EAncia horizontal.",
+          "Severity": 1,
+          "Scope": 2,
+          "SourceFileId": null,
+          "Origins": [
+            {
+              "SourceFileId": {
+                "Value": "51dd465c-bb43-eb97-32fb-caba552b9ae1"
+              },
+              "SourceFileName": "stage4_cad_smoke_day1.csv",
+              "SourceRecordIndex": 2,
+              "SourceLineNumber": 4,
+              "BatchOrdinal": 2
+            }
+          ]
+        },
+        {
+          "Code": "CAD_BLOCK_GEOMETRY_FALLBACK",
+          "Message": "Sem rede eleg\u00EDvel para o bloco rg_agua_potavel; mantida a rota\u00E7\u00E3o fixa configurada.",
+          "Severity": 1,
+          "Scope": 2,
+          "SourceFileId": null,
+          "Origins": [
+            {
+              "SourceFileId": {
+                "Value": "70cc8a8f-e90f-33c0-dd32-4b330756162b"
+              },
+              "SourceFileName": "stage4_cad_smoke_day2.csv",
+              "SourceRecordIndex": 4,
+              "SourceLineNumber": 6,
+              "BatchOrdinal": 7
+            }
+          ]
+        }
+      ]
+    },
+    "Drawing": {
+      "GeneratedEntityCount": 7,
+      "CountsByType": {
+        "DBText": 3,
+        "BlockReference": 2,
+        "Polyline": 1,
+        "Circle": 1
+      },
+      "Entities": [
+        {
+          "EntityType": "DBText",
+          "Layer": "-Texto",
+          "StableKey": "51dd465c-bb43-eb97-32fb-caba552b9ae1:0:Text:ANOTACAO_DIVISA:boundary-annotation",
+          "Text": "N\u00BA113",
+          "BlockName": null,
+          "Position": [
+            500,
+            1000,
+            0
+          ],
+          "Scale": null,
+          "Rotation": 0,
+          "Radius": null,
+          "ColorIndex": 7,
+          "VertexCount": 0,
+          "XDataValues": {
+            "CODIGO": "DIVISA 113",
+            "ORIGEM": "500.00000000,1000.00000000,0.00000000",
+            "PLAN_ID": "4e2b2aa2-c105-c1e0-7706-e4bc6f088b7d",
+            "REGISTRO": "51dd465c-bb43-eb97-32fb-caba552b9ae1:0:Text:ANOTACAO_DIVISA:boundary-annotation",
+            "SOURCE_FILE": "stage4_cad_smoke_day1.csv",
+            "SOURCE_LINE": "2",
+            "TIPO": "ANOTACAO_DIVISA"
+          }
+        },
+        {
+          "EntityType": "BlockReference",
+          "Layer": "GF-Rede Esgoto",
+          "StableKey": "51dd465c-bb43-eb97-32fb-caba552b9ae1:1:Block:PV_ES:PV_ESGOTO_SANITARIO",
+          "Text": null,
+          "BlockName": "pv_esgoto_sanitario",
+          "Position": [
+            501,
+            1001,
+            0
+          ],
+          "Scale": [
+            1,
+            1,
+            1
+          ],
+          "Rotation": 0,
+          "Radius": null,
+          "ColorIndex": 256,
+          "VertexCount": 0,
+          "XDataValues": {
+            "CODIGO": "PVES",
+            "ORIGEM": "501.00000000,1001.00000000,0.00000000",
+            "PLAN_ID": "4e2b2aa2-c105-c1e0-7706-e4bc6f088b7d",
+            "REGISTRO": "51dd465c-bb43-eb97-32fb-caba552b9ae1:1:Block:PV_ES:PV_ESGOTO_SANITARIO",
+            "SOURCE_FILE": "stage4_cad_smoke_day1.csv",
+            "SOURCE_LINE": "3",
+            "TIPO": "BLOCO"
+          }
+        },
+        {
+          "EntityType": "DBText",
+          "Layer": "GF-Rede Esgoto",
+          "StableKey": "51dd465c-bb43-eb97-32fb-caba552b9ae1:2:Text:REDE_E:depth",
+          "Text": "P.1.20",
+          "BlockName": null,
+          "Position": [
+            503,
+            1002.1,
+            0
+          ],
+          "Scale": null,
+          "Rotation": 0,
+          "Radius": null,
+          "ColorIndex": 256,
+          "VertexCount": 0,
+          "XDataValues": {
+            "CODIGO": "E1.20D150",
+            "ORIGEM": "502.00000000,1002.00000000,0.00000000",
+            "PLAN_ID": "4e2b2aa2-c105-c1e0-7706-e4bc6f088b7d",
+            "REGISTRO": "51dd465c-bb43-eb97-32fb-caba552b9ae1:2:Text:REDE_E:depth",
+            "SOURCE_FILE": "stage4_cad_smoke_day1.csv",
+            "SOURCE_LINE": "4",
+            "TIPO": "TEXTO_PROFUNDIDADE"
+          }
+        },
+        {
+          "EntityType": "DBText",
+          "Layer": "GF-Rede Esgoto",
+          "StableKey": "51dd465c-bb43-eb97-32fb-caba552b9ae1:2:Text:REDE_E:diameter",
+          "Text": "\u2205150",
+          "BlockName": null,
+          "Position": [
+            503,
+            1001.4,
+            0
+          ],
+          "Scale": null,
+          "Rotation": 0,
+          "Radius": null,
+          "ColorIndex": 256,
+          "VertexCount": 0,
+          "XDataValues": {
+            "CODIGO": "E1.20D150",
+            "ORIGEM": "502.00000000,1002.00000000,0.00000000",
+            "PLAN_ID": "4e2b2aa2-c105-c1e0-7706-e4bc6f088b7d",
+            "REGISTRO": "51dd465c-bb43-eb97-32fb-caba552b9ae1:2:Text:REDE_E:diameter",
+            "SOURCE_FILE": "stage4_cad_smoke_day1.csv",
+            "SOURCE_LINE": "4",
+            "TIPO": "TEXTO_DIAMETRO"
+          }
+        },
+        {
+          "EntityType": "Polyline",
+          "Layer": "GF-Grelha",
+          "StableKey": "70cc8a8f-e90f-33c0-dd32-4b330756162b:0:RainStructure:GRELHA:GRELHA:3,4,5",
+          "Text": null,
+          "BlockName": null,
+          "Position": null,
+          "Scale": null,
+          "Rotation": null,
+          "Radius": null,
+          "ColorIndex": 256,
+          "VertexCount": 4,
+          "XDataValues": {
+            "CODIGO": "GR",
+            "ORIGEM": "511.00000000,1010.50000000,0.00000000",
+            "PLAN_ID": "4e2b2aa2-c105-c1e0-7706-e4bc6f088b7d",
+            "REGISTRO": "70cc8a8f-e90f-33c0-dd32-4b330756162b:0:RainStructure:GRELHA:GRELHA:3,4,5",
+            "SOURCE_FILE": "stage4_cad_smoke_day2.csv",
+            "SOURCE_LINE": "2",
+            "TIPO": "ESTRUTURA_PLUVIAL"
+          }
+        },
+        {
+          "EntityType": "Circle",
+          "Layer": "GF-Diagnostico",
+          "StableKey": "70cc8a8f-e90f-33c0-dd32-4b330756162b:3:CircleAlert:DESCONHECIDO:unknown-code",
+          "Text": null,
+          "BlockName": null,
+          "Position": [
+            520,
+            1020,
+            0
+          ],
+          "Scale": null,
+          "Rotation": null,
+          "Radius": 0.75,
+          "ColorIndex": 1,
+          "VertexCount": 0,
+          "XDataValues": {
+            "CODIGO": "XP54",
+            "ORIGEM": "520.00000000,1020.00000000,0.00000000",
+            "PLAN_ID": "4e2b2aa2-c105-c1e0-7706-e4bc6f088b7d",
+            "REGISTRO": "70cc8a8f-e90f-33c0-dd32-4b330756162b:3:CircleAlert:DESCONHECIDO:unknown-code",
+            "SOURCE_FILE": "stage4_cad_smoke_day2.csv",
+            "SOURCE_LINE": "5",
+            "TIPO": "ATENCAO"
+          }
+        },
+        {
+          "EntityType": "BlockReference",
+          "Layer": "GF-Rede \u00C1gua",
+          "StableKey": "70cc8a8f-e90f-33c0-dd32-4b330756162b:4:Block:REGISTRO_AF:REGISTRO_AGUA_POTAVEL",
+          "Text": null,
+          "BlockName": "rg_agua_potavel",
+          "Position": [
+            530,
+            1030,
+            0
+          ],
+          "Scale": [
+            1,
+            1,
+            1
+          ],
+          "Rotation": 0,
+          "Radius": null,
+          "ColorIndex": 256,
+          "VertexCount": 0,
+          "XDataValues": {
+            "CODIGO": "RG",
+            "ORIGEM": "530.00000000,1030.00000000,0.00000000",
+            "PLAN_ID": "4e2b2aa2-c105-c1e0-7706-e4bc6f088b7d",
+            "REGISTRO": "70cc8a8f-e90f-33c0-dd32-4b330756162b:4:Block:REGISTRO_AF:REGISTRO_AGUA_POTAVEL",
+            "SOURCE_FILE": "stage4_cad_smoke_day2.csv",
+            "SOURCE_LINE": "6",
+            "TIPO": "BLOCO"
+          }
+        }
+      ],
+      "Layers": [
+        "-Texto",
+        "0",
+        "GF-Diagnostico",
+        "GF-Grelha",
+        "GF-PVESA",
+        "GF-Rede Esgoto",
+        "GF-Rede Telefone",
+        "GF-Rede \u00C1gua",
+        "GF-Registro de \u00C1gua"
+      ],
+      "TextStyles": [
+        "ARIAL",
+        "GEO_ARIAL",
+        "GEO_ARIAL_BOLD",
+        "Legend",
+        "Standard"
+      ],
+      "RegisteredApplications": [
+        "ACAD",
+        "ACAD_EXEMPT_FROM_CAD_STANDARDS",
+        "ACAD_MLEADERVER",
+        "ACAD_NAV_VCDISPLAY",
+        "ACAD_PSEXT",
+        "ADE",
+        "ADE_PROJECTION",
+        "AcDbDynamicBlockGUID",
+        "AcMapDMDisplayStyleRegapp",
+        "AeccLand130",
+        "AeccUiDataExchange",
+        "AeccUiMgr",
+        "AeccUiModel",
+        "AeccUiQTO",
+        "AeccUiQTOEntityPayItemData",
+        "AeccUiQTOFreqUsedPayItemsList",
+        "AeccUiQTOPayItemCategoryFilePath",
+        "AeccUiQTOPayItemFilePath",
+        "AeccUiQTOPayItemFormulaExpression",
+        "AeccUiQTOPayItemFormulaFilePath",
+        "AeccUiQTOPayItemFormulaParameters",
+        "AeccUiQTOPayItemSpecBookVersionFloridaDOT",
+        "AeccUiQTOTransportDesignerFileFloridaDOT",
+        "DCO15",
+        "GEOAUTOENGINE",
+        "MapGWS",
+        "MapManagementAppName"
+      ]
+    },
+    "Error": null
+  },
+  {
+    "Command": "GEOAUTO3VERIFY",
+    "Inputs": [],
+    "BatchSummary": null,
+    "PlanSummary": null,
+    "ApplicationResult": null,
+    "Drawing": {
+      "GeneratedEntityCount": 0,
+      "CountsByType": {},
+      "Entities": [],
+      "Layers": [
+        "0"
+      ],
+      "TextStyles": [
+        "Legend",
+        "Standard"
+      ],
+      "RegisteredApplications": [
+        "ACAD",
+        "ACAD_EXEMPT_FROM_CAD_STANDARDS",
+        "ACAD_NAV_VCDISPLAY",
+        "ADE",
+        "AcMapDMDisplayStyleRegapp",
+        "AeccLand130",
+        "AeccUiDataExchange",
+        "AeccUiMgr",
+        "AeccUiModel",
+        "AeccUiQTO",
+        "AeccUiQTOEntityPayItemData",
+        "AeccUiQTOFreqUsedPayItemsList",
+        "AeccUiQTOPayItemCategoryFilePath",
+        "AeccUiQTOPayItemFilePath",
+        "AeccUiQTOPayItemFormulaExpression",
+        "AeccUiQTOPayItemFormulaFilePath",
+        "AeccUiQTOPayItemFormulaParameters",
+        "AeccUiQTOPayItemSpecBookVersionFloridaDOT",
+        "AeccUiQTOTransportDesignerFileFloridaDOT"
+      ]
+    },
+    "Error": null
+  }
+]

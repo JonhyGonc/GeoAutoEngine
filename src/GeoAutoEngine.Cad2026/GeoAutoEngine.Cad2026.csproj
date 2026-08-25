@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>$(AutoCadTargetFramework)</TargetFramework>
+    <RootNamespace>GeoAutoEngine.Cad2026</RootNamespace>
+    <UseAutodeskAutoCAD>true</UseAutodeskAutoCAD>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GeoAutoEngine.Application\GeoAutoEngine.Application.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

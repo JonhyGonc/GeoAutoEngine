@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "captured_at_utc": "2026-08-07T14:44:54.3658290Z",
+  "target": {
+    "dotnet": "8.0.415",
+    "autocad": "2026",
+    "civil_3d": "2026",
+    "autodesk_release": "R25.1",
+    "autodesk_2025_in_scope": false
+  },
+  "full_gate": {
+    "wall_seconds": 54.8,
+    "restore_passed": true,
+    "release_build": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
+    },
+    "dotnet_tests": {
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "test_duration_seconds": 0.048
+    },
+    "legacy_tests": {
+      "passed": 406,
+      "failed": 0,
+      "skipped": 4,
+      "subtests_passed": 286,
+      "duration_seconds": 13.19
+    },
+    "cad_smokes": {
+      "autocad_2026": "passed",
+      "civil_3d_2026": "passed",
+      "bundle_removed_after_gate": true,
+      "preexisting_sessions_preserved": true
+    }
+  },
+  "selective_suites": {
+    "fast_tests": 18,
+    "regression_total_tests": 26,
+    "regression_only_tests": 8,
+    "fast_test_duration_seconds": 0.05,
+    "fast_wall_seconds_with_incremental_build": 2.402
+  },
+  "cad_results": [
+    {
+      "product": "ACAD",
+      "captured_at_utc": "2026-08-07T14:44:27.2942899Z",
+      "acadver": "25.1s (LMS Tech)",
+      "dbmod_at_initialize": 1,
+      "dbmod_at_command": 1,
+      "duration_seconds": 18.319041
+    },
+    {
+      "product": "C3D",
+      "captured_at_utc": "2026-08-07T14:44:46.0854302Z",
+      "acadver": "25.1s (LMS Tech)",
+      "dbmod_at_initialize": 1,
+      "dbmod_at_command": 1,
+      "duration_seconds": 18.740437
+    }
+  ],
+  "sha256": {
+    "deployment/GeoAutoEngine.bundle/PackageContents.xml": "b8eb9ac940a878c9c56103518ab2c339a9e2465423b273c3d1a8794b32afdf3b",
+    "GeoAutoEngine.Domain.dll": "53604f54658791fea08cce31c900289a5cb884d5f2fb4031ffb3efbe4b065632",
+    "GeoAutoEngine.Application.dll": "618c6132ec6213f2b668312c9c96a5d46e0ccf1f1d68aea96a82fa3f66ede324",
+    "GeoAutoEngine.Cad2026.dll": "42e4eb41aae3377f81a8a436d2e134e74907cd1f2a02c176e5d2547620cbe13c",
+    "GeoAutoEngine.Plugin.dll": "e1abab4213db62605a131ea19809fc28a2690aa2ade44581d5d9cf17d7949657",
+    "docs/v3/evidence/stage1/cad/PLUGIN_SMOKE_SUMMARY.json": "7c76c2c0f4dde75eba53e9c3677f2345646a22844fced5572a0a41ffcf8600ca"
+  }
+}

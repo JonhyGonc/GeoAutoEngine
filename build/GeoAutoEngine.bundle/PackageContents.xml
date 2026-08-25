@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ApplicationPackage
+  SchemaVersion="1.0"
+  AutodeskProduct="AutoCAD"
+  ProductType="Application"
+  Name="GeoAutoEngine 3.0"
+  Description="GeoAutoEngine 3.0 native CSV and DrawingPlan application"
+  AppVersion="3.1.1"
+  ProductCode="{E6CDE1A8-87DB-4712-95A4-072D3674DD17}"
+  UpgradeCode="{1A73ED89-D8CB-4BA6-AC63-F02D993F67C7}">
+  <CompanyDetails Name="GeoAutoEngine" />
+  <Components>
+    <RuntimeRequirements OS="Win64" SeriesMin="R24.3" SeriesMax="R24.3" />
+    <ComponentEntry
+      AppName="GeoAutoEngine.Plugin.2024"
+      ModuleName="./Contents/2024/GeoAutoEngine.Plugin.dll"
+      AppDescription="GeoAutoEngine 3.0 native CSV and DrawingPlan application"
+      LoadOnAutoCADStartup="True"
+      LoadOnCommandInvocation="True">
+      <Commands GroupName="GEOAUTOENGINE3">
+        <Command Global="GEOAUTO3PING" Local="GEOAUTO3PING" />
+        <Command Global="GEOAUTO3PALETTE" Local="GEOAUTO3PALETTE" />
+        <Command Global="GEOAUTO3VIDEO" Local="GEOAUTO3VIDEO" />
+        <Command Global="GEOAUTO3VIIMPORT" Local="GEOAUTO3VIIMPORT" />
+        <Command Global="GEOAUTO3VIASSOCIATE" Local="GEOAUTO3VIASSOCIATE" />
+        <Command Global="GEOAUTO3VICOMMIT" Local="GEOAUTO3VICOMMIT" />
+        <Command Global="GEOAUTO3ADDCSV" Local="GEOAUTO3ADDCSV" />
+        <Command Global="GEOAUTO3COMMITCSV" Local="GEOAUTO3COMMITCSV" />
+        <Command Global="GEOAUTO3REMOVECSV" Local="GEOAUTO3REMOVECSV" />
+        <Command Global="GEOAUTO3PROCESS" Local="GEOAUTO3PROCESS" />
+        <Command Global="GEOAUTO3IMPORT" Local="GEOAUTO3IMPORT" />
+        <Command Global="GEOAUTO3VERIFY" Local="GEOAUTO3VERIFY" />
+      </Commands>
+    </ComponentEntry>
+  </Components>
+  <Components>
+    <RuntimeRequirements OS="Win64" SeriesMin="R25.0" SeriesMax="R25.0" />
+    <ComponentEntry
+      AppName="GeoAutoEngine.Plugin.2025"
+      ModuleName="./Contents/2025/GeoAutoEngine.Plugin.dll"
+      AppDescription="GeoAutoEngine 3.0 native CSV and DrawingPlan application"
+      LoadOnAutoCADStartup="True"
+      LoadOnCommandInvocation="True">
+      <Commands GroupName="GEOAUTOENGINE3">
+        <Command Global="GEOAUTO3PING" Local="GEOAUTO3PING" />
+        <Command Global="GEOAUTO3PALETTE" Local="GEOAUTO3PALETTE" />
+        <Command Global="GEOAUTO3VIDEO" Local="GEOAUTO3VIDEO" />
+        <Command Global="GEOAUTO3VIIMPORT" Local="GEOAUTO3VIIMPORT" />
+        <Command Global="GEOAUTO3VIASSOCIATE" Local="GEOAUTO3VIASSOCIATE" />
+        <Command Global="GEOAUTO3VICOMMIT" Local="GEOAUTO3VICOMMIT" />
+        <Command Global="GEOAUTO3ADDCSV" Local="GEOAUTO3ADDCSV" />
+        <Command Global="GEOAUTO3COMMITCSV" Local="GEOAUTO3COMMITCSV" />
+        <Command Global="GEOAUTO3REMOVECSV" Local="GEOAUTO3REMOVECSV" />
+        <Command Global="GEOAUTO3PROCESS" Local="GEOAUTO3PROCESS" />
+        <Command Global="GEOAUTO3IMPORT" Local="GEOAUTO3IMPORT" />
+        <Command Global="GEOAUTO3VERIFY" Local="GEOAUTO3VERIFY" />
+      </Commands>
+    </ComponentEntry>
+  </Components>
+  <Components>
+    <RuntimeRequirements OS="Win64" SeriesMin="R25.1" SeriesMax="R25.1" />
+    <ComponentEntry
+      AppName="GeoAutoEngine.Plugin"
+      ModuleName="./Contents/2026/GeoAutoEngine.Plugin.dll"
+      AppDescription="GeoAutoEngine 3.0 native CSV and DrawingPlan application"
+      LoadOnAutoCADStartup="True"
+      LoadOnCommandInvocation="True">
+      <Commands GroupName="GEOAUTOENGINE3">
+        <Command Global="GEOAUTO3PING" Local="GEOAUTO3PING" />
+        <Command Global="GEOAUTO3PALETTE" Local="GEOAUTO3PALETTE" />
+        <Command Global="GEOAUTO3VIDEO" Local="GEOAUTO3VIDEO" />
+        <Command Global="GEOAUTO3VIIMPORT" Local="GEOAUTO3VIIMPORT" />
+        <Command Global="GEOAUTO3VIASSOCIATE" Local="GEOAUTO3VIASSOCIATE" />
+        <Command Global="GEOAUTO3VICOMMIT" Local="GEOAUTO3VICOMMIT" />
+        <Command Global="GEOAUTO3ADDCSV" Local="GEOAUTO3ADDCSV" />
+        <Command Global="GEOAUTO3COMMITCSV" Local="GEOAUTO3COMMITCSV" />
+        <Command Global="GEOAUTO3REMOVECSV" Local="GEOAUTO3REMOVECSV" />
+        <Command Global="GEOAUTO3PROCESS" Local="GEOAUTO3PROCESS" />
+        <Command Global="GEOAUTO3IMPORT" Local="GEOAUTO3IMPORT" />
+        <Command Global="GEOAUTO3VERIFY" Local="GEOAUTO3VERIFY" />
+      </Commands>
+    </ComponentEntry>
+  </Components>
+</ApplicationPackage>

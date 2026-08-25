@@ -1,0 +1,26 @@
+{
+  "autodesk_hosts": [
+    {
+      "acad_available": true,
+      "civil3d_managed_api_available": true,
+      "core_console_available": true,
+      "root": "C:\\Program Files\\Autodesk\\AutoCAD 2026",
+      "version": "2026"
+    }
+  ],
+  "captured_at_utc": "2026-08-07T13:53:47.842627+00:00",
+  "packages": {
+    "Pillow": "12.3.0",
+    "customtkinter": "5.2.2",
+    "pandas": "2.3.3",
+    "pyinstaller": "6.21.0",
+    "pytest": "9.1.1"
+  },
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": {
+    "executable": "C:\\Users\\João\\Downloads\\GeoAutoEngine\\.venv\\Scripts\\python.exe",
+    "implementation": "CPython",
+    "version": "3.14.5"
+  },
+  "schema_version": 1
+}

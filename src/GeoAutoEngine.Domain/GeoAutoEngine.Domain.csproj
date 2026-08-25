@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework Condition="'$(AutodeskAutoCADVersion)' != '2024'">net8.0</TargetFramework>
+    <TargetFramework Condition="'$(AutodeskAutoCADVersion)' == '2024'">netstandard2.0</TargetFramework>
+    <RootNamespace>GeoAutoEngine.Domain</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Text.Json" />
+  </ItemGroup>
+</Project>

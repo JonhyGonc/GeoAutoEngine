@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>$(AutoCadTargetFramework)</TargetFramework>
+    <RootNamespace>GeoAutoEngine.Plugin</RootNamespace>
+    <UseAutodeskAutoCAD>true</UseAutodeskAutoCAD>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <BundleRoot Condition="'$(BundleRoot)' == ''">$(MSBuildThisFileDirectory)..\..\artifacts\bundle\GeoAutoEngine.bundle</BundleRoot>
+    <BundleHostDirectory>$(BundleRoot)\Contents\$(AutodeskAutoCADVersion)</BundleHostDirectory>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GeoAutoEngine.Cad2026\GeoAutoEngine.Cad2026.csproj" />
+    <ProjectReference Include="..\GeoAutoEngine.Csv\GeoAutoEngine.Csv.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <BundleManifest Include="$(MSBuildThisFileDirectory)..\..\build\GeoAutoEngine.bundle\PackageContents.xml" />
+    <BundleBlockAssets Include="$(MSBuildThisFileDirectory)..\..\assets\blocks\*.dwg" />
+    <BundleTemplateAssets Include="$(MSBuildThisFileDirectory)..\..\assets\templates\*.dwt" />
+    <BundleBrandAssets Include="Assets\*.png" />
+    <Resource Include="Assets\logo_icone.png" />
+  </ItemGroup>
+  <Target Name="BuildGeoAutoEngineBundle" AfterTargets="Build">
+    <!-- Each host is self-contained. Clearing only this host prevents stale managed
+         dependencies from a previous build while preserving the other CAD releases. -->
+    <RemoveDir Directories="$(BundleHostDirectory)" />
+    <ItemGroup>
+      <BundleAssemblies Include="$(TargetPath)" />
+      <BundleAssemblies Include="@(ReferenceCopyLocalPaths)" />
+    </ItemGroup>
+    <MakeDir Directories="$(BundleHostDirectory)" />
+    <MakeDir Directories="$(BundleRoot)\Contents\Assets\Blocks" />
+    <MakeDir Directories="$(BundleRoot)\Contents\Assets\Templates" />
+    <MakeDir Directories="$(BundleRoot)\Contents\Assets\Branding" />
+    <Copy SourceFiles="@(BundleManifest)" DestinationFolder="$(BundleRoot)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(BundleAssemblies)" DestinationFolder="$(BundleHostDirectory)" SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <BundleSymbols Include="$(BundleHostDirectory)\*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(BundleSymbols)" />
+    <Copy SourceFiles="@(BundleBlockAssets)" DestinationFolder="$(BundleRoot)\Contents\Assets\Blocks" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(BundleTemplateAssets)" DestinationFolder="$(BundleRoot)\Contents\Assets\Templates" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(BundleBrandAssets)" DestinationFolder="$(BundleRoot)\Contents\Assets\Branding" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

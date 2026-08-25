@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "captured_at_local": "2026-08-07 America/Sao_Paulo",
+  "collection": {
+    "before": 414,
+    "after": 410,
+    "removed_as_redundant": 4,
+    "primary_markers": {
+      "fast": 124,
+      "regression": 24,
+      "legacy": 262
+    },
+    "cad_overlay": 332,
+    "obsolete_remaining": 0
+  },
+  "executions": {
+    "fast": {
+      "passed": 124,
+      "deselected": 286,
+      "subtests_passed": 123,
+      "seconds": 0.72
+    },
+    "regression_selective": {
+      "expression": "fast or regression",
+      "passed": 148,
+      "deselected": 262,
+      "subtests_passed": 123,
+      "seconds": 0.94
+    },
+    "complete_pytest": {
+      "passed": 406,
+      "skipped": 4,
+      "subtests_passed": 286,
+      "seconds": 13.73
+    }
+  },
+  "removed": [
+    {
+      "path": "tests/compatibility/test_real_generation_counts.py",
+      "cases": 2,
+      "replacement": "tests/baseline/test_legacy_baseline_fingerprints.py plus specialized AutoLISP contracts"
+    },
+    {
+      "path": "tests/integration/test_pipeline_v2.py",
+      "cases": 2,
+      "replacement": "tests/baseline/test_legacy_baseline_fingerprints.py with encoding, delimiter and processable-record assertions"
+    }
+  ],
+  "cad_host_gate_rerun": false,
+  "cad_host_gate_reason": "No production, generator, geometry, DWG or Autodesk integration code changed."
+}

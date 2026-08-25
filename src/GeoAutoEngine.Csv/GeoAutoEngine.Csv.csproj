@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework Condition="'$(AutodeskAutoCADVersion)' != '2024'">net8.0</TargetFramework>
+    <TargetFramework Condition="'$(AutodeskAutoCADVersion)' == '2024'">netstandard2.0</TargetFramework>
+    <RootNamespace>GeoAutoEngine.Csv</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GeoAutoEngine.Application\GeoAutoEngine.Application.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Text.Encoding.CodePages" />
+  </ItemGroup>
+</Project>

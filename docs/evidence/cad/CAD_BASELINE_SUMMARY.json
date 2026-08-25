@@ -1,0 +1,149 @@
+{
+  "captured_at_utc": "2026-08-07T13:51:40.411482+00:00",
+  "legacy_runtime_gate": {
+    "cross_host_equivalent": true,
+    "cross_host_semantic_sha256": "c82c2a0dfa614d42db3349b2cf64dc06c27f3488927ddd27e1ac5691d171ffa1",
+    "hosts": {
+      "2026_acad": {
+        "cross_host_semantic_sha256": "c82c2a0dfa614d42db3349b2cf64dc06c27f3488927ddd27e1ac5691d171ffa1",
+        "timings_seconds": {
+          "create_input_host_total": 18.588945,
+          "legacy_two_runs_host_total": 19.434755
+        },
+        "verification": {
+          "first_output_manifest": {
+            "counts_by_type": {
+              "AcDb2dPolyline": 1,
+              "AcDb3dPolyline": 1,
+              "AcDbArc": 1,
+              "AcDbBlockReference": 2,
+              "AcDbCircle": 1,
+              "AcDbLine": 2,
+              "AcDbPolyline": 2,
+              "AcDbSpline": 1,
+              "AcDbText": 15
+            },
+            "entities": 26,
+            "generated_entities_with_xdata": 17
+          },
+          "idempotent_semantic_manifests": true,
+          "input_manifest": {
+            "counts_by_type": {
+              "AcDb2dPolyline": 1,
+              "AcDb3dPolyline": 1,
+              "AcDbArc": 1,
+              "AcDbLine": 2,
+              "AcDbPolyline": 2,
+              "AcDbSpline": 1,
+              "AcDbText": 1
+            },
+            "entities": 9,
+            "generated_entities_with_xdata": 0
+          },
+          "second_output_manifest": {
+            "counts_by_type": {
+              "AcDb2dPolyline": 1,
+              "AcDb3dPolyline": 1,
+              "AcDbArc": 1,
+              "AcDbBlockReference": 2,
+              "AcDbCircle": 1,
+              "AcDbLine": 2,
+              "AcDbPolyline": 2,
+              "AcDbSpline": 1,
+              "AcDbText": 15
+            },
+            "entities": 26,
+            "generated_entities_with_xdata": 17
+          },
+          "user_entities_preserved": true
+        }
+      },
+      "2026_c3d": {
+        "cross_host_semantic_sha256": "c82c2a0dfa614d42db3349b2cf64dc06c27f3488927ddd27e1ac5691d171ffa1",
+        "timings_seconds": {
+          "create_input_host_total": 21.388825,
+          "legacy_two_runs_host_total": 20.660112
+        },
+        "verification": {
+          "first_output_manifest": {
+            "counts_by_type": {
+              "AcDb2dPolyline": 1,
+              "AcDb3dPolyline": 1,
+              "AcDbArc": 1,
+              "AcDbBlockReference": 2,
+              "AcDbCircle": 1,
+              "AcDbLine": 2,
+              "AcDbPolyline": 2,
+              "AcDbSpline": 1,
+              "AcDbText": 15
+            },
+            "entities": 26,
+            "generated_entities_with_xdata": 17
+          },
+          "idempotent_semantic_manifests": true,
+          "input_manifest": {
+            "counts_by_type": {
+              "AcDb2dPolyline": 1,
+              "AcDb3dPolyline": 1,
+              "AcDbArc": 1,
+              "AcDbLine": 2,
+              "AcDbPolyline": 2,
+              "AcDbSpline": 1,
+              "AcDbText": 1
+            },
+            "entities": 9,
+            "generated_entities_with_xdata": 0
+          },
+          "second_output_manifest": {
+            "counts_by_type": {
+              "AcDb2dPolyline": 1,
+              "AcDb3dPolyline": 1,
+              "AcDbArc": 1,
+              "AcDbBlockReference": 2,
+              "AcDbCircle": 1,
+              "AcDbLine": 2,
+              "AcDbPolyline": 2,
+              "AcDbSpline": 1,
+              "AcDbText": 15
+            },
+            "entities": 26,
+            "generated_entities_with_xdata": 17
+          },
+          "user_entities_preserved": true
+        }
+      }
+    },
+    "hosts_executed": [
+      "2026_acad",
+      "2026_c3d"
+    ],
+    "passed": true
+  },
+  "official_target": [
+    "AutoCAD 2026",
+    "Civil 3D 2026"
+  ],
+  "out_of_scope": [
+    "AutoCAD 2025",
+    "Civil 3D 2025"
+  ],
+  "schema_version": 1,
+  "stage_0_cad_gate": "passed",
+  "startup_gate": {
+    "hosts": {
+      "2026_acad": {
+        "exit_code_zero": true,
+        "quit_command_seen": true,
+        "startup_interference_absent": true,
+        "topocad_startup_references": []
+      },
+      "2026_c3d": {
+        "exit_code_zero": true,
+        "quit_command_seen": true,
+        "startup_interference_absent": true,
+        "topocad_startup_references": []
+      }
+    },
+    "passed": true
+  }
+}

@@ -1,0 +1,27 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <Version>3.1.1</Version>
+    <AssemblyVersion>3.1.1.0</AssemblyVersion>
+    <FileVersion>3.1.1.0</FileVersion>
+    <AutodeskAutoCADVersion Condition="'$(AutodeskAutoCADVersion)' == ''">2026</AutodeskAutoCADVersion>
+    <AutodeskAutoCAD2024Directory Condition="'$(AutodeskAutoCAD2024Directory)' == '' and Exists('$(SystemDrive)\Autodesk\ObjectARX_for_AutoCAD_2024_Win_64bit_dlm\inc\AcCoreMgd.dll')">$(SystemDrive)\Autodesk\ObjectARX_for_AutoCAD_2024_Win_64bit_dlm\inc</AutodeskAutoCAD2024Directory>
+    <AutodeskAutoCAD2024Directory Condition="'$(AutodeskAutoCAD2024Directory)' == ''">$(ProgramFiles)\Autodesk\AutoCAD 2024</AutodeskAutoCAD2024Directory>
+    <AutodeskAutoCAD2025Directory Condition="'$(AutodeskAutoCAD2025Directory)' == ''">$(ProgramFiles)\Autodesk\AutoCAD 2025</AutodeskAutoCAD2025Directory>
+    <AutodeskAutoCAD2026Directory Condition="'$(AutodeskAutoCAD2026Directory)' == ''">$(ProgramFiles)\Autodesk\AutoCAD 2026</AutodeskAutoCAD2026Directory>
+    <AutodeskAutoCADDirectory Condition="'$(AutodeskAutoCADVersion)' == '2024'">$(AutodeskAutoCAD2024Directory)</AutodeskAutoCADDirectory>
+    <AutodeskAutoCADDirectory Condition="'$(AutodeskAutoCADVersion)' == '2025'">$(AutodeskAutoCAD2025Directory)</AutodeskAutoCADDirectory>
+    <AutodeskAutoCADDirectory Condition="'$(AutodeskAutoCADVersion)' == '2026'">$(AutodeskAutoCAD2026Directory)</AutodeskAutoCADDirectory>
+    <AutoCadTargetFramework Condition="'$(AutodeskAutoCADVersion)' == '2024'">net48</AutoCadTargetFramework>
+    <AutoCadTargetFramework Condition="'$(AutodeskAutoCADVersion)' != '2024'">net8.0-windows</AutoCadTargetFramework>
+    <DefineConstants Condition="'$(AutodeskAutoCADVersion)' == '2024'">$(DefineConstants);GEOAUTO_CAD_2024</DefineConstants>
+    <DefineConstants Condition="'$(AutodeskAutoCADVersion)' == '2025'">$(DefineConstants);GEOAUTO_CAD_2025</DefineConstants>
+    <DefineConstants Condition="'$(AutodeskAutoCADVersion)' == '2026'">$(DefineConstants);GEOAUTO_CAD_2026</DefineConstants>
+  </PropertyGroup>
+</Project>

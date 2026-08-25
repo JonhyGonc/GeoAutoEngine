@@ -1,0 +1,73 @@
+{
+    "schema_version":  1,
+    "target":  "AutoCAD 2026 / Civil 3D 2026",
+    "configuration":  "Release",
+    "results":  [
+                    {
+                        "host":  "ACAD",
+                        "scenario":  "rollback",
+                        "passed":  true,
+                        "generated_entities":  0,
+                        "timing_seconds":  16.802506,
+                        "preexisting_sessions_preserved":  true,
+                        "drawing_sha256":  "c7990dc2d6b20b080068431e65f6de24edea0e9320088c081704d01364fec061",
+                        "evidence_sha256":  "819abf2dbb96c12b94a183a1fbf146b864bcdf884a773da64940761613f0cc8b",
+                        "log_sha256":  "28964fa14991744197da895ac671976d91db04582a4cb1da3baaa4ea5a3c55ac"
+                    },
+                    {
+                        "host":  "ACAD",
+                        "scenario":  "undo",
+                        "passed":  true,
+                        "generated_entities":  0,
+                        "timing_seconds":  15.514195,
+                        "preexisting_sessions_preserved":  true,
+                        "drawing_sha256":  "ce137f5fe194e6e5f94d36e7f726abb7e00a45f7bfa1e5b163debe2204ad99d1",
+                        "evidence_sha256":  "5aac5e5d19e11b40343ef76aa1fe59f1a3db34572af2bdd9b947bbd0e04dff92",
+                        "log_sha256":  "28964fa14991744197da895ac671976d91db04582a4cb1da3baaa4ea5a3c55ac"
+                    },
+                    {
+                        "host":  "ACAD",
+                        "scenario":  "success",
+                        "passed":  true,
+                        "generated_entities":  7,
+                        "timing_seconds":  36.476232,
+                        "preexisting_sessions_preserved":  true,
+                        "drawing_sha256":  "c16b40e3a27b746bfa624c142996c86408751c4ef28b20dbc8204959b3a4c0af",
+                        "evidence_sha256":  "9c002733a58d07c2b69c2b6fbe4e6064ce870d908e3bd83a51428f848172e569",
+                        "log_sha256":  "28964fa14991744197da895ac671976d91db04582a4cb1da3baaa4ea5a3c55ac"
+                    },
+                    {
+                        "host":  "C3D",
+                        "scenario":  "rollback",
+                        "passed":  true,
+                        "generated_entities":  0,
+                        "timing_seconds":  15.33863,
+                        "preexisting_sessions_preserved":  true,
+                        "drawing_sha256":  "8b78e1bd3793f5ed033612e4d4a05a95cd78d8d9b512a8d36d1ec31518444b58",
+                        "evidence_sha256":  "819abf2dbb96c12b94a183a1fbf146b864bcdf884a773da64940761613f0cc8b",
+                        "log_sha256":  "28964fa14991744197da895ac671976d91db04582a4cb1da3baaa4ea5a3c55ac"
+                    },
+                    {
+                        "host":  "C3D",
+                        "scenario":  "undo",
+                        "passed":  true,
+                        "generated_entities":  0,
+                        "timing_seconds":  15.48272,
+                        "preexisting_sessions_preserved":  true,
+                        "drawing_sha256":  "f1676102e90e5d553b423b4aac42ff58eef2e722aa65394f0dd3e71f636f2bb4",
+                        "evidence_sha256":  "5aac5e5d19e11b40343ef76aa1fe59f1a3db34572af2bdd9b947bbd0e04dff92",
+                        "log_sha256":  "28964fa14991744197da895ac671976d91db04582a4cb1da3baaa4ea5a3c55ac"
+                    },
+                    {
+                        "host":  "C3D",
+                        "scenario":  "success",
+                        "passed":  true,
+                        "generated_entities":  7,
+                        "timing_seconds":  16.677417,
+                        "preexisting_sessions_preserved":  true,
+                        "drawing_sha256":  "f28c15cdb366a68d879525992dcc78c3f90d1c338d1a83ff3274557dd6902be7",
+                        "evidence_sha256":  "9c002733a58d07c2b69c2b6fbe4e6064ce870d908e3bd83a51428f848172e569",
+                        "log_sha256":  "28964fa14991744197da895ac671976d91db04582a4cb1da3baaa4ea5a3c55ac"
+                    }
+                ]
+}

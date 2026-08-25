@@ -1,0 +1,27 @@
+{
+  "artifacts": {
+    "log": {
+      "path": "core_console_startup_smoke_2026_acad.log",
+      "sha256": "7864e3959aeef8882745faae1d62aebcf089be08dc6c9a34e3d5ce87ed76177c"
+    },
+    "script": {
+      "path": "tests/autocad/baseline/smoke_quit.scr",
+      "sha256": "e6b754939c1cef21fcbd4432fa69cc0b33ec971cda1dee50f83fb607b63f81b3"
+    }
+  },
+  "captured_at_utc": "2026-08-07T13:43:01.848141+00:00",
+  "host": {
+    "executable": "C:\\Program Files\\Autodesk\\AutoCAD 2026\\accoreconsole.exe",
+    "isolated_profile": true,
+    "product": "ACAD",
+    "version": "2026"
+  },
+  "schema_version": 1,
+  "timing_seconds": 3.802955,
+  "verification": {
+    "exit_code_zero": true,
+    "quit_command_seen": true,
+    "startup_interference_absent": true,
+    "topocad_startup_references": []
+  }
+}

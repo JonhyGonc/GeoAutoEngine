@@ -1,0 +1,219 @@
+[
+  {
+    "Command": "GEOAUTO3IMPORT",
+    "Inputs": [
+      "stage4_cad_smoke_day1.csv",
+      "stage4_cad_smoke_day2.csv"
+    ],
+    "BatchSummary": {
+      "SourceCount": 2,
+      "TotalRecordCount": 8,
+      "ImportedRecordCount": 8,
+      "RejectedRecordCount": 0,
+      "RejectedSourceCount": 0,
+      "ProcessableRecordCount": 8,
+      "RecognizedRecordCount": 7,
+      "UnknownCodeCount": 1,
+      "DuplicateCandidateCount": 0,
+      "Sources": [
+        {
+          "SourceFileId": {
+            "Value": "51dd465c-bb43-eb97-32fb-caba552b9ae1"
+          },
+          "DisplayName": "stage4_cad_smoke_day1.csv",
+          "SelectionOrdinal": 0,
+          "Status": 0,
+          "TotalRecordCount": 3,
+          "ImportedRecordCount": 3,
+          "RejectedRecordCount": 0
+        },
+        {
+          "SourceFileId": {
+            "Value": "70cc8a8f-e90f-33c0-dd32-4b330756162b"
+          },
+          "DisplayName": "stage4_cad_smoke_day2.csv",
+          "SelectionOrdinal": 1,
+          "Status": 0,
+          "TotalRecordCount": 5,
+          "ImportedRecordCount": 5,
+          "RejectedRecordCount": 0
+        }
+      ],
+      "RecordsByNetwork": {
+        "Esgoto sanit\u00E1rio": 2,
+        "Outra": 1,
+        "\u00C1gua pot\u00E1vel": 1,
+        "\u00C1guas pluviais": 3
+      },
+      "RecordsByType": {
+        "Bloco": 5,
+        "Revisar": 1,
+        "Texto": 2
+      },
+      "RecordsByMaterial": {},
+      "UnknownCodes": {
+        "XP54": 1
+      },
+      "DiagnosticsBySeverity": {
+        "Warning": 1
+      }
+    },
+    "PlanSummary": {
+      "TextCount": 3,
+      "BlockCount": 2,
+      "RainStructureCount": 1,
+      "CircleAlertCount": 1,
+      "SuppressedCount": 0,
+      "WarningCount": 1,
+      "RejectedInputCount": 0
+    },
+    "ApplicationResult": {
+      "Succeeded": false,
+      "CreatedItemCount": 0,
+      "SkippedExistingItemCount": 0,
+      "PendingItemCount": 0,
+      "FailedItemCount": 1,
+      "RolledBack": true,
+      "Regenerated": false,
+      "Diagnostics": [
+        {
+          "Code": "CAD_NETWORK_GEOMETRY_FALLBACK",
+          "Message": "Sem associa\u00E7\u00E3o geom\u00E9trica segura para P.1.20; aplicada conting\u00EAncia horizontal.",
+          "Severity": 1,
+          "Scope": 2,
+          "SourceFileId": null,
+          "Origins": [
+            {
+              "SourceFileId": {
+                "Value": "51dd465c-bb43-eb97-32fb-caba552b9ae1"
+              },
+              "SourceFileName": "stage4_cad_smoke_day1.csv",
+              "SourceRecordIndex": 2,
+              "SourceLineNumber": 4,
+              "BatchOrdinal": 2
+            }
+          ]
+        },
+        {
+          "Code": "CAD_NETWORK_GEOMETRY_FALLBACK",
+          "Message": "Sem associa\u00E7\u00E3o geom\u00E9trica segura para \u2205150; aplicada conting\u00EAncia horizontal.",
+          "Severity": 1,
+          "Scope": 2,
+          "SourceFileId": null,
+          "Origins": [
+            {
+              "SourceFileId": {
+                "Value": "51dd465c-bb43-eb97-32fb-caba552b9ae1"
+              },
+              "SourceFileName": "stage4_cad_smoke_day1.csv",
+              "SourceRecordIndex": 2,
+              "SourceLineNumber": 4,
+              "BatchOrdinal": 2
+            }
+          ]
+        },
+        {
+          "Code": "CAD_BLOCK_GEOMETRY_FALLBACK",
+          "Message": "Sem rede eleg\u00EDvel para o bloco rg_agua_potavel; mantida a rota\u00E7\u00E3o fixa configurada.",
+          "Severity": 1,
+          "Scope": 2,
+          "SourceFileId": null,
+          "Origins": [
+            {
+              "SourceFileId": {
+                "Value": "70cc8a8f-e90f-33c0-dd32-4b330756162b"
+              },
+              "SourceFileName": "stage4_cad_smoke_day2.csv",
+              "SourceRecordIndex": 4,
+              "SourceLineNumber": 6,
+              "BatchOrdinal": 7
+            }
+          ]
+        },
+        {
+          "Code": "CAD_APPLY_ROLLED_BACK",
+          "Message": "A aplica\u00E7\u00E3o foi revertida integralmente na etapa \u0027aplica\u00E7\u00E3o dos textos\u0027: Falha injetada ap\u00F3s 2 item(ns) para validar rollback.",
+          "Severity": 2,
+          "Scope": 0,
+          "SourceFileId": null,
+          "Origins": []
+        }
+      ]
+    },
+    "Drawing": {
+      "GeneratedEntityCount": 0,
+      "CountsByType": {},
+      "Entities": [],
+      "Layers": [
+        "0"
+      ],
+      "TextStyles": [
+        "Legend",
+        "Standard"
+      ],
+      "RegisteredApplications": [
+        "ACAD",
+        "ACAD_EXEMPT_FROM_CAD_STANDARDS",
+        "ACAD_NAV_VCDISPLAY",
+        "ADE",
+        "AcMapDMDisplayStyleRegapp",
+        "AeccLand130",
+        "AeccUiDataExchange",
+        "AeccUiMgr",
+        "AeccUiModel",
+        "AeccUiQTO",
+        "AeccUiQTOEntityPayItemData",
+        "AeccUiQTOFreqUsedPayItemsList",
+        "AeccUiQTOPayItemCategoryFilePath",
+        "AeccUiQTOPayItemFilePath",
+        "AeccUiQTOPayItemFormulaExpression",
+        "AeccUiQTOPayItemFormulaFilePath",
+        "AeccUiQTOPayItemFormulaParameters",
+        "AeccUiQTOPayItemSpecBookVersionFloridaDOT",
+        "AeccUiQTOTransportDesignerFileFloridaDOT"
+      ]
+    },
+    "Error": null
+  },
+  {
+    "Command": "GEOAUTO3VERIFY",
+    "Inputs": [],
+    "BatchSummary": null,
+    "PlanSummary": null,
+    "ApplicationResult": null,
+    "Drawing": {
+      "GeneratedEntityCount": 0,
+      "CountsByType": {},
+      "Entities": [],
+      "Layers": [
+        "0"
+      ],
+      "TextStyles": [
+        "Legend",
+        "Standard"
+      ],
+      "RegisteredApplications": [
+        "ACAD",
+        "ACAD_EXEMPT_FROM_CAD_STANDARDS",
+        "ACAD_NAV_VCDISPLAY",
+        "ADE",
+        "AcMapDMDisplayStyleRegapp",
+        "AeccLand130",
+        "AeccUiDataExchange",
+        "AeccUiMgr",
+        "AeccUiModel",
+        "AeccUiQTO",
+        "AeccUiQTOEntityPayItemData",
+        "AeccUiQTOFreqUsedPayItemsList",
+        "AeccUiQTOPayItemCategoryFilePath",
+        "AeccUiQTOPayItemFilePath",
+        "AeccUiQTOPayItemFormulaExpression",
+        "AeccUiQTOPayItemFormulaFilePath",
+        "AeccUiQTOPayItemFormulaParameters",
+        "AeccUiQTOPayItemSpecBookVersionFloridaDOT",
+        "AeccUiQTOTransportDesignerFileFloridaDOT"
+      ]
+    },
+    "Error": null
+  }
+]

@@ -1,0 +1,48 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeoAutoEngine.Domain", "src\GeoAutoEngine.Domain\GeoAutoEngine.Domain.csproj", "{01609360-F262-4B7A-A7F8-E43CDDC25685}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeoAutoEngine.Application", "src\GeoAutoEngine.Application\GeoAutoEngine.Application.csproj", "{10F8BD5B-5A24-4B12-88DB-A41EC9F8E5B2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeoAutoEngine.Csv", "src\GeoAutoEngine.Csv\GeoAutoEngine.Csv.csproj", "{61C72B87-0CBA-4095-9B01-BB081FD62C3A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeoAutoEngine.Cad2026", "src\GeoAutoEngine.Cad2026\GeoAutoEngine.Cad2026.csproj", "{04CC1186-88E0-4345-8C88-77AA5141A53C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeoAutoEngine.Plugin", "src\GeoAutoEngine.Plugin\GeoAutoEngine.Plugin.csproj", "{7DBBE8C2-A914-4A3D-9E51-255979339C21}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeoAutoEngine.Tests", "tests\GeoAutoEngine.Tests\GeoAutoEngine.Tests.csproj", "{D342050E-E74B-4C5C-B331-0C938FD10BB0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{01609360-F262-4B7A-A7F8-E43CDDC25685}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{01609360-F262-4B7A-A7F8-E43CDDC25685}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{01609360-F262-4B7A-A7F8-E43CDDC25685}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{01609360-F262-4B7A-A7F8-E43CDDC25685}.Release|Any CPU.Build.0 = Release|Any CPU
+		{10F8BD5B-5A24-4B12-88DB-A41EC9F8E5B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{10F8BD5B-5A24-4B12-88DB-A41EC9F8E5B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{10F8BD5B-5A24-4B12-88DB-A41EC9F8E5B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{10F8BD5B-5A24-4B12-88DB-A41EC9F8E5B2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{61C72B87-0CBA-4095-9B01-BB081FD62C3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{61C72B87-0CBA-4095-9B01-BB081FD62C3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{61C72B87-0CBA-4095-9B01-BB081FD62C3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{61C72B87-0CBA-4095-9B01-BB081FD62C3A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{04CC1186-88E0-4345-8C88-77AA5141A53C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{04CC1186-88E0-4345-8C88-77AA5141A53C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{04CC1186-88E0-4345-8C88-77AA5141A53C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{04CC1186-88E0-4345-8C88-77AA5141A53C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7DBBE8C2-A914-4A3D-9E51-255979339C21}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7DBBE8C2-A914-4A3D-9E51-255979339C21}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7DBBE8C2-A914-4A3D-9E51-255979339C21}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7DBBE8C2-A914-4A3D-9E51-255979339C21}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D342050E-E74B-4C5C-B331-0C938FD10BB0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D342050E-E74B-4C5C-B331-0C938FD10BB0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D342050E-E74B-4C5C-B331-0C938FD10BB0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D342050E-E74B-4C5C-B331-0C938FD10BB0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

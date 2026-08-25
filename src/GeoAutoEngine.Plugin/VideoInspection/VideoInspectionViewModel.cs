@@ -1,0 +1,292 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Globalization;
+using System.Runtime.CompilerServices;
+using System.Windows;
+using System.Windows.Input;
+using GeoAutoEngine.Application.VideoInspection;
+
+namespace GeoAutoEngine.Plugin.VideoInspection;
+
+internal sealed class VideoInspectionViewModel : INotifyPropertyChanged
+{
+    private VideoInspectionSession? _session;
+    private VideoInspectionSectionItemViewModel? _selectedSection;
+    private string _notification = string.Empty;
+
+    public VideoInspectionViewModel()
+    {
+        ImportCommand = new VideoInspectionCommand(() => ImportRequested?.Invoke());
+        AssociateCommand = new VideoInspectionCommand(
+            () => AssociateRequested?.Invoke(SelectedSection!.SectionId),
+            () => SelectedSection is not null);
+        CommitCommand = new VideoInspectionCommand(
+            () => CommitRequested?.Invoke(SelectedSection!.SectionId),
+            () => SelectedSection?.HasAssociation == true);
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public event Action? ImportRequested;
+    public event Action<Guid>? AssociateRequested;
+    public event Action<Guid>? CommitRequested;
+
+    public ObservableCollection<VideoInspectionSectionItemViewModel> Sections { get; } = [];
+    public ICommand ImportCommand { get; }
+    public ICommand AssociateCommand { get; }
+    public ICommand CommitCommand { get; }
+    public Visibility EmptyVisibility => _session is null ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility InspectionVisibility => _session is null ? Visibility.Collapsed : Visibility.Visible;
+    public string ReportCode => ValueOrFallback(_session?.ReportCode, _session?.ReportName, "Inspeção");
+    public string ReportName => _session?.ReportName ?? string.Empty;
+    public string Client => _session?.Client ?? string.Empty;
+    public string Area => _session?.Area ?? string.Empty;
+    public string ReportSummary => _session is null
+        ? string.Empty
+        : $"{_session.Sections.Count} trecho(s)  •  {_session.OccurrenceCount} ocorrência(s)";
+
+    public string Notification
+    {
+        get => _notification;
+        private set => Set(ref _notification, value);
+    }
+
+    public VideoInspectionSectionItemViewModel? SelectedSection
+    {
+        get => _selectedSection;
+        set
+        {
+            if (!Set(ref _selectedSection, value))
+            {
+                return;
+            }
+
+            Raise(nameof(SelectedSectionVisibility));
+            Raise(nameof(PositioningSummary));
+            RaiseCommandStates();
+        }
+    }
+
+    public Visibility SelectedSectionVisibility => SelectedSection is null
+        ? Visibility.Collapsed
+        : Visibility.Visible;
+
+    public string PositioningSummary
+    {
+        get
+        {
+            var section = _session?.FindSection(SelectedSection?.SectionId ?? Guid.Empty);
+            if (section is null || section.PositionedEvents.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            var positioned = section.PositionedEvents.Count(item => item.CanCommit && item.Locations.Count > 0);
+            var attention = section.PositionedEvents.Count(item => !item.CanCommit);
+            return $"✓ {positioned} posicionada(s)    ⚠ {attention} requer(em) atenção";
+        }
+    }
+
+    public void Load(VideoInspectionSession session, string notification)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        _session = session;
+        Notification = notification;
+        RefreshCore(null);
+        Raise(nameof(EmptyVisibility));
+        Raise(nameof(InspectionVisibility));
+        Raise(nameof(ReportCode));
+        Raise(nameof(ReportName));
+        Raise(nameof(Client));
+        Raise(nameof(Area));
+        Raise(nameof(ReportSummary));
+    }
+
+    public void Refresh()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        var sessionSections = _session.Sections;
+        var sameSections = Sections.Count == sessionSections.Count;
+        for (var index = 0; sameSections && index < Sections.Count; index++)
+        {
+            sameSections = Sections[index].SectionId == sessionSections[index].SectionId;
+        }
+
+        if (!sameSections)
+        {
+            RefreshCore(SelectedSection?.SectionId);
+            return;
+        }
+
+        for (var index = 0; index < Sections.Count; index++)
+        {
+            Sections[index].Refresh(sessionSections[index]);
+        }
+
+        Raise(nameof(PositioningSummary));
+        RaiseCommandStates();
+    }
+
+    private void RefreshCore(Guid? selectedSectionId)
+    {
+        // Clearing the bound collection temporarily clears ListBox.SelectedItem,
+        // so restore the requested section after rebuilding the items.
+        Sections.Clear();
+        foreach (var section in _session!.Sections)
+        {
+            Sections.Add(new VideoInspectionSectionItemViewModel(section));
+        }
+
+        SelectedSection = selectedSectionId.HasValue
+            ? Sections.FirstOrDefault(item => item.SectionId == selectedSectionId.Value)
+            : Sections.FirstOrDefault();
+
+        Raise(nameof(PositioningSummary));
+    }
+
+    private void RaiseCommandStates()
+    {
+        ((VideoInspectionCommand)AssociateCommand).RaiseCanExecuteChanged();
+        ((VideoInspectionCommand)CommitCommand).RaiseCanExecuteChanged();
+    }
+
+    private bool Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return false;
+        }
+
+        field = value;
+        Raise(propertyName);
+        return true;
+    }
+
+    private void Raise([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    private static string ValueOrFallback(string? first, string? second, string fallback) =>
+        !string.IsNullOrWhiteSpace(first) ? first! : !string.IsNullOrWhiteSpace(second) ? second! : fallback;
+}
+
+internal sealed class VideoInspectionSectionItemViewModel : INotifyPropertyChanged
+{
+    public VideoInspectionSectionItemViewModel(InspectionSectionSession section)
+    {
+        SectionId = section.SectionId;
+        Refresh(section);
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public Guid SectionId { get; }
+    public string Name { get; private set; } = string.Empty;
+    public string Route { get; private set; } = string.Empty;
+    public string Diameter { get; private set; } = string.Empty;
+    public string Reference { get; private set; } = string.Empty;
+    public string InvestigatedMeters { get; private set; } = string.Empty;
+    public string OccurrenceSummary { get; private set; } = string.Empty;
+    public bool HasAssociation { get; private set; }
+    public string Direction { get; private set; } = string.Empty;
+    public string CadLength { get; private set; } = string.Empty;
+    public string PositionedOccurrences { get; private set; } = string.Empty;
+    public string AttentionOccurrences { get; private set; } = string.Empty;
+    public string StatusText { get; private set; } = string.Empty;
+    public string StatusMessage { get; private set; } = string.Empty;
+    public IReadOnlyList<VideoInspectionOccurrenceItemViewModel> Occurrences { get; private set; } = [];
+
+    public void Refresh(InspectionSectionSession section)
+    {
+        ArgumentNullException.ThrowIfNull(section);
+        if (section.SectionId != SectionId)
+        {
+            throw new InvalidOperationException("Não é possível atualizar o item com outro trecho.");
+        }
+
+        Name = VideoInspectionViewModelValue(section.Name, section.Description, section.Reference, "Trecho");
+        Route = !string.IsNullOrWhiteSpace(section.StartPoint) || !string.IsNullOrWhiteSpace(section.EndPoint)
+            ? $"{section.StartPoint ?? "?"} → {section.EndPoint ?? "?"}"
+            : section.LocationName;
+        Diameter = section.Diameter.HasValue
+            ? $"DN {section.Diameter.Value.ToString("0.##", CultureInfo.CurrentCulture)}"
+            : string.Empty;
+        Reference = section.Reference ?? string.Empty;
+        InvestigatedMeters = section.InvestigatedMeters.HasValue
+            ? $"{section.InvestigatedMeters.Value.ToString("0.##", CultureInfo.CurrentCulture)} m"
+            : "Não informada";
+        OccurrenceSummary = $"{section.Occurrences.Count} ocorrência(s)";
+        HasAssociation = section.Association is not null;
+        Direction = section.Association?.Direction.ToString() ?? "Não definida";
+        CadLength = section.Association is null
+            ? "Não associado"
+            : $"{section.Association.LastKnownGeometryLength.ToString("0.00", CultureInfo.CurrentCulture)} m";
+        PositionedOccurrences = section.PositionedEvents
+            .Count(item => item.CanCommit && item.Locations.Count > 0)
+            .ToString(CultureInfo.CurrentCulture);
+        AttentionOccurrences = section.PositionedEvents
+            .Count(item => !item.CanCommit)
+            .ToString(CultureInfo.CurrentCulture);
+        StatusText = section.Status switch
+        {
+            InspectionSectionStatus.Pending => "○ Pendente",
+            InspectionSectionStatus.Associated => "● Associado",
+            InspectionSectionStatus.Generated => "✓ Gerado",
+            InspectionSectionStatus.Attention => "⚠ Requer atenção",
+            InspectionSectionStatus.AssociationLost => "⚠ Associação perdida",
+            _ => "× Erro",
+        };
+        StatusMessage = section.StatusMessage ?? string.Empty;
+        Occurrences = Array.AsReadOnly(section.Occurrences
+            .Select(occurrence => new VideoInspectionOccurrenceItemViewModel(occurrence))
+            .ToArray());
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
+    }
+
+    private static string VideoInspectionViewModelValue(
+        string? first,
+        string? second,
+        string? third,
+        string fallback) => !string.IsNullOrWhiteSpace(first)
+            ? first!
+            : !string.IsNullOrWhiteSpace(second) ? second!
+            : !string.IsNullOrWhiteSpace(third) ? third!
+            : fallback;
+}
+
+internal sealed class VideoInspectionOccurrenceItemViewModel
+{
+    public VideoInspectionOccurrenceItemViewModel(InspectionOccurrenceSession occurrence)
+    {
+        Position = occurrence.LocationMode switch
+        {
+            InspectionLocationMode.Point when occurrence.Meterage.HasValue => Meter(occurrence.Meterage.Value),
+            InspectionLocationMode.MultiPoint => string.Join(", ", occurrence.MeteragePoints.Select(Meter)),
+            InspectionLocationMode.Range when occurrence.Meterage.HasValue && occurrence.EndMeterage.HasValue =>
+                $"{Meter(occurrence.Meterage.Value)} → {Meter(occurrence.EndMeterage.Value)}",
+            InspectionLocationMode.From when occurrence.Meterage.HasValue => $"A partir de {Meter(occurrence.Meterage.Value)}",
+            InspectionLocationMode.EntireSection => "Todo trecho",
+            InspectionLocationMode.NotApplicable => "Sem posição CAD",
+            _ => "Posição incompleta",
+        };
+        Description = string.IsNullOrWhiteSpace(occurrence.EffectiveDescription)
+            ? "Ocorrência sem descrição"
+            : occurrence.EffectiveDescription;
+    }
+
+    public string Position { get; }
+    public string Description { get; }
+
+    private static string Meter(decimal value) =>
+        $"{value.ToString("0.##", CultureInfo.CurrentCulture)} m";
+}
+
+internal sealed class VideoInspectionCommand(Action execute, Func<bool>? canExecute = null) : ICommand
+{
+    public event EventHandler? CanExecuteChanged;
+    public bool CanExecute(object? parameter) => canExecute?.Invoke() ?? true;
+    public void Execute(object? parameter) => execute();
+    public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+}

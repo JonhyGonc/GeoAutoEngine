@@ -1,0 +1,31 @@
+﻿{
+    "schema_version":  1,
+    "captured_at_utc":  "2026-08-07T14:44:27.2942899Z",
+    "host":  {
+                 "version":  "2026",
+                 "product":  "ACAD",
+                 "executable":  "C:\\Program Files\\Autodesk\\AutoCAD 2026\\acad.exe"
+             },
+    "plugin":  {
+                   "bundle":  "GeoAutoEngine.bundle",
+                   "command":  "GEOAUTO3PING",
+                   "acadver":  "25.1s (LMS Tech)",
+                   "dbmod_at_initialize":  1,
+                   "dbmod_at_command":  1
+               },
+    "verification":  {
+                         "command_executed":  true,
+                         "acadver_is_25_1":  true,
+                         "dbmod_unchanged_during_plugin_load":  true,
+                         "autodesk_assemblies_absent_from_bundle":  true,
+                         "preexisting_sessions_preserved":  true
+                     },
+    "drawing_sha256_before":  "0f70928a3860e6b6a1ccab5a641aefbbbddc1f0f09ebe8e9db871d845d5eda05",
+    "drawing_sha256_after":  "5169b94c25f8df3fd2b11cad44b28b16c4542f8da1aa20da3999764fc10b7882",
+    "host_session_rewrote_dwg_file":  true,
+    "preexisting_session_ids":  [
+                                    53956
+                                ],
+    "timing_seconds":  18.319041,
+    "log_sha256":  "48c0984ea37abfcd1ed411b44731ed7de8939bb7223f70f18cc6dce384ca7ec6"
+}

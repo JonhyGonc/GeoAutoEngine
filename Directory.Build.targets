@@ -1,0 +1,50 @@
+<Project>
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETStandard' or '$(TargetFrameworkIdentifier)' == '.NETFramework'">
+    <Compile Include="$(MSBuildThisFileDirectory)build\Compatibility.GlobalUsings.cs"
+             Link="Compatibility.GlobalUsings.cs" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(UseAutodeskAutoCAD)' == 'true' and '$(AutodeskAutoCADVersion)' != '2024'">
+    <!-- Autodesk 2025/2026 assemblies target .NET 8 but carry legacy facade metadata. -->
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3277</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseAutodeskAutoCAD)' == 'true'">
+    <Reference Include="AcCoreMgd">
+      <HintPath>$(AutodeskAutoCADDirectory)\AcCoreMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AcDbMgd">
+      <HintPath>$(AutodeskAutoCADDirectory)\AcDbMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AcMgd">
+      <HintPath>$(AutodeskAutoCADDirectory)\AcMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AcWindows">
+      <HintPath>$(AutodeskAutoCADDirectory)\AcWindows.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AdWindows">
+      <HintPath>$(AutodeskAutoCADDirectory)\AdWindows.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="ValidateAutodeskAutoCADReferences"
+          BeforeTargets="ResolveReferences"
+          Condition="'$(UseAutodeskAutoCAD)' == 'true'">
+    <Error Condition="'$(AutodeskAutoCADDirectory)' == ''"
+           Text="Unsupported AutodeskAutoCADVersion '$(AutodeskAutoCADVersion)'. Expected 2024, 2025 or 2026." />
+    <Error Condition="!Exists('$(AutodeskAutoCADDirectory)\AcCoreMgd.dll')"
+           Text="AutoCAD $(AutodeskAutoCADVersion) reference not found: $(AutodeskAutoCADDirectory)\AcCoreMgd.dll" />
+    <Error Condition="!Exists('$(AutodeskAutoCADDirectory)\AcDbMgd.dll')"
+           Text="AutoCAD $(AutodeskAutoCADVersion) reference not found: $(AutodeskAutoCADDirectory)\AcDbMgd.dll" />
+    <Error Condition="!Exists('$(AutodeskAutoCADDirectory)\AcMgd.dll')"
+           Text="AutoCAD $(AutodeskAutoCADVersion) reference not found: $(AutodeskAutoCADDirectory)\AcMgd.dll" />
+    <Error Condition="!Exists('$(AutodeskAutoCADDirectory)\AcWindows.dll')"
+           Text="AutoCAD $(AutodeskAutoCADVersion) reference not found: $(AutodeskAutoCADDirectory)\AcWindows.dll" />
+    <Error Condition="!Exists('$(AutodeskAutoCADDirectory)\AdWindows.dll')"
+           Text="AutoCAD $(AutodeskAutoCADVersion) reference not found: $(AutodeskAutoCADDirectory)\AdWindows.dll" />
+  </Target>
+</Project>

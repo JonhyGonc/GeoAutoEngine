@@ -1,0 +1,104 @@
+{
+  "artifacts": {
+    "entity_manifest": {
+      "cross_host_semantic_sha256": "c82c2a0dfa614d42db3349b2cf64dc06c27f3488927ddd27e1ac5691d171ffa1",
+      "path": "entity_manifest_2026_c3d.txt",
+      "semantic_sha256": "9b604900d03ac879ec1271a27278f6fa46428da378abb1ae5f2196062e5c8a09",
+      "sha256": "fe80510d60ba7d10711b889b7770d7e572ae00284331861af8d48ff612da92c8"
+    },
+    "input_drawing": {
+      "path": "baseline_input_2026_c3d.dwg",
+      "sha256": "8029c30dab21c031213c68f8c859c4b2b2e34e941eaabd123a1b85bbffe1542d"
+    },
+    "input_entity_manifest": {
+      "path": "entity_manifest_input_2026_c3d.txt",
+      "semantic_sha256": "17c51f759135867699b2a4e7683c6a3bc1f90d6cce8afa4156754003282ad8f8",
+      "sha256": "41548ded231b4353b0bad1ca1013b3cfc3369b4247e2e38bacbe684fe3270440"
+    },
+    "output_drawing": {
+      "path": "baseline_output_2026_c3d.dwg",
+      "sha256": "f0cbfcd3d4b9fec1f35906efda335d473b11263b61f0884fd2769e34a44c203c"
+    },
+    "runtime": {
+      "path": "legacy_runtime_2026_c3d.lsp",
+      "sha256": "8a4fc701b4fce527477cd588776bb63c22df45648d894f8b0a63c856f94f7722"
+    },
+    "second_entity_manifest": {
+      "cross_host_semantic_sha256": "c82c2a0dfa614d42db3349b2cf64dc06c27f3488927ddd27e1ac5691d171ffa1",
+      "path": "entity_manifest_second_2026_c3d.txt",
+      "semantic_sha256": "9b604900d03ac879ec1271a27278f6fa46428da378abb1ae5f2196062e5c8a09",
+      "sha256": "3d1e3848c10dbde45ad30880619c0e30fbddbdb55202710737d1088e76f32626"
+    },
+    "second_output_drawing": {
+      "path": "baseline_output_second_2026_c3d.dwg",
+      "sha256": "7143927bd2fd00182c23a7b9ffef05e7f658bf44d8d4298da512e8741cbc1f8e"
+    }
+  },
+  "captured_at_utc": "2026-08-07T13:26:38.331168+00:00",
+  "fixture": {
+    "path": "tests/fixtures/autocad/baseline_synthetic.csv",
+    "prepared_block_count": 2,
+    "prepared_text_count": 14,
+    "rows": 10,
+    "sha256": "d60281d7f097ea01dacb672f3ada33295efa0cc7a82ffc309c56056f831fd3e1"
+  },
+  "host": {
+    "civil_components_available": true,
+    "engine": "desktop",
+    "executable": "C:\\Program Files\\Autodesk\\AutoCAD 2026\\acad.exe",
+    "product": "C3D",
+    "version": "2026"
+  },
+  "schema_version": 1,
+  "timings_seconds": {
+    "create_input_host_total": 21.388825,
+    "legacy_two_runs_host_total": 20.660112
+  },
+  "verification": {
+    "first_output_manifest": {
+      "counts_by_type": {
+        "AcDb2dPolyline": 1,
+        "AcDb3dPolyline": 1,
+        "AcDbArc": 1,
+        "AcDbBlockReference": 2,
+        "AcDbCircle": 1,
+        "AcDbLine": 2,
+        "AcDbPolyline": 2,
+        "AcDbSpline": 1,
+        "AcDbText": 15
+      },
+      "entities": 26,
+      "generated_entities_with_xdata": 17
+    },
+    "idempotent_semantic_manifests": true,
+    "input_manifest": {
+      "counts_by_type": {
+        "AcDb2dPolyline": 1,
+        "AcDb3dPolyline": 1,
+        "AcDbArc": 1,
+        "AcDbLine": 2,
+        "AcDbPolyline": 2,
+        "AcDbSpline": 1,
+        "AcDbText": 1
+      },
+      "entities": 9,
+      "generated_entities_with_xdata": 0
+    },
+    "second_output_manifest": {
+      "counts_by_type": {
+        "AcDb2dPolyline": 1,
+        "AcDb3dPolyline": 1,
+        "AcDbArc": 1,
+        "AcDbBlockReference": 2,
+        "AcDbCircle": 1,
+        "AcDbLine": 2,
+        "AcDbPolyline": 2,
+        "AcDbSpline": 1,
+        "AcDbText": 15
+      },
+      "entities": 26,
+      "generated_entities_with_xdata": 17
+    },
+    "user_entities_preserved": true
+  }
+}
