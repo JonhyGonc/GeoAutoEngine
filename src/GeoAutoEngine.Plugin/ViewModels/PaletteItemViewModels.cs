@@ -25,6 +25,7 @@ internal sealed class SurveyFileViewModel : INotifyPropertyChanged
     private string _pointText = "Aguardando validação";
     private Brush _statusBackground = WaitingBrush;
     private Brush _statusForeground = Brushes.White;
+    private string _statusText = "Aguardando";
     private string _networkName = string.Empty;
     private string _networkTooltip = string.Empty;
     private Brush _networkForeground = NeutralTagTextBrush;
@@ -45,6 +46,7 @@ internal sealed class SurveyFileViewModel : INotifyPropertyChanged
     public string PointText { get => _pointText; private set => Set(ref _pointText, value, nameof(PointText)); }
     public Brush StatusBackground { get => _statusBackground; private set => Set(ref _statusBackground, value, nameof(StatusBackground)); }
     public Brush StatusForeground { get => _statusForeground; private set => Set(ref _statusForeground, value, nameof(StatusForeground)); }
+    public string StatusText { get => _statusText; private set => Set(ref _statusText, value, nameof(StatusText)); }
     public string NetworkName { get => _networkName; private set => Set(ref _networkName, value, nameof(NetworkName)); }
     public string NetworkTooltip { get => _networkTooltip; private set => Set(ref _networkTooltip, value, nameof(NetworkTooltip)); }
     public Brush NetworkForeground { get => _networkForeground; private set => Set(ref _networkForeground, value, nameof(NetworkForeground)); }
@@ -59,6 +61,7 @@ internal sealed class SurveyFileViewModel : INotifyPropertyChanged
             PointText = "Não foi possível validar";
             StatusBackground = ErrorBrush;
             StatusForeground = Brushes.White;
+            StatusText = "Erro";
             NetworkVisibility = Visibility.Collapsed;
             return;
         }
@@ -66,6 +69,7 @@ internal sealed class SurveyFileViewModel : INotifyPropertyChanged
         PointText = $"{summary.TotalRecordCount.ToString("N0", PtBr)} pontos";
         StatusBackground = ValidBrush;
         StatusForeground = ValidCheckBrush;
+        StatusText = "Processável";
         ApplyNetwork(sourceNetworks);
     }
 
