@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace GeoAutoEngine.Application.VideoInspection;
@@ -10,10 +11,16 @@ public sealed class InspectionExchangeSerializer
         WriteIndented = true,
     };
 
-    public InspectionExchangeDocument Deserialize(string json)
+    public InspectionExchangeDocument Deserialize(string json) =>
+        Deserialize(json, out _);
+
+    public InspectionExchangeDocument Deserialize(
+        string json,
+        out InspectionExchangeDeserializeMetrics metrics)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
         InspectionExchangeDocument document;
+        var deserialize = Stopwatch.StartNew();
         try
         {
             document = JsonSerializer.Deserialize<InspectionExchangeDocument>(json, JsonOptions)
@@ -23,8 +30,24 @@ public sealed class InspectionExchangeSerializer
         {
             throw new InvalidDataException("O arquivo de inspeção é inválido.", exception);
         }
+        finally
+        {
+            deserialize.Stop();
+        }
 
-        Validate(document);
+        var validation = Stopwatch.StartNew();
+        try
+        {
+            Validate(document);
+        }
+        finally
+        {
+            validation.Stop();
+        }
+
+        metrics = new InspectionExchangeDeserializeMetrics(
+            deserialize.Elapsed.TotalMilliseconds,
+            validation.Elapsed.TotalMilliseconds);
         return document;
     }
 
@@ -100,3 +123,7 @@ public sealed class InspectionExchangeSerializer
         }
     }
 }
+
+public readonly record struct InspectionExchangeDeserializeMetrics(
+    double DeserializeMilliseconds,
+    double ValidationMilliseconds);
