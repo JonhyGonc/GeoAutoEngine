@@ -106,6 +106,7 @@ internal sealed class VideoInspectionViewModel : INotifyPropertyChanged
 
     public void Load(VideoInspectionSession session, string notification)
     {
+        VideoInspectionPerformanceProbe.Count("VideoInspectionViewModel.Load");
         ArgumentNullException.ThrowIfNull(session);
         _session = session;
         Notification = notification;
