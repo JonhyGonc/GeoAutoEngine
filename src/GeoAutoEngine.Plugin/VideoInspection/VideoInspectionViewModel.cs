@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -109,6 +110,7 @@ internal sealed class VideoInspectionViewModel : INotifyPropertyChanged
         _session = session;
         Notification = notification;
         RefreshCore(null);
+        var notifications = Stopwatch.StartNew();
         Raise(nameof(EmptyVisibility));
         Raise(nameof(InspectionVisibility));
         Raise(nameof(ReportCode));
@@ -118,6 +120,10 @@ internal sealed class VideoInspectionViewModel : INotifyPropertyChanged
         Raise(nameof(ReportSummary));
         Raise(nameof(SectionCount));
         Raise(nameof(OccurrenceCount));
+        notifications.Stop();
+        VideoInspectionPerformanceProbe.Record(
+            "PropertyChanged / summary binding",
+            notifications.Elapsed.TotalMilliseconds);
     }
 
     public void Refresh()
@@ -154,18 +160,41 @@ internal sealed class VideoInspectionViewModel : INotifyPropertyChanged
     {
         // Clearing the bound collection temporarily clears ListBox.SelectedItem,
         // so restore the requested section after rebuilding the items.
+        var collectionUpdate = Stopwatch.StartNew();
         Sections.Clear();
+        collectionUpdate.Stop();
+        VideoInspectionPerformanceProbe.Record(
+            "ObservableCollection notifications",
+            collectionUpdate.Elapsed.TotalMilliseconds);
+
         foreach (var section in _session!.Sections)
         {
-            Sections.Add(new VideoInspectionSectionItemViewModel(section));
+            var viewModelCreation = Stopwatch.StartNew();
+            var item = new VideoInspectionSectionItemViewModel(section);
+            viewModelCreation.Stop();
+            VideoInspectionPerformanceProbe.Record(
+                "Section/occurrence ViewModels",
+                viewModelCreation.Elapsed.TotalMilliseconds);
+
+            collectionUpdate.Restart();
+            Sections.Add(item);
+            collectionUpdate.Stop();
+            VideoInspectionPerformanceProbe.Record(
+                "ObservableCollection notifications",
+                collectionUpdate.Elapsed.TotalMilliseconds);
         }
 
+        var notifications = Stopwatch.StartNew();
         SelectedSection = selectedSectionId.HasValue
             ? Sections.FirstOrDefault(item => item.SectionId == selectedSectionId.Value)
             : Sections.FirstOrDefault();
 
         RaiseStatusCounts();
         Raise(nameof(PositioningSummary));
+        notifications.Stop();
+        VideoInspectionPerformanceProbe.Record(
+            "PropertyChanged / summary binding",
+            notifications.Elapsed.TotalMilliseconds);
     }
 
     private void RaiseStatusCounts()
