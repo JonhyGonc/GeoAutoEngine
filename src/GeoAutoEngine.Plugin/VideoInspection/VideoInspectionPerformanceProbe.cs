@@ -22,6 +22,11 @@ internal static class VideoInspectionPerformanceProbe
         _active?.Add(stage, milliseconds);
     }
 
+    internal static void Count(string operation)
+    {
+        _active?.Increment(operation);
+    }
+
     internal static void CompleteImport(
         int sectionCount,
         int occurrenceCount,
@@ -114,6 +119,7 @@ internal static class VideoInspectionPerformanceProbe
     private sealed class ImportProfile
     {
         private readonly Dictionary<string, double> _stages = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _counts = new(StringComparer.Ordinal);
 
         internal ImportProfile(string path)
         {
