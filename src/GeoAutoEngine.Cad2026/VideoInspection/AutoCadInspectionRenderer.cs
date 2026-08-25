@@ -111,7 +111,7 @@ public sealed class AutoCadInspectionRenderer
                     call.Anchor.LocationIndex,
                     call.Anchor.Role);
                 desiredKeys.Add(stableKey);
-                var anchor = polyline.GetPointAtDist(call.Anchor.CadDistance);
+                var anchor = polyline!.GetPointAtDist(call.Anchor.CadDistance);
                 var leaderEndPoint = RelativePoint(
                     anchor,
                     call.Anchor.Position,
