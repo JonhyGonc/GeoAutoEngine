@@ -2,7 +2,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Input;
 using System.Windows.Media;
 using Brush = System.Windows.Media.Brush;
 using Button = System.Windows.Controls.Button;
@@ -12,6 +11,8 @@ using DataFormats = System.Windows.DataFormats;
 using DragDropEffects = System.Windows.DragDropEffects;
 using DragEventArgs = System.Windows.DragEventArgs;
 using IDataObject = System.Windows.IDataObject;
+using MouseButtonEventArgs = System.Windows.Input.MouseButtonEventArgs;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 using SolidColorBrush = System.Windows.Media.SolidColorBrush;
 using UserControl = System.Windows.Controls.UserControl;
 
@@ -47,6 +48,11 @@ internal sealed partial class SurveyPaletteView : UserControl
 
     private void CsvDragLeave(object sender, DragEventArgs eventArgs) => ResetDropZone();
 
+    private void DropZoneMouseEnter(object sender, MouseEventArgs eventArgs) =>
+        DropZone.BorderBrush = Brush("#0EA5E9");
+
+    private void DropZoneMouseLeave(object sender, MouseEventArgs eventArgs) => ResetDropZone();
+
     private void CsvDrop(object sender, DragEventArgs eventArgs)
     {
         var csvFiles = GetDroppedCsvFiles(eventArgs.Data);
@@ -81,6 +87,8 @@ internal sealed partial class SurveyPaletteView : UserControl
         SettingsView.Visibility = Visibility.Collapsed;
         SummaryTabButton.Foreground = Brush("#0EA5E9");
         DiagnosticTabButton.Foreground = Brush("#4A6A96");
+        SummaryTabButton.FontWeight = FontWeights.SemiBold;
+        DiagnosticTabButton.FontWeight = FontWeights.Normal;
         SummaryIndicator.Visibility = Visibility.Visible;
         DiagnosticIndicator.Visibility = Visibility.Collapsed;
     }
@@ -95,6 +103,8 @@ internal sealed partial class SurveyPaletteView : UserControl
         SettingsView.Visibility = Visibility.Collapsed;
         SummaryTabButton.Foreground = Brush("#4A6A96");
         DiagnosticTabButton.Foreground = Brush("#0EA5E9");
+        SummaryTabButton.FontWeight = FontWeights.Normal;
+        DiagnosticTabButton.FontWeight = FontWeights.SemiBold;
         SummaryIndicator.Visibility = Visibility.Collapsed;
         DiagnosticIndicator.Visibility = Visibility.Visible;
     }
@@ -109,6 +119,8 @@ internal sealed partial class SurveyPaletteView : UserControl
         SettingsView.Visibility = Visibility.Visible;
         SummaryTabButton.Foreground = Brush("#4A6A96");
         DiagnosticTabButton.Foreground = Brush("#4A6A96");
+        SummaryTabButton.FontWeight = FontWeights.Normal;
+        DiagnosticTabButton.FontWeight = FontWeights.Normal;
         SummaryIndicator.Visibility = Visibility.Collapsed;
         DiagnosticIndicator.Visibility = Visibility.Collapsed;
     }
