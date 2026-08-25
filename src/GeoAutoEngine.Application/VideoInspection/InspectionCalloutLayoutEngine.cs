@@ -8,6 +8,12 @@ public sealed record InspectionCalloutPlacement(
     int Level,
     double TextRotationRadians);
 
+public readonly record struct InspectionLayoutObstacle(
+    double MinimumX,
+    double MinimumY,
+    double MaximumX,
+    double MaximumY);
+
 public static class InspectionCalloutLayoutEngine
 {
     public const double TextHeight = 0.5;
@@ -19,9 +25,11 @@ public static class InspectionCalloutLayoutEngine
     private const double NumericTolerance = 1e-9;
 
     public static IReadOnlyList<InspectionCalloutPlacement> Arrange(
-        IReadOnlyList<InspectionAnnotationCall> calls)
+        IReadOnlyList<InspectionAnnotationCall> calls,
+        IReadOnlyList<InspectionLayoutObstacle>? obstacles = null)
     {
         ArgumentNullException.ThrowIfNull(calls);
+        obstacles ??= Array.Empty<InspectionLayoutObstacle>();
         if (calls.Count == 0)
         {
             return Array.Empty<InspectionCalloutPlacement>();
@@ -47,6 +55,9 @@ public static class InspectionCalloutLayoutEngine
                     var candidate = Candidate(item.Call, normalX, normalY, side, level);
                     if (placed.All(existing => !candidate.Bounds.Intersects(
                             existing.Bounds,
+                            CollisionMargin)) &&
+                        obstacles.All(obstacle => !candidate.Bounds.Intersects(
+                            obstacle,
                             CollisionMargin)))
                     {
                         selected = candidate;
@@ -148,6 +159,12 @@ public static class InspectionCalloutLayoutEngine
         }
 
         public bool Intersects(TextBounds other, double margin) =>
+            MinimumX - margin < other.MaximumX &&
+            MaximumX + margin > other.MinimumX &&
+            MinimumY - margin < other.MaximumY &&
+            MaximumY + margin > other.MinimumY;
+
+        public bool Intersects(InspectionLayoutObstacle other, double margin) =>
             MinimumX - margin < other.MaximumX &&
             MaximumX + margin > other.MinimumX &&
             MinimumY - margin < other.MaximumY &&

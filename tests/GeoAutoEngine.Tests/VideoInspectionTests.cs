@@ -367,6 +367,24 @@ public sealed class InspectionCalloutLayoutEngineTests
 
     [Fact]
     [Trait("Category", "FAST")]
+    public void MappingObstacleMovesOnlyInspectionCallout()
+    {
+        var call = Call(0, 10, new LinearVector(1, 0, 0));
+        var technicalAnchor = call.Anchor.Position;
+        var obstacle = new InspectionLayoutObstacle(-1, 0.25, 12, 2.25);
+
+        var placement = Assert.Single(InspectionCalloutLayoutEngine.Arrange(
+            [call],
+            [obstacle]));
+
+        Assert.Equal(technicalAnchor, placement.Call.Anchor.Position);
+        Assert.Equal(10, placement.Call.Anchor.CadDistance, 8);
+        Assert.Equal(-1, placement.Side);
+        Assert.True(placement.TextPoint.Y < technicalAnchor.Y);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
     public void ReverseDirectionKeepsTextNaturallyReadable()
     {
         var placement = Assert.Single(InspectionCalloutLayoutEngine.Arrange(

@@ -47,7 +47,6 @@ public sealed class AutoCadInspectionRenderer
         var association = section.Association
             ?? throw new InvalidOperationException("O trecho ainda não possui geometria associada.");
         var calls = InspectionAnnotationPlanner.Create(positionedEvents);
-        var placements = InspectionCalloutLayoutEngine.Arrange(calls);
         using var documentLock = document.LockDocument();
         var created = 0;
         var updated = 0;
@@ -90,6 +89,13 @@ public sealed class AutoCadInspectionRenderer
             }
 
             var existing = ReadExisting(modelSpace, transaction);
+            var obstacles = ReadLayoutObstacles(
+                modelSpace,
+                polyline!.ObjectId,
+                session.ReportId,
+                section.SectionId,
+                transaction);
+            var placements = InspectionCalloutLayoutEngine.Arrange(calls, obstacles);
             var desiredKeys = new HashSet<string>(StringComparer.Ordinal);
             foreach (var placement in placements)
             {
@@ -305,6 +311,67 @@ public sealed class AutoCadInspectionRenderer
             pair => (IReadOnlyList<ObjectId>)Array.AsReadOnly(pair.Value.ToArray()),
             StringComparer.Ordinal);
     }
+
+    private static IReadOnlyList<InspectionLayoutObstacle> ReadLayoutObstacles(
+        BlockTableRecord modelSpace,
+        ObjectId associatedGeometryId,
+        Guid reportId,
+        Guid sectionId,
+        Transaction transaction)
+    {
+        var obstacles = new List<InspectionLayoutObstacle>();
+        foreach (ObjectId objectId in modelSpace)
+        {
+            if (objectId == associatedGeometryId ||
+                transaction.GetObject(objectId, OpenMode.ForRead, openErased: false) is not Entity entity)
+            {
+                continue;
+            }
+
+            using var data = entity.GetXDataForApplication(RegisteredApplicationName);
+            var belongsToCurrentSection =
+                string.Equals(
+                    ReadXData(data, "REPORT_ID"),
+                    reportId.ToString("D"),
+                    StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(
+                    ReadXData(data, "SECTION_ID"),
+                    sectionId.ToString("D"),
+                    StringComparison.OrdinalIgnoreCase);
+            if (belongsToCurrentSection)
+            {
+                continue;
+            }
+
+            try
+            {
+                var extents = entity.GeometricExtents;
+                if (IsFinite(extents.MinPoint.X) &&
+                    IsFinite(extents.MinPoint.Y) &&
+                    IsFinite(extents.MaxPoint.X) &&
+                    IsFinite(extents.MaxPoint.Y))
+                {
+                    obstacles.Add(new InspectionLayoutObstacle(
+                        extents.MinPoint.X,
+                        extents.MinPoint.Y,
+                        extents.MaxPoint.X,
+                        extents.MaxPoint.Y));
+                }
+            }
+            catch (System.Exception exception) when (
+                exception is not StackOverflowException and not OutOfMemoryException)
+            {
+                // Some AutoCAD entities do not expose geometric extents.
+                // They remain untouched and are simply unavailable as layout obstacles.
+                continue;
+            }
+        }
+
+        return Array.AsReadOnly(obstacles.ToArray());
+    }
+
+    private static bool IsFinite(double value) =>
+        !double.IsNaN(value) && !double.IsInfinity(value);
 
     private static MLeader? ExistingMLeader(
         IReadOnlyList<ObjectId>? objectIds,
