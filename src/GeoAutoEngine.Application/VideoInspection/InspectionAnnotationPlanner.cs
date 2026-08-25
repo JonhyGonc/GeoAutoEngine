@@ -8,7 +8,8 @@ public sealed record InspectionAnnotationCall(
     InspectionLocationMode LocationMode,
     PositionedInspectionLocation Anchor,
     string LocationLine,
-    string Cause);
+    string Cause,
+    string? PositionLine = null);
 
 public static class InspectionAnnotationPlanner
 {
@@ -28,13 +29,19 @@ public static class InspectionAnnotationPlanner
             }
 
             var cause = Cause(positionedEvent.Description);
+            var positionLine = PositionLine(cause, positionedEvent.Position);
             switch (positionedEvent.LocationMode)
             {
                 case InspectionLocationMode.Point:
                 case InspectionLocationMode.MultiPoint:
                     foreach (var location in positionedEvent.Locations)
                     {
-                        calls.Add(Call(positionedEvent, location, Meter(location.InspectionDistance), cause));
+                        calls.Add(Call(
+                            positionedEvent,
+                            location,
+                            Meter(location.InspectionDistance),
+                            cause,
+                            positionLine));
                     }
 
                     break;
@@ -44,21 +51,24 @@ public static class InspectionAnnotationPlanner
                         positionedEvent.Locations[0],
                         $"{Meter(positionedEvent.Locations[0].InspectionDistance)} – " +
                         Meter(positionedEvent.Locations[1].InspectionDistance),
-                        cause));
+                        cause,
+                        positionLine));
                     break;
                 case InspectionLocationMode.From when positionedEvent.Locations.Count >= 1:
                     calls.Add(Call(
                         positionedEvent,
                         positionedEvent.Locations[0],
                         $"A PARTIR DE {Meter(positionedEvent.Locations[0].InspectionDistance)}",
-                        cause));
+                        cause,
+                        positionLine));
                     break;
                 case InspectionLocationMode.EntireSection when positionedEvent.Locations.Count >= 1:
                     calls.Add(Call(
                         positionedEvent,
                         positionedEvent.Locations[0],
                         "TODO O TRECHO",
-                        cause));
+                        cause,
+                        positionLine));
                     break;
             }
         }
@@ -97,19 +107,37 @@ public static class InspectionAnnotationPlanner
         PositionedInspectionEvent positionedEvent,
         PositionedInspectionLocation location,
         string locationLine,
-        string cause) => new(
+        string cause,
+        string? positionLine) => new(
             positionedEvent.OccurrenceId,
             positionedEvent.LocationMode,
             location,
             locationLine,
-            cause);
+            cause,
+            positionLine);
 
     private static string Meter(double value) =>
         $"{value.ToString("0.00", AnnotationCulture)} m";
 
     private static string Cause(string value) => string.IsNullOrWhiteSpace(value)
         ? "OCORRÊNCIA"
-        : Regex.Replace(value.Trim(), @"\s+", " ").ToUpper(AnnotationCulture);
+        : Normalize(value);
+
+    private static string? PositionLine(string cause, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var normalized = Normalize(value!);
+        return cause.IndexOf(normalized, StringComparison.OrdinalIgnoreCase) >= 0
+            ? null
+            : normalized;
+    }
+
+    private static string Normalize(string value) =>
+        Regex.Replace(value.Trim(), @"\s+", " ").ToUpper(AnnotationCulture);
 
     private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
 }

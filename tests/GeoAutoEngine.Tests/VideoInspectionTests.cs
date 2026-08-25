@@ -276,6 +276,25 @@ public sealed class InspectionAnnotationPlannerTests
 
     [Fact]
     [Trait("Category", "FAST")]
+    public void LateralContributionPreservesDirectionReportedByInspection()
+    {
+        var positioned = new PositionedInspectionEvent(
+            Guid.NewGuid(),
+            InspectionLocationMode.Point,
+            "Contribuição lateral",
+            [Location(0, 13)],
+            [],
+            true,
+            "Direita");
+
+        var call = Assert.Single(InspectionAnnotationPlanner.Create([positioned]));
+
+        Assert.Equal("CONTRIBUIÇÃO LATERAL", call.Cause);
+        Assert.Equal("DIREITA", call.PositionLine);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
     public void MultiPointKeepsOccurrenceIdAndLocationIndexWhileNotApplicableCreatesNoCall()
     {
         var occurrenceId = Guid.NewGuid();
@@ -317,6 +336,66 @@ public sealed class InspectionAnnotationPlannerTests
             cadDistance ?? inspectionDistance,
             new LinearPoint(cadDistance ?? inspectionDistance, 0, 0),
             new LinearVector(1, 0, 0));
+}
+
+
+public sealed class InspectionCalloutLayoutEngineTests
+{
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void NearbyAnomaliesKeepTechnicalAnchorsAndReceiveDistinctPlacements()
+    {
+        var calls = new[] { 5.20, 5.50, 5.85, 6.10 }
+            .Select((distance, index) => Call(index, distance, new LinearVector(1, 0, 0)))
+            .ToArray();
+
+        var placements = InspectionCalloutLayoutEngine.Arrange(calls);
+
+        Assert.Equal(4, placements.Count);
+        Assert.Equal(
+            new[] { 5.20, 5.50, 5.85, 6.10 },
+            placements.Select(item => item.Call.Anchor.CadDistance));
+        Assert.All(
+            placements,
+            item => Assert.Equal(item.Call.Anchor.CadDistance, item.Call.Anchor.Position.X, 8));
+        Assert.Equal(
+            4,
+            placements.Select(item => (item.TextPoint.X, item.TextPoint.Y)).Distinct().Count());
+        Assert.Contains(placements, item => item.Side == 1);
+        Assert.Contains(placements, item => item.Side == -1);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void ReverseDirectionKeepsTextNaturallyReadable()
+    {
+        var placement = Assert.Single(InspectionCalloutLayoutEngine.Arrange(
+            [Call(0, 12.35, new LinearVector(-1, 0, 0))]));
+
+        Assert.Equal(0, placement.TextRotationRadians, 8);
+        Assert.Equal(0.5, InspectionCalloutLayoutEngine.TextHeight, 8);
+        Assert.Equal(12.35, placement.Call.Anchor.CadDistance, 8);
+    }
+
+    private static InspectionAnnotationCall Call(
+        int index,
+        double distance,
+        LinearVector tangent)
+    {
+        var location = new PositionedInspectionLocation(
+            index,
+            PositionedLocationRole.Point,
+            distance,
+            distance,
+            new LinearPoint(distance, 0, 0),
+            tangent);
+        return new InspectionAnnotationCall(
+            Guid.NewGuid(),
+            InspectionLocationMode.Point,
+            location,
+            $"{distance:0.00} m",
+            "ANOMALIA");
+    }
 }
 
 public sealed class InspectionPipeProtocolTests

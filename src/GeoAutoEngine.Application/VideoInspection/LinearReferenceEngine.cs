@@ -41,7 +41,8 @@ public sealed record PositionedInspectionEvent(
     string Description,
     IReadOnlyList<PositionedInspectionLocation> Locations,
     IReadOnlyList<string> Warnings,
-    bool CanCommit);
+    bool CanCommit,
+    string? Position = null);
 
 public static class DirectionResolver
 {
@@ -158,7 +159,8 @@ public sealed class LinearReferenceEngine
             occurrence.EffectiveDescription,
             Array.AsReadOnly(locations.ToArray()),
             Array.AsReadOnly(warnings.ToArray()),
-            canCommit);
+            canCommit,
+            occurrence.Position);
     }
 
     public IReadOnlyList<PositionedInspectionEvent> ResolveSection(

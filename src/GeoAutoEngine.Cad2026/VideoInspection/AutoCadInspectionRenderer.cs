@@ -28,9 +28,11 @@ public sealed record AutoCadInspectionCommitResult(
 public sealed class AutoCadInspectionRenderer
 {
     public const string RegisteredApplicationName = "GEOAUTOENGINE_VI";
-    public const string EventLayerName = "GAE_VI_EVENTOS";
-    private const double TextHeight = 0.25;
-    private const double TextOffset = 1.20;
+    public const string EventLayerName = "GF-Rede Pluvial";
+    public const string EventTextStyleName = "GEO_ARIAL";
+    private const short EventColorIndex = 3;
+    private const double TextHeight = InspectionCalloutLayoutEngine.TextHeight;
+    private const double DoglegLength = 0.75;
 
     public AutoCadInspectionCommitResult Commit(
         Document document,
@@ -45,6 +47,7 @@ public sealed class AutoCadInspectionRenderer
         var association = section.Association
             ?? throw new InvalidOperationException("O trecho ainda não possui geometria associada.");
         var calls = InspectionAnnotationPlanner.Create(positionedEvents);
+        var placements = InspectionCalloutLayoutEngine.Arrange(calls);
         using var documentLock = document.LockDocument();
         var created = 0;
         var updated = 0;
@@ -59,7 +62,12 @@ public sealed class AutoCadInspectionRenderer
         using (var transaction = document.Database.TransactionManager.StartTransaction())
         {
             EnsureRegisteredApplication(document.Database, transaction);
-            var eventLayerId = EnsureLayer(document.Database, transaction, EventLayerName, 2);
+            var eventLayerId = EnsureLayer(
+                document.Database,
+                transaction,
+                EventLayerName,
+                EventColorIndex);
+            var eventTextStyleId = EnsureArialTextStyle(document.Database, transaction);
             var blockTable = (BlockTable)transaction.GetObject(
                 document.Database.BlockTableId,
                 OpenMode.ForRead);
@@ -83,8 +91,9 @@ public sealed class AutoCadInspectionRenderer
 
             var existing = ReadExisting(modelSpace, transaction);
             var desiredKeys = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var call in calls)
+            foreach (var placement in placements)
             {
+                var call = placement.Call;
                 var stableKey = VideoInspectionStableKey.Create(
                     session.ReportId,
                     section.SectionId,
@@ -93,8 +102,7 @@ public sealed class AutoCadInspectionRenderer
                     call.Anchor.Role);
                 desiredKeys.Add(stableKey);
                 var anchor = polyline!.GetPointAtDist(call.Anchor.CadDistance);
-                var tangent = polyline.GetFirstDerivative(anchor);
-                var textPoint = AnnotationTextPoint(anchor, tangent);
+                var textPoint = TextPoint(anchor, call.Anchor.Position, placement.TextPoint);
                 var existed = existing.TryGetValue(stableKey, out var managedEntities);
                 var mleader = ExistingMLeader(managedEntities, transaction);
                 var duplicates = managedEntities;
@@ -108,7 +116,14 @@ public sealed class AutoCadInspectionRenderer
                     transaction.AddNewlyCreatedDBObject(mleader, true);
                 }
 
-                ApplyMLeader(mleader, anchor, textPoint, call, eventLayerId);
+                ApplyMLeader(
+                    mleader,
+                    anchor,
+                    textPoint,
+                    call,
+                    placement,
+                    eventLayerId,
+                    eventTextStyleId);
                 SetMetadata(mleader, session, section, call, stableKey);
                 EraseDuplicates(duplicates, mleader.ObjectId, transaction);
                 pendingEntities.Add((call.OccurrenceId, mleader.ObjectId, !existed));
@@ -205,6 +220,44 @@ public sealed class AutoCadInspectionRenderer
         return record.ObjectId;
     }
 
+    private static ObjectId EnsureArialTextStyle(
+        Database database,
+        Transaction transaction)
+    {
+        var table = (TextStyleTable)transaction.GetObject(
+            database.TextStyleTableId,
+            OpenMode.ForRead);
+        if (table.Has(EventTextStyleName))
+        {
+            return table[EventTextStyleName];
+        }
+
+        foreach (ObjectId objectId in table)
+        {
+            var existing = (TextStyleTableRecord)transaction.GetObject(
+                objectId,
+                OpenMode.ForRead);
+            if (string.Equals(
+                    Path.GetFileName(existing.FileName),
+                    "arial.ttf",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return existing.ObjectId;
+            }
+        }
+
+        table.UpgradeOpen();
+        var record = new TextStyleTableRecord
+        {
+            Name = EventTextStyleName,
+            FileName = "arial.ttf",
+            TextSize = 0,
+        };
+        table.Add(record);
+        transaction.AddNewlyCreatedDBObject(record, true);
+        return record.ObjectId;
+    }
+
     private static void EnsureRegisteredApplication(Database database, Transaction transaction)
     {
         var table = (RegAppTable)transaction.GetObject(database.RegAppTableId, OpenMode.ForRead);
@@ -278,7 +331,9 @@ public sealed class AutoCadInspectionRenderer
         Point3d anchor,
         Point3d textPoint,
         InspectionAnnotationCall call,
-        ObjectId layerId)
+        InspectionCalloutPlacement placement,
+        ObjectId layerId,
+        ObjectId textStyleId)
     {
         foreach (var oldLeaderIndex in mleader.GetLeaderIndexes().Cast<int>().ToArray())
         {
@@ -286,34 +341,54 @@ public sealed class AutoCadInspectionRenderer
         }
 
         mleader.LayerId = layerId;
-        mleader.ColorIndex = 256;
+        mleader.ColorIndex = EventColorIndex;
         mleader.ContentType = ContentType.MTextContent;
         mleader.EnableLanding = true;
         mleader.EnableDogleg = true;
-        mleader.DoglegLength = 0.50;
+        mleader.DoglegLength = DoglegLength;
         mleader.LandingGap = 0.10;
         mleader.TextHeight = TextHeight;
+        mleader.TextStyleId = textStyleId;
         var leaderIndex = mleader.AddLeader();
         var lineIndex = mleader.AddLeaderLine(leaderIndex);
         mleader.AddFirstVertex(lineIndex, anchor);
         mleader.AddLastVertex(lineIndex, textPoint);
         using var text = new MText
         {
-            Contents = $"{EscapeMText(call.LocationLine)}\\P{EscapeMText(call.Cause)}",
+            Contents = MTextContents(call),
             Location = textPoint,
             TextHeight = TextHeight,
-            Attachment = AttachmentPoint.MiddleLeft,
+            TextStyleId = textStyleId,
+            ColorIndex = EventColorIndex,
+            Rotation = placement.TextRotationRadians,
+            Attachment = placement.AttachAtRightEdge
+                ? AttachmentPoint.MiddleRight
+                : AttachmentPoint.MiddleLeft,
         };
         mleader.MText = text;
     }
 
-    private static Point3d AnnotationTextPoint(Point3d anchor, Vector3d tangent)
+    private static Point3d TextPoint(
+        Point3d exactAnchor,
+        LinearPoint plannedAnchor,
+        LinearPoint plannedTextPoint) => exactAnchor + new Vector3d(
+            plannedTextPoint.X - plannedAnchor.X,
+            plannedTextPoint.Y - plannedAnchor.Y,
+            plannedTextPoint.Z - plannedAnchor.Z);
+
+    private static string MTextContents(InspectionAnnotationCall call)
     {
-        var planarLength = Math.Sqrt(tangent.X * tangent.X + tangent.Y * tangent.Y);
-        var perpendicular = planarLength > 1e-9
-            ? new Vector3d(-tangent.Y / planarLength, tangent.X / planarLength, 0)
-            : Vector3d.YAxis;
-        return anchor + perpendicular.MultiplyBy(TextOffset);
+        var lines = new List<string>
+        {
+            call.LocationLine,
+            call.Cause,
+        };
+        if (!string.IsNullOrWhiteSpace(call.PositionLine))
+        {
+            lines.Add(call.PositionLine!);
+        }
+
+        return string.Join("\\P", lines.Select(EscapeMText));
     }
 
     private static string EscapeMText(string value) => value
