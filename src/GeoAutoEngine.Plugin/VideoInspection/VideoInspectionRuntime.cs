@@ -54,9 +54,35 @@ internal static class VideoInspectionRuntime
     internal static void ImportFile(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        var payload = File.ReadAllText(path, System.Text.Encoding.UTF8);
-        var document = Serializer.Deserialize(payload);
-        Activate(document, "Arquivo de inspeção");
+        VideoInspectionPerformanceProbe.BeginImport(path);
+        try
+        {
+            string payload;
+            using (VideoInspectionPerformanceProbe.Measure("JSON read"))
+            {
+                payload = File.ReadAllText(path, System.Text.Encoding.UTF8);
+            }
+
+            var document = Serializer.Deserialize(payload, out var serializerMetrics);
+            VideoInspectionPerformanceProbe.Record(
+                "JsonSerializer.Deserialize",
+                serializerMetrics.DeserializeMilliseconds);
+            VideoInspectionPerformanceProbe.Record(
+                "InspectionExchangeSerializer.Validate",
+                serializerMetrics.ValidationMilliseconds);
+
+            Activate(document, "Arquivo de inspeção");
+            var session = CurrentSession!;
+            VideoInspectionPerformanceProbe.CompleteImport(
+                session.Sections.Count,
+                session.OccurrenceCount,
+                System.Windows.Threading.Dispatcher.CurrentDispatcher);
+        }
+        catch (Exception exception)
+        {
+            VideoInspectionPerformanceProbe.FailImport(exception);
+            throw;
+        }
     }
 
     internal static void Associate(Guid sectionId)
@@ -153,7 +179,12 @@ internal static class VideoInspectionRuntime
 
     private static void Activate(InspectionExchangeDocument document, string source)
     {
-        var session = VideoInspectionSessionMapper.Map(document);
+        VideoInspectionSession session;
+        using (VideoInspectionPerformanceProbe.Measure("VideoInspectionSessionMapper.Map"))
+        {
+            session = VideoInspectionSessionMapper.Map(document);
+        }
+
         var activeDocument = AutoCadApplication.DocumentManager.MdiActiveDocument;
         if (activeDocument is not null)
         {
@@ -163,26 +194,46 @@ internal static class VideoInspectionRuntime
 
         CurrentSession = session;
         GeoAutoEnginePalette.UpdateVideoInspectionSession(session, source);
-        PluginLog.Information(
-            $"{source}: ReportId={session.ReportId:D}; trechos={session.Sections.Count}; " +
-            $"ocorrências={session.OccurrenceCount}.");
-        WriteSmokeMarker("received", session, null);
+        using (VideoInspectionPerformanceProbe.Measure("Import bookkeeping/log"))
+        {
+            PluginLog.Information(
+                $"{source}: ReportId={session.ReportId:D}; trechos={session.Sections.Count}; " +
+                $"ocorrências={session.OccurrenceCount}.");
+            WriteSmokeMarker("received", session, null);
+        }
     }
 
     private static void RestoreAssociations(Document document, VideoInspectionSession session)
     {
         foreach (var section in session.Sections)
         {
-            var association = GeometryService.RestoreAssociation(document, session.ReportId, section.SectionId);
+            CadSectionAssociation? association;
+            using (VideoInspectionPerformanceProbe.Measure("CAD association lookup"))
+            {
+                association = GeometryService.RestoreAssociation(
+                    document,
+                    session.ReportId,
+                    section.SectionId);
+            }
+
             if (association is null)
             {
                 continue;
             }
 
-            if (GeometryService.GeometryExists(document, association))
+            bool geometryExists;
+            using (VideoInspectionPerformanceProbe.Measure("CAD association lookup"))
+            {
+                geometryExists = GeometryService.GeometryExists(document, association);
+            }
+
+            if (geometryExists)
             {
                 section.Associate(association);
-                Position(document, section);
+                using (VideoInspectionPerformanceProbe.Measure("Restored anomaly positioning"))
+                {
+                    Position(document, section);
+                }
             }
             else
             {
