@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using Brush = System.Windows.Media.Brush;
@@ -39,8 +40,8 @@ internal sealed partial class SurveyPaletteView : UserControl
     {
         var csvFiles = GetDroppedCsvFiles(eventArgs.Data);
         eventArgs.Effects = csvFiles.Length > 0 ? DragDropEffects.Copy : DragDropEffects.None;
-        DropZone.Background = Brush(csvFiles.Length > 0 ? "#102B3A" : "#091822");
-        DropZone.BorderBrush = Brush(csvFiles.Length > 0 ? "#41C1FF" : "#287FB2");
+        DropZone.Background = Brush(csvFiles.Length > 0 ? "#111D35" : "#0D1528");
+        DropZone.BorderBrush = Brush(csvFiles.Length > 0 ? "#0EA5E9" : "#2A3F60");
         eventArgs.Handled = true;
     }
 
@@ -78,8 +79,8 @@ internal sealed partial class SurveyPaletteView : UserControl
         SummaryView.Visibility = Visibility.Visible;
         DiagnosticView.Visibility = Visibility.Collapsed;
         SettingsView.Visibility = Visibility.Collapsed;
-        SummaryTabButton.Foreground = Brush("#27B5F5");
-        DiagnosticTabButton.Foreground = Brush("#8193A2");
+        SummaryTabButton.Foreground = Brush("#0EA5E9");
+        DiagnosticTabButton.Foreground = Brush("#4A6A96");
         SummaryIndicator.Visibility = Visibility.Visible;
         DiagnosticIndicator.Visibility = Visibility.Collapsed;
     }
@@ -92,8 +93,8 @@ internal sealed partial class SurveyPaletteView : UserControl
         SummaryView.Visibility = Visibility.Collapsed;
         DiagnosticView.Visibility = Visibility.Visible;
         SettingsView.Visibility = Visibility.Collapsed;
-        SummaryTabButton.Foreground = Brush("#8193A2");
-        DiagnosticTabButton.Foreground = Brush("#27B5F5");
+        SummaryTabButton.Foreground = Brush("#4A6A96");
+        DiagnosticTabButton.Foreground = Brush("#0EA5E9");
         SummaryIndicator.Visibility = Visibility.Collapsed;
         DiagnosticIndicator.Visibility = Visibility.Visible;
     }
@@ -106,8 +107,8 @@ internal sealed partial class SurveyPaletteView : UserControl
         SummaryView.Visibility = Visibility.Collapsed;
         DiagnosticView.Visibility = Visibility.Collapsed;
         SettingsView.Visibility = Visibility.Visible;
-        SummaryTabButton.Foreground = Brush("#8193A2");
-        DiagnosticTabButton.Foreground = Brush("#8193A2");
+        SummaryTabButton.Foreground = Brush("#4A6A96");
+        DiagnosticTabButton.Foreground = Brush("#4A6A96");
         SummaryIndicator.Visibility = Visibility.Collapsed;
         DiagnosticIndicator.Visibility = Visibility.Collapsed;
     }
@@ -125,8 +126,36 @@ internal sealed partial class SurveyPaletteView : UserControl
 
     private void ResetDropZone()
     {
-        DropZone.Background = Brush("#091822");
-        DropZone.BorderBrush = Brush("#287FB2");
+        DropZone.Background = Brush("#0D1528");
+        DropZone.BorderBrush = Brush("#2A3F60");
+    }
+
+    private void PaletteSizeChanged(object sender, SizeChangedEventArgs eventArgs)
+    {
+        if (FindVisualChild<UniformGrid>(DiagnosticCardsControl) is { } panel)
+        {
+            panel.Columns = ActualWidth >= 480 ? 4 : 2;
+        }
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject parent)
+        where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match)
+            {
+                return match;
+            }
+
+            if (FindVisualChild<T>(child) is { } descendant)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
     }
 
     private static Brush Brush(string value)
