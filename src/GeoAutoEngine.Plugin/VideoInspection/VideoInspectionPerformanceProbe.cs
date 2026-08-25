@@ -141,14 +141,24 @@ internal static class VideoInspectionPerformanceProbe
                 : milliseconds;
         }
 
+        internal void Increment(string operation)
+        {
+            _counts[operation] = _counts.TryGetValue(operation, out var current)
+                ? current + 1
+                : 1;
+        }
+
         internal string Format()
         {
             var stages = string.Join(
                 "; ",
                 _stages.Select(item => $"{item.Key}={Milliseconds(item.Value)} ms"));
+            var counts = string.Join(
+                ", ",
+                _counts.Select(item => $"{item.Key}={item.Value}"));
             return
                 $"[VI PERF] JSON import: file={SourceName}; bytes={SourceBytes}; " +
-                $"sections={SectionCount}; occurrences={OccurrenceCount}; {stages}.";
+                $"sections={SectionCount}; occurrences={OccurrenceCount}; {stages}; calls: {counts}.";
         }
     }
 }
