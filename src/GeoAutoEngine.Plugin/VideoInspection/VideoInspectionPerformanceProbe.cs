@@ -40,14 +40,10 @@ internal static class VideoInspectionPerformanceProbe
 
         profile.SectionCount = sectionCount;
         profile.OccurrenceCount = occurrenceCount;
-        profile.SynchronousMilliseconds = profile.Total.Elapsed.TotalMilliseconds;
 
         dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
         {
-            profile.Add(
-                "UI binding/render",
-                Math.Max(0, profile.Total.Elapsed.TotalMilliseconds - profile.SynchronousMilliseconds));
-            profile.Add("TOTAL", profile.Total.Elapsed.TotalMilliseconds);
+            profile.Complete();
             PluginLog.Information(profile.Format());
             if (ReferenceEquals(_active, profile))
             {
@@ -132,13 +128,20 @@ internal static class VideoInspectionPerformanceProbe
         internal long SourceBytes { get; }
         internal int SectionCount { get; set; }
         internal int OccurrenceCount { get; set; }
-        internal double SynchronousMilliseconds { get; set; }
 
         internal void Add(string stage, double milliseconds)
         {
             _stages[stage] = _stages.TryGetValue(stage, out var current)
                 ? current + milliseconds
                 : milliseconds;
+        }
+
+        internal void Complete()
+        {
+            var totalMilliseconds = Total.Elapsed.TotalMilliseconds;
+            var measuredMilliseconds = _stages.Values.Sum();
+            Add("UI binding/render", Math.Max(0, totalMilliseconds - measuredMilliseconds));
+            Add("TOTAL", totalMilliseconds);
         }
 
         internal void Increment(string operation)
