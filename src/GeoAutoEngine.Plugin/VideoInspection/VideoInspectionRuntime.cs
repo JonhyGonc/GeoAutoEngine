@@ -55,6 +55,7 @@ internal static class VideoInspectionRuntime
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         VideoInspectionPerformanceProbe.BeginImport(path);
+        VideoInspectionPerformanceProbe.Count("ImportFile");
         try
         {
             string payload;
@@ -63,6 +64,7 @@ internal static class VideoInspectionRuntime
                 payload = File.ReadAllText(path, System.Text.Encoding.UTF8);
             }
 
+            VideoInspectionPerformanceProbe.Count("InspectionExchangeSerializer.Deserialize");
             var document = Serializer.Deserialize(payload, out var serializerMetrics);
             VideoInspectionPerformanceProbe.Record(
                 "JsonSerializer.Deserialize",
@@ -179,6 +181,7 @@ internal static class VideoInspectionRuntime
 
     private static void Activate(InspectionExchangeDocument document, string source)
     {
+        VideoInspectionPerformanceProbe.Count("Activate");
         VideoInspectionSession session;
         using (VideoInspectionPerformanceProbe.Measure("VideoInspectionSessionMapper.Map"))
         {
@@ -207,6 +210,7 @@ internal static class VideoInspectionRuntime
     {
         foreach (var section in session.Sections)
         {
+            VideoInspectionPerformanceProbe.Count("RestoreAssociation");
             CadSectionAssociation? association;
             using (VideoInspectionPerformanceProbe.Measure("CAD association lookup"))
             {
@@ -229,6 +233,7 @@ internal static class VideoInspectionRuntime
 
             if (geometryExists)
             {
+                VideoInspectionPerformanceProbe.Count("RestorePosition");
                 section.Associate(association);
                 using (VideoInspectionPerformanceProbe.Measure("Restored anomaly positioning"))
                 {
