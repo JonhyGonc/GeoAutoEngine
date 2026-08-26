@@ -121,8 +121,14 @@
                     <TextBlock Text="Escolha quais elementos serão aplicados ao desenho"
                                Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,3,0,10" />
                     <ComboBox ItemsSource="{Binding ProcessingModeOptions}"
-                              DisplayMemberPath="Label" SelectedValuePath="Value"
-                              SelectedValue="{Binding SelectedProcessingMode, Mode=TwoWay}" />
+                              SelectedValuePath="Value"
+                              SelectedValue="{Binding SelectedProcessingMode, Mode=TwoWay}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Label}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
                 </StackPanel>
 
                 <StackPanel Margin="12,12,12,12">
@@ -299,13 +305,25 @@
                         <StackPanel>
                             <TextBlock Text="APRESENTAÇÃO DO DESENHO" Style="{StaticResource SectionLabel}" />
                             <TextBlock Text="Escala da planta" Foreground="{StaticResource MutedBrush}" Margin="0,12,0,5" />
-                            <ComboBox ItemsSource="{Binding PlantScaleOptions}" DisplayMemberPath="Label"
-                                      SelectedValuePath="Value" SelectedValue="{Binding PlantScaleDenominator, Mode=TwoWay}" />
+                            <ComboBox ItemsSource="{Binding PlantScaleOptions}"
+                                      SelectedValuePath="Value" SelectedValue="{Binding PlantScaleDenominator, Mode=TwoWay}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Label}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
                             <TextBlock Text="{Binding CalculatedTextHeight}" Style="{StaticResource MonoText}"
                                        Foreground="{StaticResource AccentBrush}" Margin="0,6,0,0" />
                             <TextBlock Text="Escala dos blocos" Foreground="{StaticResource MutedBrush}" Margin="0,14,0,5" />
-                            <ComboBox ItemsSource="{Binding BlockScaleOptions}" DisplayMemberPath="Label"
-                                      SelectedValuePath="Value" SelectedValue="{Binding SelectedBlockScaleMode, Mode=TwoWay}" />
+                            <ComboBox ItemsSource="{Binding BlockScaleOptions}"
+                                      SelectedValuePath="Value" SelectedValue="{Binding SelectedBlockScaleMode, Mode=TwoWay}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Label}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
                             <CheckBox IsChecked="{Binding ShowRevisionMarks, Mode=TwoWay}" Margin="0,14,0,0"
                                       Foreground="{StaticResource ForegroundSecondaryBrush}"
                                       Content="Exibir marcas de revisão" />
