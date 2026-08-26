@@ -11,113 +11,228 @@
                 <Setter Property="FontSize" Value="10" />
                 <Setter Property="FontWeight" Value="SemiBold" />
             </Style>
-            <Style x:Key="OccurrenceCard" TargetType="Border" BasedOn="{StaticResource Card}">
-                <Setter Property="BorderThickness" Value="3,1,1,1" />
-                <Setter Property="Margin" Value="0,0,0,6" />
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding RequiresAttention}" Value="True">
-                        <Setter Property="BorderBrush" Value="{StaticResource AttentionBrush}" />
-                    </DataTrigger>
-                </Style.Triggers>
+            <Style x:Key="CountBadge" TargetType="Border">
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="999" />
+                <Setter Property="Padding" Value="6,1" />
+                <Setter Property="Margin" Value="2.5,0" />
+            </Style>
+            <Style x:Key="SectionItem" TargetType="ListBoxItem">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Margin" Value="0" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                            <Border x:Name="Chrome" Background="{TemplateBinding Background}"
+                                    BorderBrush="Transparent" BorderThickness="3,0,0,0">
+                                <ContentPresenter />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Chrome" Property="Background" Value="#0F0EA5E9" />
+                                    <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                    <Setter TargetName="Chrome" Property="Background" Value="#0F0EA5E9" />
+                                    <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="RemoveJsonButton" TargetType="Button">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource BorderEmphasisBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Padding" Value="9,7" />
+                <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Chrome" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="7" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Chrome" Property="BorderBrush" Value="#567A9BC7" />
+                                    <Setter Property="Foreground" Value="{StaticResource LabelBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="BackButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="Padding" Value="12,9" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="BorderBrush" Value="{StaticResource DividerBrush}" />
+                <Setter Property="BorderThickness" Value="0,0,0,1" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
     <Grid Background="{StaticResource BackgroundBrush}">
         <Grid Visibility="{Binding EmptyVisibility}">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="260">
-                <Border Width="42" Height="42" BorderBrush="{StaticResource BorderBrush}"
-                        BorderThickness="1" CornerRadius="9" Margin="0,0,0,12">
-                    <Grid>
-                        <Path Data="M 4,1 L 12,1 L 17,6 L 17,21 L 4,21 Z M 12,1 L 12,6 L 17,6"
-                              Stroke="{StaticResource VeryMutedBrush}" StrokeThickness="1.4"
-                              Fill="Transparent" Stretch="Uniform" Width="18" Height="22" />
-                        <TextBlock Text="+" Foreground="{StaticResource VeryMutedBrush}" FontSize="13"
-                                   HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,7,5" />
-                    </Grid>
-                </Border>
-                <TextBlock Text="Nenhum arquivo JSON carregado." Foreground="{StaticResource VeryMutedBrush}"
-                           FontSize="12" TextAlignment="Center" Margin="0,0,0,14" />
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="270">
+                <Grid Width="36" Height="36" Margin="0,0,0,12">
+                    <Path Data="M 4,2 L 15,2 L 21,8 L 21,27 L 4,27 Z M 15,2 L 15,8 L 21,8"
+                          Stroke="{StaticResource BorderBrush}" StrokeThickness="1.2"
+                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                          StrokeLineJoin="Round" Fill="Transparent" Stretch="Uniform"
+                          Width="22" Height="28" />
+                    <Path Data="M 0,4 L 8,4 M 4,0 L 4,8"
+                          Stroke="{StaticResource BorderBrush}" StrokeThickness="1.2"
+                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                          HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                          Width="10" Height="10" Margin="0,0,3,2" />
+                </Grid>
+                <TextBlock Text="Nenhum arquivo JSON carregado."
+                           Foreground="{StaticResource VeryMutedBrush}"
+                           FontSize="13" TextAlignment="Center" Margin="0,0,0,12" />
                 <Button Style="{StaticResource PrimaryButton}" Command="{Binding ImportCommand}"
-                        Content="⇧  Importar inspeção" />
+                        Padding="16,8" FontSize="13" FontWeight="SemiBold">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="M 1,6 L 6,1 L 11,6 M 6,1 L 6,11 M 2,12 L 2,14 L 10,14 L 10,12"
+                              Stroke="White" StrokeThickness="1.5" StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round" Width="12" Height="14"
+                              Stretch="Uniform" Margin="0,0,6,0" />
+                        <TextBlock Text="Importar inspeção" Foreground="White" FontSize="13"
+                                   FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </Grid>
 
         <Grid Visibility="{Binding InspectionVisibility}">
             <Grid x:Name="ListState">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
                     <StackPanel>
-                        <Border Style="{StaticResource Card}" Margin="12,12,12,8" Padding="13">
+                        <Border Style="{StaticResource Card}" Margin="12,12,12,0" Padding="13">
                             <StackPanel>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel>
+                                    <StackPanel Margin="0,0,8,0">
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="INSPEÇÃO RECEBIDA" Style="{StaticResource AccentSectionLabel}" />
+                                            <TextBlock Text="INSPEÇÃO RECEBIDA"
+                                                       Style="{StaticResource AccentSectionLabel}"
+                                                       FontSize="12" />
                                             <Ellipse Width="4" Height="4" Fill="{StaticResource SuccessBrush}"
-                                                     Margin="7,0,0,0" VerticalAlignment="Center" />
+                                                     Margin="6,0,0,0" VerticalAlignment="Center" />
                                         </StackPanel>
                                         <TextBlock Text="{Binding ReportCode}" Style="{StaticResource MonoText}"
-                                                   Foreground="{StaticResource LabelBrush}" FontSize="11" Margin="0,6,0,0"
-                                                   TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding Client}" Foreground="{StaticResource ForegroundSecondaryBrush}"
-                                                   FontSize="12" FontWeight="Medium" Margin="0,5,0,0"
+                                                   Foreground="{StaticResource LabelBrush}" FontSize="10"
+                                                   Margin="0,5,0,0" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Client}"
+                                                   Foreground="{StaticResource ForegroundSecondaryBrush}"
+                                                   FontSize="13" FontWeight="Medium" Margin="0,4,0,0"
                                                    TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
-                                        <Border Background="Transparent" BorderBrush="{StaticResource BorderEmphasisBrush}"
-                                                BorderThickness="1" CornerRadius="7" Padding="8,7" Margin="0,0,6,0">
-                                            <TextBlock Text="⌫ .json" Style="{StaticResource MonoText}"
-                                                       Foreground="{StaticResource MutedBrush}" FontSize="10" />
-                                        </Border>
+                                        <Button x:Name="RemoveJsonButton"
+                                                Style="{StaticResource RemoveJsonButton}"
+                                                Click="RemoveJsonClick" LostKeyboardFocus="CancelRemoveJson"
+                                                Margin="0,0,6,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="M 2,4 L 12,4 M 5,4 L 5,2 L 9,2 L 9,4 M 4,6 L 5,13 L 9,13 L 10,6"
+                                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                      StrokeThickness="1.2" StrokeStartLineCap="Round"
+                                                      StrokeEndLineCap="Round" Width="12" Height="12"
+                                                      Stretch="Uniform" Margin="0,0,5,0" />
+                                                <TextBlock x:Name="RemoveJsonText" Text=".json"
+                                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                           FontSize="11" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
                                         <Button Style="{StaticResource PrimaryButton}" Command="{Binding ImportCommand}"
-                                                Padding="10,7" FontSize="11" Content="⇧ Importar" />
+                                                Padding="12,7" FontSize="11" FontWeight="SemiBold">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="M 1,6 L 6,1 L 11,6 M 6,1 L 6,11 M 2,12 L 2,14 L 10,14 L 10,12"
+                                                      Stroke="White" StrokeThickness="1.4"
+                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                      Width="12" Height="14" Stretch="Uniform" Margin="0,0,5,0" />
+                                                <TextBlock Text="Importar" Foreground="White" FontSize="11"
+                                                           FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
                                     </StackPanel>
                                 </Grid>
-                                <Border Height="1" Background="{StaticResource DividerBrush}" Margin="0,10,0,9" />
+                                <Border Height="1" Background="{StaticResource DividerBrush}" Margin="0,10,0,10" />
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding SectionCount}" Style="{StaticResource MonoText}"
-                                               FontSize="14" FontWeight="SemiBold" />
-                                    <TextBlock Text=" trechos" Foreground="{StaticResource LabelBrush}" FontSize="11"
-                                               VerticalAlignment="Bottom" Margin="2,0,0,1" />
-                                    <TextBlock Text="·" Foreground="{StaticResource VeryMutedBrush}" Margin="12,0" />
+                                               FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock Text=" trechos" Foreground="{StaticResource LabelBrush}"
+                                               FontSize="14" VerticalAlignment="Center" Margin="2,1,0,0" />
+                                    <TextBlock Text="·" Foreground="{StaticResource VeryMutedBrush}"
+                                               FontSize="14" Margin="16,0" VerticalAlignment="Center" />
                                     <TextBlock Text="{Binding OccurrenceCount}" Style="{StaticResource MonoText}"
-                                               FontSize="14" FontWeight="SemiBold" />
-                                    <TextBlock Text=" ocorrências" Foreground="{StaticResource LabelBrush}" FontSize="11"
-                                               VerticalAlignment="Bottom" Margin="2,0,0,1" />
+                                               FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock Text=" ocorrências" Foreground="{StaticResource LabelBrush}"
+                                               FontSize="14" VerticalAlignment="Center" Margin="2,1,0,0" />
                                 </StackPanel>
                             </StackPanel>
                         </Border>
 
-                        <Grid Margin="12,7,12,5">
-                            <TextBlock Text="TRECHOS" Style="{StaticResource SectionLabel}" VerticalAlignment="Center" />
-                            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                                <Border Visibility="{Binding AssociatedCountVisibility}"
-                                        Background="#1A22C55E" BorderBrush="#3322C55E" BorderThickness="1"
-                                        CornerRadius="999" Padding="6,1" Margin="3,0">
+                        <Grid Margin="12,10,12,0" Height="30">
+                            <TextBlock Text="TRECHOS" Style="{StaticResource SectionLabel}"
+                                       FontSize="12" VerticalAlignment="Center" />
+                            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal"
+                                        VerticalAlignment="Center">
+                                <Border Style="{StaticResource CountBadge}"
+                                        Visibility="{Binding AssociatedCountVisibility}"
+                                        Background="#1F22C55E" BorderBrush="#4022C55E">
                                     <TextBlock Text="{Binding AssociatedCount}" Style="{StaticResource MonoText}"
-                                               FontSize="10" Foreground="{StaticResource SuccessBrush}" />
+                                               FontSize="9" Foreground="#22C55E" />
                                 </Border>
-                                <Border Visibility="{Binding PendingCountVisibility}"
-                                        Background="#1AF59E0B" BorderBrush="#33F59E0B" BorderThickness="1"
-                                        CornerRadius="999" Padding="6,1" Margin="3,0">
+                                <Border Style="{StaticResource CountBadge}"
+                                        Visibility="{Binding PendingCountVisibility}"
+                                        Background="#1F818CF8" BorderBrush="#40818CF8">
                                     <TextBlock Text="{Binding PendingCount}" Style="{StaticResource MonoText}"
-                                               FontSize="10" Foreground="{StaticResource WarningBrush}" />
+                                               FontSize="9" Foreground="#818CF8" />
                                 </Border>
-                                <Border Visibility="{Binding AttentionCountVisibility}"
-                                        Background="#1AF97316" BorderBrush="#33F97316" BorderThickness="1"
-                                        CornerRadius="999" Padding="6,1" Margin="3,0">
+                                <Border Style="{StaticResource CountBadge}"
+                                        Visibility="{Binding AttentionCountVisibility}"
+                                        Background="#1FFB923C" BorderBrush="#40FB923C">
                                     <TextBlock Text="{Binding AttentionCount}" Style="{StaticResource MonoText}"
-                                               FontSize="10" Foreground="{StaticResource AttentionBrush}" />
+                                               FontSize="9" Foreground="#FB923C" />
                                 </Border>
-                                <Border Visibility="{Binding ErrorCountVisibility}"
-                                        Background="#1AEF4444" BorderBrush="#33EF4444" BorderThickness="1"
-                                        CornerRadius="999" Padding="6,1" Margin="3,0">
+                                <Border Style="{StaticResource CountBadge}"
+                                        Visibility="{Binding ErrorCountVisibility}"
+                                        Background="#1FF87171" BorderBrush="#40F87171">
                                     <TextBlock Text="{Binding ErrorCount}" Style="{StaticResource MonoText}"
-                                               FontSize="10" Foreground="{StaticResource ErrorBrush}" />
+                                               FontSize="9" Foreground="#F87171" />
                                 </Border>
                             </StackPanel>
                         </Grid>
@@ -125,63 +240,64 @@
                         <ListBox x:Name="SectionsList" ItemsSource="{Binding Sections}"
                                  SelectedItem="{Binding SelectedSection, Mode=TwoWay}"
                                  PreviewMouseLeftButtonUp="OpenSelectedSection"
-                                 Background="Transparent" BorderThickness="0" Foreground="{StaticResource ForegroundBrush}"
-                                 ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                            <ListBox.ItemContainerStyle>
-                                <Style TargetType="ListBoxItem">
-                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                    <Setter Property="Padding" Value="0" />
-                                    <Setter Property="Margin" Value="0" />
-                                    <Setter Property="Background" Value="Transparent" />
-                                    <Setter Property="BorderThickness" Value="0" />
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="ListBoxItem">
-                                                <Border x:Name="Chrome" Background="{TemplateBinding Background}">
-                                                    <ContentPresenter />
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Chrome" Property="Background" Value="#0D0EA5E9" />
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Style>
-                            </ListBox.ItemContainerStyle>
+                                 Background="Transparent" BorderThickness="0"
+                                 Foreground="{StaticResource ForegroundBrush}"
+                                 ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                 ItemContainerStyle="{StaticResource SectionItem}">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BorderBrush="{StaticResource SurfaceHoverBrush}" BorderThickness="0,0,0,1"
-                                            Padding="12,11">
+                                    <Border BorderBrush="#1A2840" BorderThickness="0,0,0,1"
+                                            Padding="8,16,14,16">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="10" />
+                                                <ColumnDefinition Width="13" />
                                                 <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="14" />
+                                                <ColumnDefinition Width="16" />
                                             </Grid.ColumnDefinitions>
-                                            <Ellipse Width="7" Height="7" Fill="{Binding StatusBrush}"
-                                                     VerticalAlignment="Center" HorizontalAlignment="Left" />
-                                            <StackPanel Grid.Column="1" Margin="7,0,7,0">
-                                                <Grid>
-                                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" />
-                                                    <Border HorizontalAlignment="Right" Background="{Binding StatusBackground}"
+                                            <Ellipse Width="9" Height="9" Fill="{Binding StatusBrush}"
+                                                     VerticalAlignment="Center" HorizontalAlignment="Left">
+                                                <Ellipse.Effect>
+                                                    <DropShadowEffect Color="{Binding StatusColor}"
+                                                                      BlurRadius="6" ShadowDepth="0" Opacity="0.60" />
+                                                </Ellipse.Effect>
+                                            </Ellipse>
+                                            <StackPanel Grid.Column="1" Margin="4,0,10,0">
+                                                <Grid Margin="0,0,0,6">
+                                                    <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="Bold"
+                                                               TextTrimming="CharacterEllipsis" Margin="0,0,82,0" />
+                                                    <Border HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                            Background="{Binding StatusBackground}"
                                                             BorderBrush="{Binding StatusBorder}" BorderThickness="1"
                                                             CornerRadius="999" Padding="8,2">
-                                                        <TextBlock Text="{Binding StatusLabel}" Style="{StaticResource StatusBadgeText}"
+                                                        <TextBlock Text="{Binding StatusLabel}"
+                                                                   Style="{StaticResource StatusBadgeText}"
                                                                    Foreground="{Binding StatusBrush}" />
                                                     </Border>
                                                 </Grid>
-                                                <TextBlock Style="{StaticResource MonoText}" FontSize="11"
-                                                           Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0">
-                                                    <Run Text="{Binding Route, Mode=OneWay}"/><Run Text="  ·  "/><Run Text="{Binding Diameter, Mode=OneWay}"/>
+                                                <TextBlock Style="{StaticResource MonoText}" FontSize="13"
+                                                           Foreground="{StaticResource LabelBrush}" Margin="0,0,0,5"
+                                                           TextTrimming="CharacterEllipsis">
+                                                    <Run Text="{Binding Route, Mode=OneWay}" />
+                                                    <Run Text="  ·  " />
+                                                    <Run Text="{Binding Diameter, Mode=OneWay}" />
                                                 </TextBlock>
-                                                <TextBlock Text="{Binding OccurrenceAttentionSummary}"
-                                                           FontSize="11" Foreground="{StaticResource MutedBrush}"
-                                                           Margin="0,3,0,0" />
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding OccurrenceSummary}" FontSize="13"
+                                                               Foreground="{StaticResource MutedBrush}" />
+                                                    <StackPanel Orientation="Horizontal" Margin="10,0,0,0"
+                                                                Visibility="{Binding SeverityAttentionVisibility}">
+                                                        <Ellipse Width="5" Height="5" Fill="#FB923C"
+                                                                 VerticalAlignment="Center" Margin="0,0,5,0" />
+                                                        <TextBlock Text="{Binding SeverityAttentionSummary}"
+                                                                   FontSize="13" Foreground="#FB923C" />
+                                                    </StackPanel>
+                                                </StackPanel>
                                             </StackPanel>
-                                            <TextBlock Grid.Column="2" Text="›" Foreground="{StaticResource VeryMutedBrush}"
-                                                       FontSize="19" VerticalAlignment="Center" />
+                                            <Path Grid.Column="2" Data="M 2,1 L 7,6 L 2,11"
+                                                  Stroke="{StaticResource VeryMutedBrush}" StrokeThickness="2.2"
+                                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                  Width="8" Height="12" Stretch="Uniform"
+                                                  VerticalAlignment="Center" HorizontalAlignment="Right" />
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
@@ -193,82 +309,123 @@
 
             <Grid x:Name="DetailState" Visibility="Collapsed">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="38" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <Button Style="{StaticResource GhostButton}" Click="BackToSections"
-                        HorizontalContentAlignment="Left" Padding="12,9"
-                        BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1"
-                        Content="‹  Voltar aos trechos" />
+                <Button Style="{StaticResource BackButton}" Click="BackToSections">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="M 7,1 L 2,6 L 7,11"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              Width="8" Height="12" Stretch="Uniform" Margin="0,0,6,0" />
+                        <TextBlock Text="Voltar aos trechos"
+                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                   FontSize="13" />
+                    </StackPanel>
+                </Button>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="12,14">
-                        <Border Style="{StaticResource Card}">
+                    <StackPanel Margin="12,14,12,12">
+                        <Border Style="{StaticResource Card}" Padding="13">
                             <StackPanel>
-                                <Grid Margin="0,0,0,10">
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding SelectedSection.Name}" FontSize="15" FontWeight="Bold" />
-                                        <TextBlock Text="{Binding SelectedSection.Route}" Style="{StaticResource MonoText}"
-                                                   Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,3,0,0" />
+                                <Grid Margin="0,0,0,12">
+                                    <StackPanel Margin="0,0,88,0">
+                                        <TextBlock Text="{Binding SelectedSection.Name}"
+                                                   FontSize="16" FontWeight="Bold"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding SelectedSection.Route}"
+                                                   Style="{StaticResource MonoText}"
+                                                   Foreground="{StaticResource MutedBrush}"
+                                                   FontSize="14" Margin="0,3,0,0"
+                                                   TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                     <Border HorizontalAlignment="Right" VerticalAlignment="Top"
                                             Background="{Binding SelectedSection.StatusBackground}"
-                                            BorderBrush="{Binding SelectedSection.StatusBorder}" BorderThickness="1"
-                                            CornerRadius="999" Padding="8,2">
+                                            BorderBrush="{Binding SelectedSection.StatusBorder}"
+                                            BorderThickness="1" CornerRadius="999" Padding="8,2">
                                         <TextBlock Text="{Binding SelectedSection.StatusLabel}"
                                                    Style="{StaticResource StatusBadgeText}"
                                                    Foreground="{Binding SelectedSection.StatusBrush}" />
                                     </Border>
                                 </Grid>
                                 <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
-                                    <StackPanel Margin="0,0,8,10">
-                                        <TextBlock Text="DIÂMETRO" Style="{StaticResource SectionLabel}" Foreground="{StaticResource VeryMutedBrush}" />
-                                        <TextBlock Text="{Binding SelectedSection.Diameter}" Foreground="{StaticResource ForegroundSecondaryBrush}"
-                                                   FontSize="13" FontWeight="Medium" Margin="0,2,0,0" />
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                    </Grid.RowDefinitions>
+                                    <StackPanel Margin="0,0,8,8">
+                                        <TextBlock Text="DIÂMETRO" Style="{StaticResource SectionLabel}"
+                                                   FontSize="9" Foreground="{StaticResource VeryMutedBrush}" />
+                                        <TextBlock Text="{Binding SelectedSection.Diameter}"
+                                                   Foreground="{StaticResource ForegroundSecondaryBrush}"
+                                                   FontSize="14" FontWeight="Medium" Margin="0,2,0,0" />
                                     </StackPanel>
-                                    <StackPanel Grid.Column="1" Margin="8,0,0,10">
-                                        <TextBlock Text="COMPRIMENTO" Style="{StaticResource SectionLabel}" Foreground="{StaticResource VeryMutedBrush}" />
-                                        <TextBlock Text="{Binding SelectedSection.CadLength}" Foreground="{StaticResource ForegroundSecondaryBrush}"
-                                                   FontSize="13" FontWeight="Medium" Margin="0,2,0,0" />
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,8">
+                                        <TextBlock Text="COMPRIMENTO" Style="{StaticResource SectionLabel}"
+                                                   FontSize="9" Foreground="{StaticResource VeryMutedBrush}" />
+                                        <TextBlock Text="{Binding SelectedSection.CadLength}"
+                                                   Foreground="{StaticResource ForegroundSecondaryBrush}"
+                                                   FontSize="14" FontWeight="Medium" Margin="0,2,0,0" />
                                     </StackPanel>
                                     <StackPanel Grid.Row="1" Margin="0,0,8,0">
-                                        <TextBlock Text="DIREÇÃO" Style="{StaticResource SectionLabel}" Foreground="{StaticResource VeryMutedBrush}" />
-                                        <TextBlock Text="{Binding SelectedSection.Direction}" Foreground="{StaticResource ForegroundSecondaryBrush}"
-                                                   FontSize="13" FontWeight="Medium" Margin="0,2,0,0" />
+                                        <TextBlock Text="DIRECTION" Style="{StaticResource SectionLabel}"
+                                                   FontSize="9" Foreground="{StaticResource VeryMutedBrush}" />
+                                        <TextBlock Text="{Binding SelectedSection.Direction}"
+                                                   Foreground="{StaticResource ForegroundSecondaryBrush}"
+                                                   FontSize="14" FontWeight="Medium" Margin="0,2,0,0" />
                                     </StackPanel>
                                     <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,0">
-                                        <TextBlock Text="OCORRÊNCIAS" Style="{StaticResource SectionLabel}" Foreground="{StaticResource VeryMutedBrush}" />
-                                        <TextBlock Text="{Binding SelectedSection.OccurrenceSummary}" Foreground="{StaticResource ForegroundSecondaryBrush}"
-                                                   FontSize="13" FontWeight="Medium" Margin="0,2,0,0" />
+                                        <TextBlock Text="OCORRÊNCIAS" Style="{StaticResource SectionLabel}"
+                                                   FontSize="9" Foreground="{StaticResource VeryMutedBrush}" />
+                                        <TextBlock Text="{Binding SelectedSection.OccurrenceSummary}"
+                                                   Foreground="{StaticResource ForegroundSecondaryBrush}"
+                                                   FontSize="14" FontWeight="Medium" Margin="0,2,0,0" />
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
                         </Border>
 
                         <Border Visibility="{Binding SelectedSection.AlertVisibility}"
-                                Background="{Binding SelectedSection.StatusBackground}"
-                                BorderBrush="{Binding SelectedSection.StatusBorder}" BorderThickness="1"
-                                CornerRadius="8" Padding="12,9" Margin="0,10,0,12">
-                            <TextBlock Text="{Binding SelectedSection.AlertMessage}"
-                                       Foreground="{Binding SelectedSection.StatusBrush}" FontSize="12" />
+                                Background="{Binding SelectedSection.AlertBackground}"
+                                BorderBrush="{Binding SelectedSection.AlertBorder}"
+                                BorderThickness="1" CornerRadius="8"
+                                Padding="12,9" Margin="0,12,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="16" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding SelectedSection.AlertIcon}"
+                                           Foreground="{Binding SelectedSection.AlertBrush}"
+                                           FontSize="13" FontWeight="Bold" VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="1" Text="{Binding SelectedSection.AlertMessage}"
+                                           Foreground="{Binding SelectedSection.AlertBrush}"
+                                           FontSize="13" LineHeight="19.5" />
+                            </Grid>
                         </Border>
 
-                        <Grid Margin="0,0,0,7">
-                            <TextBlock Text="OCORRÊNCIAS" Style="{StaticResource SectionLabel}" />
+                        <Grid Margin="0,12,0,8">
+                            <TextBlock Text="OCORRÊNCIAS" Style="{StaticResource SectionLabel}"
+                                       FontSize="12" VerticalAlignment="Center" />
                             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                                <Border Background="#1A22C55E" BorderBrush="#3322C55E" BorderThickness="1"
-                                        CornerRadius="999" Padding="6,1" Margin="3,0">
-                                    <TextBlock Style="{StaticResource StatusBadgeText}" Foreground="{StaticResource SuccessBrush}">
-                                        <Run Text="{Binding SelectedSection.PositionedOccurrences, Mode=OneWay}"/><Run Text=" ok"/>
+                                <Border Style="{StaticResource CountBadge}"
+                                        Background="#1A22C55E" BorderBrush="#2E22C55E">
+                                    <TextBlock Style="{StaticResource StatusBadgeText}" Foreground="#22C55E">
+                                        <Run Text="{Binding SelectedSection.PositionedOccurrences, Mode=OneWay}" />
+                                        <Run Text=" ok" />
                                     </TextBlock>
                                 </Border>
-                                <Border Background="#1AF97316" BorderBrush="#33F97316" BorderThickness="1"
-                                        CornerRadius="999" Padding="6,1" Margin="3,0">
-                                    <TextBlock Style="{StaticResource StatusBadgeText}" Foreground="{StaticResource AttentionBrush}">
-                                        <Run Text="{Binding SelectedSection.AttentionOccurrences, Mode=OneWay}"/><Run Text=" atenção"/>
+                                <Border Style="{StaticResource CountBadge}"
+                                        Visibility="{Binding SelectedSection.SeverityAttentionVisibility}"
+                                        Background="#1AFB923C" BorderBrush="#2EFB923C">
+                                    <TextBlock Style="{StaticResource StatusBadgeText}" Foreground="#FB923C">
+                                        <Run Text="{Binding SelectedSection.SeverityAttentionCount, Mode=OneWay}" />
+                                        <Run Text=" atenção" />
                                     </TextBlock>
                                 </Border>
                             </StackPanel>
@@ -277,18 +434,32 @@
                         <ItemsControl ItemsSource="{Binding SelectedSection.Occurrences}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Style="{StaticResource OccurrenceCard}">
-                                        <StackPanel>
-                                            <Grid Margin="0,0,0,4">
-                                                <TextBlock Text="{Binding Position}" Style="{StaticResource MonoText}"
-                                                           Foreground="{StaticResource AccentBrush}" FontSize="12" FontWeight="SemiBold" />
-                                                <TextBlock Text="{Binding Code}" HorizontalAlignment="Right"
-                                                           Style="{StaticResource MonoText}" Foreground="{StaticResource MutedBrush}"
-                                                           FontSize="10" />
-                                            </Grid>
-                                            <TextBlock Text="{Binding Description}" Foreground="{StaticResource LabelBrush}"
-                                                       FontSize="12" LineHeight="18" />
-                                        </StackPanel>
+                                    <Border Background="{StaticResource SurfaceBrush}"
+                                            BorderBrush="{Binding CardBorderBrush}"
+                                            BorderThickness="1" CornerRadius="8"
+                                            Margin="0,0,0,6" ClipToBounds="True">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="3" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Background="{Binding CardAccentBrush}" />
+                                            <StackPanel Grid.Column="1" Margin="9,10,12,10">
+                                                <Grid Margin="0,0,0,4">
+                                                    <TextBlock Text="{Binding Position}"
+                                                               Style="{StaticResource MonoText}"
+                                                               Foreground="{StaticResource AccentBrush}"
+                                                               FontSize="13" FontWeight="SemiBold" />
+                                                    <TextBlock Text="{Binding Code}" HorizontalAlignment="Right"
+                                                               Style="{StaticResource MonoText}"
+                                                               Foreground="{StaticResource MutedBrush}"
+                                                               FontSize="12" />
+                                                </Grid>
+                                                <TextBlock Text="{Binding Description}"
+                                                           Foreground="{Binding DescriptionBrush}"
+                                                           FontSize="12" LineHeight="18" />
+                                            </StackPanel>
+                                        </Grid>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -296,39 +467,74 @@
 
                         <Border Style="{StaticResource Card}"
                                 Visibility="{Binding SelectedSection.OccurrencesEmptyVisibility}"
-                                Padding="12,24">
-                            <TextBlock Text="Nenhuma ocorrência neste trecho."
+                                Padding="12,24" CornerRadius="8">
+                            <TextBlock Text="Nenhuma ocorrência registrada."
                                        Foreground="{StaticResource VeryMutedBrush}"
-                                       TextAlignment="Center" />
+                                       FontSize="13" TextAlignment="Center" />
                         </Border>
 
                         <Grid Margin="0,6,0,0">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="10,9">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Style="{StaticResource Card}"
+                                    Padding="12,9" CornerRadius="7">
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding SelectedSection.PositionedOccurrences}" Style="{StaticResource MonoText}"
-                                               Foreground="{StaticResource SuccessBrush}" FontSize="18" FontWeight="Bold" />
-                                    <TextBlock Text="posicionadas" Foreground="{StaticResource MutedBrush}" FontSize="10" />
+                                    <TextBlock Text="{Binding SelectedSection.PositionedOccurrences}"
+                                               Style="{StaticResource MonoText}"
+                                               Foreground="{StaticResource SuccessBrush}"
+                                               FontSize="18" FontWeight="Bold" />
+                                    <TextBlock Text="posicionadas" Foreground="{StaticResource MutedBrush}"
+                                               FontSize="10" Margin="0,2,0,0" />
                                 </StackPanel>
                             </Border>
-                            <Border Grid.Column="2" Style="{StaticResource Card}" Padding="10,9"
-                                    BorderBrush="{Binding SelectedSection.StatusBorder}">
+                            <Border Grid.Column="2" Style="{StaticResource Card}"
+                                    Padding="12,9" CornerRadius="7"
+                                    BorderBrush="{Binding SelectedSection.AttentionMetricBorder}">
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding SelectedSection.AttentionOccurrences}" Style="{StaticResource MonoText}"
-                                               Foreground="{StaticResource AttentionBrush}" FontSize="18" FontWeight="Bold" />
-                                    <TextBlock Text="requer atenção" Foreground="{StaticResource MutedBrush}" FontSize="10" />
+                                    <TextBlock Text="{Binding SelectedSection.SeverityAttentionCount}"
+                                               Style="{StaticResource MonoText}"
+                                               Foreground="{Binding SelectedSection.AttentionMetricBrush}"
+                                               FontSize="18" FontWeight="Bold" />
+                                    <TextBlock Text="requer atenção" Foreground="{StaticResource MutedBrush}"
+                                               FontSize="10" Margin="0,2,0,0" />
                                 </StackPanel>
                             </Border>
                         </Grid>
                     </StackPanel>
                 </ScrollViewer>
+
                 <Border Grid.Row="2" Background="{StaticResource BackgroundBrush}"
-                        BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,1,0,0" Padding="12,10">
+                        BorderBrush="{StaticResource DividerBrush}"
+                        BorderThickness="0,1,0,0" Padding="12,10">
                     <StackPanel>
-                        <Button Style="{StaticResource SecondaryButton}" Command="{Binding AssociateCommand}"
-                                Content="⌖  Associar geometria" />
+                        <Button Style="{StaticResource SecondaryButton}"
+                                Command="{Binding AssociateCommand}" Padding="9">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="M 7,14 C 7,14 2,9 2,6 C 2,3.2 4.2,1 7,1 C 9.8,1 12,3.2 12,6 C 12,9 7,14 7,14 Z M 7,4 A 2,2 0 1 0 7,8 A 2,2 0 1 0 7,4"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Fill="Transparent" StrokeThickness="1.3" Width="14" Height="14"
+                                      Stretch="Uniform" Margin="0,0,7,0" />
+                                <TextBlock Text="Associar geometria"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                           FontSize="13" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
                         <Button Style="{StaticResource PrimaryButton}" Command="{Binding CommitCommand}"
-                                Margin="0,7,0,0" Content="⌁  GERAR NO DESENHO" />
+                                Margin="0,7,0,0" Padding="10">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="M 1,8 L 4,8 L 6,3 L 9,13 L 12,6 L 14,8 L 17,8"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      StrokeThickness="1.6" StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                      Width="17" Height="14" Stretch="Uniform" Margin="0,0,7,0" />
+                                <TextBlock Text="GERAR NO DESENHO"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                           FontSize="14" FontWeight="Bold" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </Border>
             </Grid>
