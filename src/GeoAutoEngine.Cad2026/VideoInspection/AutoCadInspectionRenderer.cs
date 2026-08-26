@@ -28,15 +28,18 @@ public sealed record AutoCadInspectionCommitResult(
 public sealed class AutoCadInspectionRenderer
 {
     public const string RegisteredApplicationName = "GEOAUTOENGINE_VI";
-    public const string EventLayerName = "GF-Rede Pluvial";
+    public const string EventLayerName = "GF-Chamado-Estaqueamento";
     public const string EventTextStyleName = "GEO_ARIAL";
-    private const short MarkerColorIndex = 1;
-    private const short LeaderColorIndex = 2;
-    private const short TextColorIndex = 3;
+    private const short EventLayerColorIndex = 2;
+    private const short ByLayerColorIndex = 256;
     private const string MarkerComponent = "MARKER";
     private const string LeaderComponent = "LEADER";
     private const string TextComponent = "TEXT";
+    private const string SectionNameComponent = "SECTION_NAME";
+    private const string SectionDiameterComponent = "SECTION_DIAMETER";
     private const double TextHeight = InspectionCalloutLayoutEngine.TextHeight;
+    private const double SectionIdentificationOffset = 0.45;
+    private const double GeometryTolerance = 1e-9;
 
     public AutoCadInspectionCommitResult Commit(
         Document document,
@@ -69,7 +72,7 @@ public sealed class AutoCadInspectionRenderer
                 document.Database,
                 transaction,
                 EventLayerName,
-                TextColorIndex);
+                EventLayerColorIndex);
             var eventTextStyleId = EnsureArialTextStyle(document.Database, transaction);
             var blockTable = (BlockTable)transaction.GetObject(
                 document.Database.BlockTableId,
@@ -194,6 +197,18 @@ public sealed class AutoCadInspectionRenderer
                 }
             }
 
+            UpsertSectionIdentification(
+                document.Database,
+                modelSpace,
+                polyline!,
+                session,
+                section,
+                existing,
+                desiredKeys,
+                eventLayerId,
+                eventTextStyleId,
+                transaction);
+
             EraseStaleManagedEntities(
                 existing,
                 desiredKeys,
@@ -261,19 +276,28 @@ public sealed class AutoCadInspectionRenderer
         short colorIndex)
     {
         var table = (LayerTable)transaction.GetObject(database.LayerTableId, OpenMode.ForRead);
+        LayerTableRecord record;
         if (table.Has(name))
         {
-            return table[name];
+            record = (LayerTableRecord)transaction.GetObject(table[name], OpenMode.ForWrite);
+        }
+        else
+        {
+            table.UpgradeOpen();
+            record = new LayerTableRecord { Name = name };
+            table.Add(record);
+            transaction.AddNewlyCreatedDBObject(record, true);
         }
 
-        table.UpgradeOpen();
-        var record = new LayerTableRecord
+        record.Color = Color.FromColorIndex(ColorMethod.ByAci, colorIndex);
+        var linetypes = (LinetypeTable)transaction.GetObject(
+            database.LinetypeTableId,
+            OpenMode.ForRead);
+        if (linetypes.Has("Continuous"))
         {
-            Name = name,
-            Color = Color.FromColorIndex(ColorMethod.ByAci, colorIndex),
-        };
-        table.Add(record);
-        transaction.AddNewlyCreatedDBObject(record, true);
+            record.LinetypeObjectId = linetypes["Continuous"];
+        }
+
         return record.ObjectId;
     }
 
@@ -455,13 +479,101 @@ public sealed class AutoCadInspectionRenderer
         return null;
     }
 
+    private static void UpsertSectionIdentification(
+        Database database,
+        BlockTableRecord modelSpace,
+        Polyline polyline,
+        VideoInspectionSession session,
+        InspectionSectionSession section,
+        IReadOnlyDictionary<string, IReadOnlyList<ObjectId>> existing,
+        ISet<string> desiredKeys,
+        ObjectId layerId,
+        ObjectId textStyleId,
+        Transaction transaction)
+    {
+        var identification = InspectionAnnotationPlanner.CreateSectionIdentification(section);
+        var centerDistance = polyline.Length / 2.0;
+        var center = polyline.GetPointAtDist(centerDistance);
+        var tangent = polyline.GetFirstDerivative(center);
+        var planarLength = Math.Sqrt(tangent.X * tangent.X + tangent.Y * tangent.Y);
+        var normal = planarLength <= GeometryTolerance
+            ? Vector3d.YAxis
+            : new Vector3d(-tangent.Y / planarLength, tangent.X / planarLength, 0);
+        if (normal.Y < -GeometryTolerance ||
+            Math.Abs(normal.Y) <= GeometryTolerance && normal.X < 0)
+        {
+            normal = -normal;
+        }
+
+        UpsertSectionText(
+            database,
+            modelSpace,
+            session,
+            section,
+            existing,
+            desiredKeys,
+            SectionNameComponent,
+            identification.SectionLine,
+            center + normal * SectionIdentificationOffset,
+            layerId,
+            textStyleId,
+            transaction);
+        UpsertSectionText(
+            database,
+            modelSpace,
+            session,
+            section,
+            existing,
+            desiredKeys,
+            SectionDiameterComponent,
+            identification.DiameterLine,
+            center - normal * SectionIdentificationOffset,
+            layerId,
+            textStyleId,
+            transaction);
+    }
+
+    private static void UpsertSectionText(
+        Database database,
+        BlockTableRecord modelSpace,
+        VideoInspectionSession session,
+        InspectionSectionSession section,
+        IReadOnlyDictionary<string, IReadOnlyList<ObjectId>> existing,
+        ISet<string> desiredKeys,
+        string component,
+        string contents,
+        Point3d location,
+        ObjectId layerId,
+        ObjectId textStyleId,
+        Transaction transaction)
+    {
+        var stableKey = SectionStableKey(session.ReportId, section.SectionId, component);
+        desiredKeys.Add(stableKey);
+        existing.TryGetValue(stableKey, out var managedEntities);
+        var text = ExistingEntity<MText>(managedEntities, component, transaction);
+        if (text is null)
+        {
+            text = new MText();
+            text.SetDatabaseDefaults(database);
+            modelSpace.AppendEntity(text);
+            transaction.AddNewlyCreatedDBObject(text, true);
+        }
+
+        ApplySectionText(text, location, contents, layerId, textStyleId);
+        SetSectionMetadata(text, session, section, stableKey, component);
+        EraseExcept(managedEntities, new HashSet<ObjectId> { text.ObjectId }, transaction);
+    }
+
+    private static string SectionStableKey(Guid reportId, Guid sectionId, string component) =>
+        $"VI:{reportId:D}:{sectionId:D}:SECTION:{component}";
+
     private static void ApplyMarker(
         Circle marker,
         Point3d anchor,
         ObjectId layerId)
     {
         marker.LayerId = layerId;
-        marker.ColorIndex = MarkerColorIndex;
+        marker.ColorIndex = ByLayerColorIndex;
         marker.Center = anchor;
         marker.Normal = Vector3d.ZAxis;
         marker.Radius = InspectionCalloutLayoutEngine.MarkerRadius;
@@ -474,7 +586,7 @@ public sealed class AutoCadInspectionRenderer
         ObjectId layerId)
     {
         leader.LayerId = layerId;
-        leader.ColorIndex = LeaderColorIndex;
+        leader.ColorIndex = ByLayerColorIndex;
         leader.StartPoint = anchor;
         leader.EndPoint = leaderEndPoint;
     }
@@ -488,7 +600,7 @@ public sealed class AutoCadInspectionRenderer
         ObjectId textStyleId)
     {
         text.LayerId = layerId;
-        text.ColorIndex = TextColorIndex;
+        text.ColorIndex = ByLayerColorIndex;
         text.Contents = MTextContents(call);
         text.Location = textPoint;
         text.TextHeight = TextHeight;
@@ -497,6 +609,23 @@ public sealed class AutoCadInspectionRenderer
         text.Attachment = placement.AttachAtRightEdge
             ? AttachmentPoint.MiddleRight
             : AttachmentPoint.MiddleLeft;
+    }
+
+    private static void ApplySectionText(
+        MText text,
+        Point3d location,
+        string contents,
+        ObjectId layerId,
+        ObjectId textStyleId)
+    {
+        text.LayerId = layerId;
+        text.ColorIndex = ByLayerColorIndex;
+        text.Contents = EscapeMText(contents);
+        text.Location = location;
+        text.TextHeight = TextHeight;
+        text.TextStyleId = textStyleId;
+        text.Rotation = 0;
+        text.Attachment = AttachmentPoint.MiddleCenter;
     }
 
     private static Point3d RelativePoint(
@@ -542,6 +671,24 @@ public sealed class AutoCadInspectionRenderer
             Value("CAD_DISTANCE", call.Anchor.CadDistance.ToString(
                 "R",
                 System.Globalization.CultureInfo.InvariantCulture)),
+            Value("COMPONENT", component),
+            Value("STABLE_KEY", stableKey));
+        entity.XData = data;
+    }
+
+    private static void SetSectionMetadata(
+        Entity entity,
+        VideoInspectionSession session,
+        InspectionSectionSession section,
+        string stableKey,
+        string component)
+    {
+        using var data = new ResultBuffer(
+            new TypedValue((int)DxfCode.ExtendedDataRegAppName, RegisteredApplicationName),
+            Value("SCHEMA_VERSION", InspectionExchangeSchema.CurrentVersion.ToString(
+                System.Globalization.CultureInfo.InvariantCulture)),
+            Value("REPORT_ID", session.ReportId.ToString("D")),
+            Value("SECTION_ID", section.SectionId.ToString("D")),
             Value("COMPONENT", component),
             Value("STABLE_KEY", stableKey));
         entity.XData = data;
