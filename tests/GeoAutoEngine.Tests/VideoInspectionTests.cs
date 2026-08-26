@@ -268,10 +268,68 @@ public sealed class InspectionAnnotationPlannerTests
         Assert.Equal(4, calls.Count);
         Assert.Equal("12,00 m", calls[0].LocationLine);
         Assert.Equal("INFILTRAÇÃO", calls[0].Cause);
-        Assert.Equal("12,00 m – 40,00 m", calls[1].LocationLine);
+        Assert.Equal("12,00 m\n40,00 m", calls[1].LocationLine);
         Assert.Equal("A PARTIR DE 50,00 m", calls[2].LocationLine);
-        Assert.Equal("TODO O TRECHO", calls[3].LocationLine);
+        Assert.Equal("AO LONGO DE TODA A FILMAGEM", calls[3].LocationLine);
         Assert.Equal(0.3, calls[3].Anchor.CadDistance, 8);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void DescriptionOmitsFilmingDistanceAlreadyShownByTheCallout()
+    {
+        var range = Event(
+            InspectionLocationMode.Range,
+            "Fissura na lateral da tubulação entre 9 e 11 metros do início da filmagem",
+            Location(0, 9, PositionedLocationRole.Start),
+            Location(1, 11, PositionedLocationRole.End));
+
+        var call = Assert.Single(InspectionAnnotationPlanner.Create([range]));
+
+        Assert.Equal("FISSURA NA LATERAL DA TUBULAÇÃO", call.Cause);
+        Assert.Equal(
+            ["9,00 m", "11,00 m", "FISSURA NA LATERAL DA TUBULAÇÃO"],
+            InspectionCalloutLayoutEngine.FormatTextLines(call));
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void EntireSectionUsesFilmingLabelAndKeepsOnlyTechnicalSummaryBelowIt()
+    {
+        var entire = Event(
+            InspectionLocationMode.EntireSection,
+            "Deslocamento das juntas ao longo de toda a filmagem",
+            Location(0, 0, PositionedLocationRole.Start, cadDistance: 0.3));
+
+        var call = Assert.Single(InspectionAnnotationPlanner.Create([entire]));
+
+        Assert.Equal("AO LONGO DE TODA A FILMAGEM", call.LocationLine);
+        Assert.Equal("DESLOCAMENTO DAS JUNTAS", call.Cause);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void SectionIdentificationUsesSequentialTitleAndDiameterSymbol()
+    {
+        var section = new InspectionSectionSession(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Local",
+            "Nome de campo",
+            null,
+            800m,
+            null,
+            null,
+            null,
+            10m,
+            2,
+            [],
+            []);
+
+        var identification = InspectionAnnotationPlanner.CreateSectionIdentification(section);
+
+        Assert.Equal("TRECHO 03", identification.SectionLine);
+        Assert.Equal("Ø800", identification.DiameterLine);
     }
 
     [Fact]
@@ -441,9 +499,9 @@ public sealed class InspectionCalloutLayoutEngineTests
     [Trait("Category", "FAST")]
     public void VisualConfigurationKeepsMarkerAndSpacingCentralized()
     {
-        Assert.Equal(0.18, InspectionCalloutLayoutEngine.MarkerRadius, 8);
+        Assert.Equal(0.30, InspectionCalloutLayoutEngine.MarkerRadius, 8);
+        Assert.Equal(5.00, InspectionCalloutLayoutEngine.BaseCalloutLength, 8);
         Assert.Equal(0.15, InspectionCalloutLayoutEngine.TextGap, 8);
-        Assert.True(InspectionCalloutLayoutEngine.BaseCalloutLength > 0);
         Assert.True(InspectionCalloutLayoutEngine.LevelSpacing > 0);
     }
 
