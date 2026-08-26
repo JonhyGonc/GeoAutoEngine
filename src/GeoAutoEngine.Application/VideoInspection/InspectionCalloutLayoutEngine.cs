@@ -105,10 +105,28 @@ public static class InspectionCalloutLayoutEngine
     {
         ArgumentNullException.ThrowIfNull(call);
         var lines = new List<string>();
-        lines.AddRange(call.LocationLine
-            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => line.Trim()));
-        lines.AddRange(WrapWords(call.Cause, MaxCharactersPerLine));
+        if (call.IsFilmingStart)
+        {
+            lines.Add("INICIO:");
+        }
+
+        if (call.IsFilmingEnd)
+        {
+            lines.Add("FIM:");
+        }
+
+        if (!string.IsNullOrWhiteSpace(call.LocationLine))
+        {
+            lines.AddRange(call.LocationLine
+                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+                .Select(line => line.Trim()));
+        }
+
+        if (!string.IsNullOrWhiteSpace(call.Cause))
+        {
+            lines.AddRange(WrapWords(call.Cause, MaxCharactersPerLine));
+        }
+
         if (!string.IsNullOrWhiteSpace(call.PositionLine))
         {
             lines.AddRange(WrapWords(call.PositionLine!, MaxCharactersPerLine));
@@ -215,9 +233,7 @@ public static class InspectionCalloutLayoutEngine
             leaderEndPoint.X + outwardX * TextGap,
             leaderEndPoint.Y + outwardY * TextGap,
             leaderEndPoint.Z);
-        var rotation = Math.Abs(tangentY) > Math.Abs(tangentX)
-            ? NormalizeReadableRotation(Math.Atan2(tangentY, tangentX))
-            : NormalizeReadableRotation(Math.Atan2(outwardY, outwardX));
+        var rotation = NormalizeReadableRotation(Math.Atan2(outwardY, outwardX));
         var textDirectionX = Math.Cos(rotation);
         var textDirectionY = Math.Sin(rotation);
         var attachAtRightEdge = outwardX * textDirectionX + outwardY * textDirectionY < 0;

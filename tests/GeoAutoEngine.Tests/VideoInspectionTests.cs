@@ -272,8 +272,9 @@ public sealed class InspectionAnnotationPlannerTests
         Assert.Equal(12, calls[1].Anchor.InspectionDistance, 8);
         Assert.NotNull(calls[1].IntervalEnd);
         Assert.Equal(40, calls[1].IntervalEnd!.InspectionDistance, 8);
-        Assert.Equal("A PARTIR DE 50,00 m", calls[2].LocationLine);
-        Assert.Null(calls[2].IntervalEnd);
+        Assert.Equal("50,00 m\n80,00 m", calls[2].LocationLine);
+        Assert.NotNull(calls[2].IntervalEnd);
+        Assert.Equal(80, calls[2].IntervalEnd!.InspectionDistance, 8);
         Assert.Equal("AO LONGO DE TODA A FILMAGEM", calls[3].LocationLine);
         Assert.Equal(0.3, calls[3].Anchor.CadDistance, 8);
     }
@@ -309,6 +310,78 @@ public sealed class InspectionAnnotationPlannerTests
 
         Assert.Equal("AO LONGO DE TODA A FILMAGEM", call.LocationLine);
         Assert.Equal("DESLOCAMENTO DAS JUNTAS", call.Cause);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void FirstEntireSectionSharesFilmingStartAndLastOccurrenceSharesFilmingEnd()
+    {
+        var filmingStart = Location(
+            0,
+            0,
+            PositionedLocationRole.Start,
+            cadDistance: 0);
+        var entire = Event(
+            InspectionLocationMode.EntireSection,
+            "Deslocamento das juntas ao longo de toda a filmagem",
+            Location(0, 0, PositionedLocationRole.Start, cadDistance: 0.3));
+        var last = Event(
+            InspectionLocationMode.Point,
+            "Chegada ao ponto final do trecho",
+            Location(0, 17));
+
+        var calls = InspectionAnnotationPlanner.Create([entire, last], filmingStart);
+
+        Assert.Equal(2, calls.Count);
+        Assert.True(calls[0].IsFilmingStart);
+        Assert.False(calls[0].IsSyntheticStart);
+        Assert.Equal(filmingStart, calls[0].Anchor);
+        Assert.Equal(
+            ["INICIO:", "AO LONGO DE TODA A FILMAGEM", "DESLOCAMENTO DAS JUNTAS"],
+            InspectionCalloutLayoutEngine.FormatTextLines(calls[0]));
+        Assert.True(calls[1].IsFilmingEnd);
+        Assert.Equal(
+            ["FIM:", "17,00 m", "CHEGADA AO PONTO FINAL DO TRECHO"],
+            InspectionCalloutLayoutEngine.FormatTextLines(calls[1]));
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void FilmingStartIsStandaloneWithoutEntireSectionAndEndIsNotDuplicated()
+    {
+        var filmingStart = Location(
+            0,
+            0,
+            PositionedLocationRole.Start,
+            cadDistance: 80);
+        var occurrence = Event(
+            InspectionLocationMode.Point,
+            "Infiltração",
+            Location(0, 12, cadDistance: 68));
+
+        var calls = InspectionAnnotationPlanner.Create([occurrence], filmingStart);
+
+        Assert.Equal(2, calls.Count);
+        Assert.True(calls[0].IsSyntheticStart);
+        Assert.Equal(Guid.Empty, calls[0].OccurrenceId);
+        Assert.Equal(["INICIO:"], InspectionCalloutLayoutEngine.FormatTextLines(calls[0]));
+        Assert.True(calls[1].IsFilmingEnd);
+        Assert.Equal(
+            ["FIM:", "12,00 m", "INFILTRAÇÃO"],
+            InspectionCalloutLayoutEngine.FormatTextLines(calls[1]));
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void EmptyInspectionHasStartButNoFilmingEnd()
+    {
+        var filmingStart = Location(0, 0, PositionedLocationRole.Start);
+
+        var call = Assert.Single(InspectionAnnotationPlanner.Create([], filmingStart));
+
+        Assert.True(call.IsSyntheticStart);
+        Assert.False(call.IsFilmingEnd);
+        Assert.Equal(["INICIO:"], InspectionCalloutLayoutEngine.FormatTextLines(call));
     }
 
     [Fact]
@@ -448,7 +521,7 @@ public sealed class InspectionCalloutLayoutEngineTests
 
     [Fact]
     [Trait("Category", "FAST")]
-    public void CallsStayPerpendicularWhileVerticalReferenceKeepsVerticalText()
+    public void OccurrenceTextAlwaysFollowsTheFinalCalloutSegment()
     {
         var horizontal = Assert.Single(InspectionCalloutLayoutEngine.Arrange(
             [Call(0, 12.35, new LinearVector(1, 0, 0))]));
@@ -460,7 +533,7 @@ public sealed class InspectionCalloutLayoutEngineTests
         Assert.Equal(Math.PI / 2, horizontal.TextRotationRadians, 8);
         Assert.Equal(vertical.Call.Anchor.Position.Y, vertical.LeaderEndPoint.Y, 8);
         Assert.NotEqual(vertical.Call.Anchor.Position.X, vertical.LeaderEndPoint.X);
-        Assert.Equal(Math.PI / 2, vertical.TextRotationRadians, 8);
+        Assert.Equal(0, vertical.TextRotationRadians, 8);
     }
 
     [Fact]

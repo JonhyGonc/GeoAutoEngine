@@ -386,6 +386,13 @@ public sealed class ArchitectureTests
         Assert.DoesNotContain("new Line()", renderer, StringComparison.Ordinal);
         Assert.Contains("IntervalEndMarkerComponent", renderer, StringComparison.Ordinal);
         Assert.Contains("IntervalConnectorComponent", renderer, StringComparison.Ordinal);
+        Assert.Contains("CreateFilmingStart", renderer, StringComparison.Ordinal);
+        Assert.Contains(
+            "InspectionAnnotationPlanner.Create(positionedEvents, filmingStart)",
+            renderer,
+            StringComparison.Ordinal);
+        Assert.Contains(":FILMING_START\"", renderer, StringComparison.Ordinal);
+        Assert.Contains("call.IsSyntheticStart", renderer, StringComparison.Ordinal);
         Assert.Contains("UpsertSectionIdentification", renderer, StringComparison.Ordinal);
         Assert.Contains("ReadableReferenceRotation", renderer, StringComparison.Ordinal);
         Assert.Contains("SectionNameComponent", renderer, StringComparison.Ordinal);
@@ -395,6 +402,9 @@ public sealed class ArchitectureTests
         Assert.DoesNotContain("CurrentSpaceId,\n            OpenMode.ForWrite", renderer, StringComparison.Ordinal);
         Assert.Contains("pending.ObjectId.IsValid", renderer, StringComparison.Ordinal);
         Assert.Contains("TransactionCommitted", renderer, StringComparison.Ordinal);
+        Assert.Equal(
+            1,
+            renderer.Split("document.Editor.Regen()", StringSplitOptions.None).Length - 1);
     }
 
     private static string[] ProjectReferences(string projectName) =>

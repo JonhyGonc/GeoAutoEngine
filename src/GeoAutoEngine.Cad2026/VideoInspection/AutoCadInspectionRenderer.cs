@@ -55,7 +55,6 @@ public sealed class AutoCadInspectionRenderer
         ArgumentNullException.ThrowIfNull(positionedEvents);
         var association = section.Association
             ?? throw new InvalidOperationException("O trecho ainda não possui geometria associada.");
-        var calls = InspectionAnnotationPlanner.Create(positionedEvents);
         using var documentLock = document.LockDocument();
         var created = 0;
         var updated = 0;
@@ -97,6 +96,8 @@ public sealed class AutoCadInspectionRenderer
                 throw new InvalidOperationException("A geometria associada não existe mais.");
             }
 
+            var filmingStart = CreateFilmingStart(polyline!, association.Direction);
+            var calls = InspectionAnnotationPlanner.Create(positionedEvents, filmingStart);
             var existing = ReadExisting(modelSpace, transaction);
             var obstacles = ReadLayoutObstacles(
                 modelSpace,
@@ -109,12 +110,7 @@ public sealed class AutoCadInspectionRenderer
             foreach (var placement in placements)
             {
                 var call = placement.Call;
-                var stableKey = VideoInspectionStableKey.Create(
-                    session.ReportId,
-                    section.SectionId,
-                    call.OccurrenceId,
-                    call.Anchor.LocationIndex,
-                    call.Anchor.Role);
+                var stableKey = CallStableKey(session.ReportId, section.SectionId, call);
                 desiredKeys.Add(stableKey);
                 var anchor = polyline!.GetPointAtDist(call.Anchor.CadDistance);
                 var leaderStartPoint = RelativePoint(
@@ -258,6 +254,11 @@ public sealed class AutoCadInspectionRenderer
                 pendingEntities.Add((call.OccurrenceId, text.ObjectId, textCreated));
 
                 EraseExcept(managedEntities, retainedIds, transaction);
+                if (call.IsSyntheticStart)
+                {
+                    continue;
+                }
+
                 if (existed)
                 {
                     updated++;
@@ -642,6 +643,47 @@ public sealed class AutoCadInspectionRenderer
 
     private static string SectionStableKey(Guid reportId, Guid sectionId, string component) =>
         $"VI:{reportId:D}:{sectionId:D}:SECTION:{component}";
+
+    private static string CallStableKey(
+        Guid reportId,
+        Guid sectionId,
+        InspectionAnnotationCall call) => call.IsSyntheticStart
+            ? $"VI:{reportId:D}:{sectionId:D}:FILMING_START"
+            : VideoInspectionStableKey.Create(
+                reportId,
+                sectionId,
+                call.OccurrenceId,
+                call.Anchor.LocationIndex,
+                call.Anchor.Role);
+
+    private static PositionedInspectionLocation CreateFilmingStart(
+        Polyline polyline,
+        InspectionDirection direction)
+    {
+        var cadDistance = direction == InspectionDirection.Forward ? 0.0 : polyline.Length;
+        var anchor = polyline.GetPointAtDist(cadDistance);
+        var tangent = Vector3d.XAxis;
+        if (polyline.Length > GeometryTolerance)
+        {
+            var tangentDistance = direction == InspectionDirection.Forward
+                ? Math.Min(polyline.Length, 0.000001)
+                : Math.Max(0.0, polyline.Length - 0.000001);
+            var tangentPoint = polyline.GetPointAtDist(tangentDistance);
+            var derivative = polyline.GetFirstDerivative(tangentPoint);
+            if (derivative.Length > GeometryTolerance)
+            {
+                tangent = derivative;
+            }
+        }
+
+        return new PositionedInspectionLocation(
+            0,
+            PositionedLocationRole.Start,
+            0,
+            cadDistance,
+            new LinearPoint(anchor.X, anchor.Y, anchor.Z),
+            new LinearVector(tangent.X, tangent.Y, tangent.Z));
+    }
 
     private static void ApplyMarker(
         Circle marker,

@@ -10,7 +10,10 @@ public sealed record InspectionAnnotationCall(
     string LocationLine,
     string Cause,
     string? PositionLine = null,
-    PositionedInspectionLocation? IntervalEnd = null);
+    PositionedInspectionLocation? IntervalEnd = null,
+    bool IsFilmingStart = false,
+    bool IsFilmingEnd = false,
+    bool IsSyntheticStart = false);
 
 public sealed record InspectionSectionIdentification(
     string SectionLine,
@@ -27,10 +30,12 @@ public static class InspectionAnnotationPlanner
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     public static IReadOnlyList<InspectionAnnotationCall> Create(
-        IReadOnlyList<PositionedInspectionEvent> positionedEvents)
+        IReadOnlyList<PositionedInspectionEvent> positionedEvents,
+        PositionedInspectionLocation? filmingStart = null)
     {
         ArgumentNullException.ThrowIfNull(positionedEvents);
         var calls = new List<InspectionAnnotationCall>();
+        var filmingStartWasShared = false;
         foreach (var positionedEvent in positionedEvents)
         {
             if (!positionedEvent.CanCommit ||
@@ -66,23 +71,59 @@ public static class InspectionAnnotationPlanner
                         positionLine,
                         positionedEvent.Locations[1]));
                     break;
-                case InspectionLocationMode.From when positionedEvent.Locations.Count >= 1:
+                case InspectionLocationMode.From when positionedEvent.Locations.Count >= 2:
                     calls.Add(Call(
                         positionedEvent,
                         positionedEvent.Locations[0],
-                        $"A PARTIR DE {Meter(positionedEvent.Locations[0].InspectionDistance)}",
+                        $"{Meter(positionedEvent.Locations[0].InspectionDistance)}\n" +
+                        Meter(positionedEvent.Locations[1].InspectionDistance),
                         cause,
-                        positionLine));
+                        positionLine,
+                        positionedEvent.Locations[1]));
                     break;
                 case InspectionLocationMode.EntireSection when positionedEvent.Locations.Count >= 1:
+                    var sharesFilmingStart = filmingStart is not null && !filmingStartWasShared;
                     calls.Add(Call(
                         positionedEvent,
-                        positionedEvent.Locations[0],
+                        sharesFilmingStart ? filmingStart! : positionedEvent.Locations[0],
                         "AO LONGO DE TODA A FILMAGEM",
                         cause,
-                        positionLine));
+                        positionLine) with
+                    {
+                        IsFilmingStart = sharesFilmingStart,
+                    });
+                    filmingStartWasShared |= sharesFilmingStart;
                     break;
             }
+        }
+
+        if (filmingStart is null)
+        {
+            return Array.AsReadOnly(calls.ToArray());
+        }
+
+        if (calls.Count > 0)
+        {
+            calls[^1] = calls[^1] with { IsFilmingEnd = true };
+        }
+
+        var sharedStartIndex = calls.FindIndex(call => call.IsFilmingStart);
+        if (sharedStartIndex >= 0)
+        {
+            var sharedStart = calls[sharedStartIndex];
+            calls.RemoveAt(sharedStartIndex);
+            calls.Insert(0, sharedStart);
+        }
+        else
+        {
+            calls.Insert(0, new InspectionAnnotationCall(
+                Guid.Empty,
+                InspectionLocationMode.Point,
+                filmingStart,
+                string.Empty,
+                string.Empty,
+                IsFilmingStart: true,
+                IsSyntheticStart: true));
         }
 
         return Array.AsReadOnly(calls.ToArray());
