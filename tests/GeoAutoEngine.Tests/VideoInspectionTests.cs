@@ -478,6 +478,31 @@ public sealed class InspectionCalloutLayoutEngineTests
 {
     [Fact]
     [Trait("Category", "FAST")]
+    public void TwoNearbyAnomaliesTryOppositeSidesBeforeIncreasingLength()
+    {
+        var calls = new[]
+        {
+            Call(0, 5.00, new LinearVector(1, 0, 0)),
+            Call(1, 5.05, new LinearVector(1, 0, 0)),
+        };
+
+        var placements = InspectionCalloutLayoutEngine.Arrange(calls);
+
+        Assert.Equal(2, placements.Count);
+        Assert.Equal([1, -1], placements.Select(placement => placement.Side));
+        Assert.All(placements, placement =>
+        {
+            Assert.Equal(0, placement.Level);
+            Assert.Equal(0, placement.LateralSlot);
+            Assert.Equal(
+                InspectionCalloutLayoutEngine.BaseCalloutLength,
+                LeaderLength(placement),
+                8);
+        });
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
     public void NearbyAnomaliesKeepTechnicalAnchorsAndReceiveDistinctPlacements()
     {
         var calls = new[] { 5.20, 5.50, 5.85, 6.10 }
@@ -499,6 +524,59 @@ public sealed class InspectionCalloutLayoutEngineTests
         Assert.Contains(placements, item => item.Side == 1);
         Assert.Contains(placements, item => item.Side == -1);
         Assert.Contains(placements, item => item.Level > 0 || item.LateralSlot != 0);
+        Assert.All(
+            placements,
+            item => Assert.InRange(
+                LeaderLength(item),
+                InspectionCalloutLayoutEngine.BaseCalloutLength - 0.00000001,
+                InspectionCalloutLayoutEngine.MaxCalloutLength + 0.00000001));
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void DenseBlockedLayoutUsesDeterministicFallbackWithoutGrowingPastTheLimit()
+    {
+        var calls = Enumerable.Range(0, 6)
+            .Select(index => Call(
+                index,
+                5.00 + index * 0.05,
+                new LinearVector(1, 0, 0)))
+            .ToArray();
+        calls[0] = calls[0] with { IsFilmingStart = true };
+        calls[^1] = calls[^1] with { IsFilmingEnd = true };
+        var obstacles = Enumerable.Range(0, 120)
+            .SelectMany(_ => new[]
+            {
+                new InspectionLayoutObstacle(-200, 0.10, 200, 100),
+                new InspectionLayoutObstacle(-200, -100, 200, -0.10),
+            })
+            .ToArray();
+
+        var first = InspectionCalloutLayoutEngine.Arrange(calls, obstacles);
+        var second = InspectionCalloutLayoutEngine.Arrange(calls, obstacles);
+
+        Assert.Equal(calls.Length, first.Count);
+        Assert.Equal(
+            first.Select(PlacementSignature).ToArray(),
+            second.Select(PlacementSignature).ToArray());
+        Assert.All(first, placement =>
+        {
+            Assert.Equal(
+                placement.Call.Anchor.CadDistance,
+                placement.Call.Anchor.Position.X,
+                8);
+            Assert.InRange(
+                LeaderLength(placement),
+                InspectionCalloutLayoutEngine.BaseCalloutLength - 0.00000001,
+                InspectionCalloutLayoutEngine.MaxCalloutLength + 0.00000001);
+            Assert.Contains(
+                placement.Call.LocationLine,
+                InspectionCalloutLayoutEngine.FormatTextLines(placement.Call));
+        });
+        Assert.Contains("INICIO:", InspectionCalloutLayoutEngine.FormatTextLines(first[0].Call));
+        Assert.Contains("FIM:", InspectionCalloutLayoutEngine.FormatTextLines(first[^1].Call));
+        Assert.Contains(first, placement => placement.Side == 1);
+        Assert.Contains(first, placement => placement.Side == -1);
     }
 
     [Fact]
@@ -534,6 +612,41 @@ public sealed class InspectionCalloutLayoutEngineTests
         Assert.Equal(vertical.Call.Anchor.Position.Y, vertical.LeaderEndPoint.Y, 8);
         Assert.NotEqual(vertical.Call.Anchor.Position.X, vertical.LeaderEndPoint.X);
         Assert.Equal(0, vertical.TextRotationRadians, 8);
+    }
+
+    [Theory]
+    [InlineData(1, 0)]
+    [InlineData(0, 1)]
+    [InlineData(1, 1)]
+    [Trait("Category", "FAST")]
+    public void HorizontalVerticalAndInclinedLayoutsStayBoundedAndReadable(
+        double tangentX,
+        double tangentY)
+    {
+        var calls = Enumerable.Range(0, 6)
+            .Select(index => Call(
+                index,
+                10 + index * 0.10,
+                new LinearVector(tangentX, tangentY, 0)))
+            .ToArray();
+
+        var placements = InspectionCalloutLayoutEngine.Arrange(calls);
+
+        Assert.Equal(calls.Length, placements.Count);
+        Assert.All(placements, placement =>
+        {
+            var leaderAngle = Math.Atan2(
+                placement.LeaderEndPoint.Y - placement.LeaderStartPoint.Y,
+                placement.LeaderEndPoint.X - placement.LeaderStartPoint.X);
+            Assert.InRange(
+                Math.Abs(Math.Sin(placement.TextRotationRadians - leaderAngle)),
+                0,
+                0.00000001);
+            Assert.InRange(
+                LeaderLength(placement),
+                InspectionCalloutLayoutEngine.BaseCalloutLength - 0.00000001,
+                InspectionCalloutLayoutEngine.MaxCalloutLength + 0.00000001);
+        });
     }
 
     [Fact]
@@ -572,6 +685,10 @@ public sealed class InspectionCalloutLayoutEngineTests
             8);
         Assert.Equal(placement.LeaderStartPoint.X, placement.LeaderEndPoint.X, 8);
         Assert.True(placement.LeaderEndPoint.Y > placement.LeaderStartPoint.Y);
+        Assert.InRange(
+            LeaderLength(placement),
+            InspectionCalloutLayoutEngine.BaseCalloutLength - 0.00000001,
+            InspectionCalloutLayoutEngine.MaxCalloutLength + 0.00000001);
     }
 
     [Theory]
@@ -632,22 +749,57 @@ public sealed class InspectionCalloutLayoutEngineTests
     {
         Assert.Equal(0.30, InspectionCalloutLayoutEngine.MarkerRadius, 8);
         Assert.Equal(5.00, InspectionCalloutLayoutEngine.BaseCalloutLength, 8);
+        Assert.Equal(2.00, InspectionCalloutLayoutEngine.CalloutLevelStep, 8);
+        Assert.Equal(11.00, InspectionCalloutLayoutEngine.MaxCalloutLength, 8);
+        Assert.Equal(40, InspectionCalloutLayoutEngine.MaxLayoutAttempts);
+        Assert.Equal(0.25, InspectionCalloutLayoutEngine.TextClearance, 8);
         Assert.Equal(0.80, InspectionCalloutLayoutEngine.IntervalJunctionOffset, 8);
         Assert.Equal(0.15, InspectionCalloutLayoutEngine.TextGap, 8);
         Assert.True(InspectionCalloutLayoutEngine.LevelSpacing > 0);
     }
+
+    private static double LeaderLength(InspectionCalloutPlacement placement)
+    {
+        var deltaX = placement.LeaderEndPoint.X - placement.LeaderStartPoint.X;
+        var deltaY = placement.LeaderEndPoint.Y - placement.LeaderStartPoint.Y;
+        return Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
+    }
+
+    private static (
+        Guid OccurrenceId,
+        int Side,
+        int Level,
+        int LateralSlot,
+        LinearPoint LeaderEndPoint,
+        LinearPoint TextPoint,
+        double TextRotationRadians) PlacementSignature(
+            InspectionCalloutPlacement placement) => (
+                placement.Call.OccurrenceId,
+                placement.Side,
+                placement.Level,
+                placement.LateralSlot,
+                placement.LeaderEndPoint,
+                placement.TextPoint,
+                placement.TextRotationRadians);
 
     private static InspectionAnnotationCall Call(
         int index,
         double distance,
         LinearVector tangent)
     {
+        var planarLength = Math.Sqrt(tangent.X * tangent.X + tangent.Y * tangent.Y);
+        var position = planarLength <= 0.000000001
+            ? new LinearPoint(distance, 0, 0)
+            : new LinearPoint(
+                tangent.X / planarLength * distance,
+                tangent.Y / planarLength * distance,
+                0);
         var location = new PositionedInspectionLocation(
             index,
             PositionedLocationRole.Point,
             distance,
             distance,
-            new LinearPoint(distance, 0, 0),
+            position,
             tangent);
         return new InspectionAnnotationCall(
             Guid.NewGuid(),

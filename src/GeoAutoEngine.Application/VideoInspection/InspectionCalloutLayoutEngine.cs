@@ -23,13 +23,26 @@ public static class InspectionCalloutLayoutEngine
     public const int MaxCharactersPerLine = 32;
     public const double MarkerRadius = 0.30;
     public const double BaseCalloutLength = 5.00;
+    public const double CalloutLevelStep = 2.00;
+    public const double MaxCalloutLength = 11.00;
+    public const int MaxLayoutAttempts = 40;
+    public const int MaxLateralSlots = 2;
+    public const double TextClearance = 0.25;
     public const double IntervalJunctionOffset = 0.80;
-    public const double LevelSpacing = 1.25;
+    public const double LevelSpacing = CalloutLevelStep;
     public const double LateralSpacing = 1.50;
     public const double TextGap = 0.15;
-    public const double CalloutSpacing = 0.25;
+    public const double CalloutSpacing = TextClearance;
     private const double CharacterWidthFactor = 0.62;
     private const double LineHeightFactor = 1.25;
+    private const double TextOverlapPenalty = 10000.0;
+    private const double LineThroughTextPenalty = 1000.0;
+    private const double MappingLineCrossingPenalty = 12.0;
+    private const double LeaderCrossingPenalty = 3.0;
+    private const double LengthPenaltyFactor = 1.0;
+    private const double LateralPenaltyFactor = 0.75;
+    private const double OppositeSidePenalty = 0.10;
+    private const double AttemptTieBreaker = 0.000001;
     private const double NumericTolerance = 1e-9;
 
     public static IReadOnlyList<InspectionCalloutPlacement> Arrange(
@@ -56,45 +69,42 @@ public static class InspectionCalloutLayoutEngine
             var normalY = tangent.X;
             var preferredSide = placed.Count % 2 == 0 ? 1 : -1;
             PlacedCallout? selected = null;
-            var maximumLevel = ordered.Length + obstacles.Count + 2;
-            for (var level = 0; level <= maximumLevel && selected is null; level++)
+            CandidateScore? selectedScore = null;
+            foreach (var position in CandidatePositions(preferredSide))
             {
-                foreach (var side in new[] { preferredSide, -preferredSide })
+                var candidate = Candidate(
+                    item.Call,
+                    tangent.X,
+                    tangent.Y,
+                    normalX,
+                    normalY,
+                    position.Side,
+                    position.Level,
+                    position.LateralSlot);
+                var score = Score(
+                    candidate,
+                    placed,
+                    obstacles,
+                    preferredSide,
+                    position.AttemptIndex);
+                if (selectedScore is null || score.CompareTo(selectedScore.Value) < 0)
                 {
-                    foreach (var lateralSlot in LateralSlots(level))
-                    {
-                        var candidate = Candidate(
-                            item.Call,
-                            tangent.X,
-                            tangent.Y,
-                            normalX,
-                            normalY,
-                            side,
-                            level,
-                            lateralSlot);
-                        if (IsClear(candidate, placed, obstacles))
-                        {
-                            selected = candidate;
-                            break;
-                        }
-                    }
+                    selected = candidate;
+                    selectedScore = score;
+                }
 
-                    if (selected is not null)
-                    {
-                        break;
-                    }
+                if (score.Penalty <= NumericTolerance)
+                {
+                    break;
                 }
             }
 
-            selected ??= Candidate(
-                item.Call,
-                tangent.X,
-                tangent.Y,
-                normalX,
-                normalY,
-                preferredSide,
-                maximumLevel + 1,
-                0);
+            if (selected is null)
+            {
+                throw new InvalidOperationException(
+                    "A configuração do layout não produziu candidatos finitos.");
+            }
+
             placed.Add(selected);
         }
 
@@ -168,42 +178,87 @@ public static class InspectionCalloutLayoutEngine
         return Array.AsReadOnly(lines.ToArray());
     }
 
-    private static bool IsClear(
+    private static CandidateScore Score(
         PlacedCallout candidate,
         IReadOnlyList<PlacedCallout> placed,
-        IReadOnlyList<InspectionLayoutObstacle> obstacles)
+        IReadOnlyList<InspectionLayoutObstacle> obstacles,
+        int preferredSide,
+        int attemptIndex)
     {
+        var penalty = 0.0;
         foreach (var existing in placed)
         {
-            if (candidate.Bounds.Intersects(existing.Bounds, CalloutSpacing) ||
-                SegmentIntersectsBounds(
+            if (candidate.Bounds.Intersects(existing.Bounds, TextClearance))
+            {
+                penalty += TextOverlapPenalty;
+            }
+
+            if (SegmentIntersectsBounds(
                     candidate.LeaderStart,
                     candidate.LeaderEnd,
                     existing.Bounds,
-                    CalloutSpacing) ||
-                SegmentIntersectsBounds(
+                    TextClearance))
+            {
+                penalty += LineThroughTextPenalty;
+            }
+
+            if (SegmentIntersectsBounds(
                     existing.LeaderStart,
                     existing.LeaderEnd,
                     candidate.Bounds,
-                    CalloutSpacing) ||
-                existing.Bounds.Contains(
-                    candidate.LeaderStart,
-                    MarkerRadius + CalloutSpacing) ||
-                candidate.Bounds.Contains(
-                    existing.LeaderStart,
-                    MarkerRadius + CalloutSpacing))
+                    TextClearance))
             {
-                return false;
+                penalty += LineThroughTextPenalty;
+            }
+
+            if (ContainsTechnicalPoint(
+                    existing.Bounds,
+                    candidate.Placement.Call) ||
+                ContainsTechnicalPoint(
+                    candidate.Bounds,
+                    existing.Placement.Call))
+            {
+                penalty += TextOverlapPenalty;
+            }
+
+            if (SegmentsIntersect(
+                    candidate.LeaderStart,
+                    candidate.LeaderEnd,
+                    existing.LeaderStart,
+                    existing.LeaderEnd))
+            {
+                penalty += LeaderCrossingPenalty;
             }
         }
 
-        return obstacles.All(obstacle =>
-            !candidate.Bounds.Intersects(obstacle, CalloutSpacing) &&
-            !SegmentIntersectsObstacle(
+        foreach (var obstacle in obstacles)
+        {
+            if (candidate.Bounds.Intersects(obstacle, TextClearance))
+            {
+                penalty += TextOverlapPenalty;
+            }
+
+            if (SegmentIntersectsObstacle(
                 candidate.LeaderStart,
                 candidate.LeaderEnd,
                 obstacle,
-                CalloutSpacing));
+                TextClearance))
+            {
+                penalty += MappingLineCrossingPenalty;
+            }
+        }
+
+        var leaderLength = Distance(candidate.LeaderStart, candidate.LeaderEnd);
+        penalty += Math.Max(0.0, leaderLength - BaseCalloutLength) * LengthPenaltyFactor;
+        penalty += Math.Abs(candidate.Placement.LateralSlot) *
+            LateralSpacing * LateralPenaltyFactor;
+        if (candidate.Placement.Side != preferredSide)
+        {
+            penalty += OppositeSidePenalty;
+        }
+
+        penalty += attemptIndex * AttemptTieBreaker;
+        return new CandidateScore(penalty, attemptIndex);
     }
 
     private static PlacedCallout Candidate(
@@ -216,10 +271,19 @@ public static class InspectionCalloutLayoutEngine
         int level,
         int lateralSlot)
     {
-        var length = BaseCalloutLength + level * LevelSpacing;
-        var lateralOffset = lateralSlot * LateralSpacing;
-        var leaderDeltaX = normalX * side * length + tangentX * lateralOffset;
-        var leaderDeltaY = normalY * side * length + tangentY * lateralOffset;
+        var length = Math.Min(
+            MaxCalloutLength,
+            BaseCalloutLength + level * CalloutLevelStep);
+        var requestedLateralOffset = lateralSlot * LateralSpacing;
+        var maximumLateralOffset = Math.Max(0.0, length - NumericTolerance);
+        var lateralOffset = Math.Max(
+            -maximumLateralOffset,
+            Math.Min(maximumLateralOffset, requestedLateralOffset));
+        var normalReach = Math.Sqrt(Math.Max(
+            0.0,
+            length * length - lateralOffset * lateralOffset));
+        var leaderDeltaX = normalX * side * normalReach + tangentX * lateralOffset;
+        var leaderDeltaY = normalY * side * normalReach + tangentY * lateralOffset;
         var leaderLength = Math.Sqrt(
             leaderDeltaX * leaderDeltaX + leaderDeltaY * leaderDeltaY);
         var outwardX = leaderDeltaX / leaderLength;
@@ -273,29 +337,59 @@ public static class InspectionCalloutLayoutEngine
             (start.Z + end.Z) / 2.0);
     }
 
-    private static IEnumerable<int> LateralSlots(int level)
+    private static IEnumerable<CandidatePosition> CandidatePositions(int preferredSide)
     {
-        yield return 0;
-        for (var slot = 1; slot <= level; slot++)
+        var attemptIndex = 0;
+        var maximumLevel = (int)Math.Floor(
+            (MaxCalloutLength - BaseCalloutLength) / CalloutLevelStep + NumericTolerance);
+        for (var level = 0; level <= maximumLevel; level++)
         {
-            yield return slot;
-            yield return -slot;
+            foreach (var side in new[] { preferredSide, -preferredSide })
+            {
+                if (attemptIndex >= MaxLayoutAttempts)
+                {
+                    yield break;
+                }
+
+                yield return new CandidatePosition(side, level, 0, attemptIndex++);
+            }
+
+            for (var slot = 1; slot <= MaxLateralSlots; slot++)
+            {
+                foreach (var lateralSlot in new[] { slot, -slot })
+                {
+                    foreach (var side in new[] { preferredSide, -preferredSide })
+                    {
+                        if (attemptIndex >= MaxLayoutAttempts)
+                        {
+                            yield break;
+                        }
+
+                        yield return new CandidatePosition(
+                            side,
+                            level,
+                            lateralSlot,
+                            attemptIndex++);
+                    }
+                }
+            }
         }
     }
 
     private static double NormalizeReadableRotation(double rotation)
     {
-        while (rotation > Math.PI / 2 + NumericTolerance)
+        var normalized = Math.IEEERemainder(rotation, Math.PI);
+        if (normalized > Math.PI / 2 + NumericTolerance)
         {
-            rotation -= Math.PI;
+            normalized -= Math.PI;
         }
 
-        while (rotation <= -Math.PI / 2 + NumericTolerance)
+        if (normalized <= -Math.PI / 2 + NumericTolerance)
         {
-            rotation += Math.PI;
+            normalized += Math.PI;
         }
 
-        return rotation;
+        return normalized;
     }
 
     private static PlanarVector ReadablePlanarTangent(LinearVector value)
@@ -316,6 +410,20 @@ public static class InspectionCalloutLayoutEngine
         }
 
         return new PlanarVector(x, y);
+    }
+
+    private static bool ContainsTechnicalPoint(
+        TextBounds bounds,
+        InspectionAnnotationCall call) =>
+        bounds.Contains(call.Anchor.Position, MarkerRadius + TextClearance) ||
+        call.IntervalEnd is { } intervalEnd &&
+        bounds.Contains(intervalEnd.Position, MarkerRadius + TextClearance);
+
+    private static double Distance(LinearPoint start, LinearPoint end)
+    {
+        var deltaX = end.X - start.X;
+        var deltaY = end.Y - start.Y;
+        return Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
     }
 
     private static bool SegmentIntersectsObstacle(
@@ -410,6 +518,25 @@ public static class InspectionCalloutLayoutEngine
         LinearPoint LeaderStart,
         LinearPoint LeaderEnd,
         TextBounds Bounds);
+
+    private readonly record struct CandidatePosition(
+        int Side,
+        int Level,
+        int LateralSlot,
+        int AttemptIndex);
+
+    private readonly record struct CandidateScore(
+        double Penalty,
+        int AttemptIndex) : IComparable<CandidateScore>
+    {
+        public int CompareTo(CandidateScore other)
+        {
+            var penaltyComparison = Penalty.CompareTo(other.Penalty);
+            return penaltyComparison != 0
+                ? penaltyComparison
+                : AttemptIndex.CompareTo(other.AttemptIndex);
+        }
+    }
 
     private readonly record struct PlanarVector(double X, double Y);
 

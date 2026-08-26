@@ -407,6 +407,27 @@ public sealed class ArchitectureTests
             renderer.Split("document.Editor.Regen()", StringSplitOptions.None).Length - 1);
     }
 
+    [Fact]
+    [Trait("Category", "REGRESSION")]
+    public void VideoInspectionLayout_UsesFiniteCandidatesAndAnAbsoluteLengthLimit()
+    {
+        var layout = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "src",
+            "GeoAutoEngine.Application",
+            "VideoInspection",
+            "InspectionCalloutLayoutEngine.cs"));
+
+        Assert.Contains("MaxCalloutLength = 11.00", layout, StringComparison.Ordinal);
+        Assert.Contains("MaxLayoutAttempts = 40", layout, StringComparison.Ordinal);
+        Assert.Contains("CandidatePositions", layout, StringComparison.Ordinal);
+        Assert.Contains("CandidateScore", layout, StringComparison.Ordinal);
+        Assert.Contains("var length = Math.Min(", layout, StringComparison.Ordinal);
+        Assert.Contains("MaxCalloutLength,", layout, StringComparison.Ordinal);
+        Assert.DoesNotContain("ordered.Length + obstacles.Count", layout, StringComparison.Ordinal);
+        Assert.DoesNotContain("while (rotation", layout, StringComparison.Ordinal);
+    }
+
     private static string[] ProjectReferences(string projectName) =>
         LoadProject(projectName)
             .Descendants("ProjectReference")
