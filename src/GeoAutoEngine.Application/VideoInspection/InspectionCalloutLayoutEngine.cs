@@ -20,8 +20,8 @@ public static class InspectionCalloutLayoutEngine
 {
     public const double TextHeight = 0.5;
     public const int MaxCharactersPerLine = 32;
-    public const double MarkerRadius = 0.18;
-    public const double BaseCalloutLength = 1.20;
+    public const double MarkerRadius = 0.30;
+    public const double BaseCalloutLength = 5.00;
     public const double LevelSpacing = 1.25;
     public const double LateralSpacing = 1.50;
     public const double TextGap = 0.15;
@@ -102,7 +102,10 @@ public static class InspectionCalloutLayoutEngine
     public static IReadOnlyList<string> FormatTextLines(InspectionAnnotationCall call)
     {
         ArgumentNullException.ThrowIfNull(call);
-        var lines = new List<string> { call.LocationLine };
+        var lines = new List<string>();
+        lines.AddRange(call.LocationLine
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim()));
         lines.AddRange(WrapWords(call.Cause, MaxCharactersPerLine));
         if (!string.IsNullOrWhiteSpace(call.PositionLine))
         {
