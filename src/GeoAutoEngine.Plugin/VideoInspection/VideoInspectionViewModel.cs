@@ -150,6 +150,24 @@ internal sealed class VideoInspectionViewModel : INotifyPropertyChanged
         RaiseCommandStates();
     }
 
+    public void ClearLoadedInspection()
+    {
+        _session = null;
+        Sections.Clear();
+        SelectedSection = null;
+        Notification = string.Empty;
+        Raise(nameof(EmptyVisibility));
+        Raise(nameof(InspectionVisibility));
+        Raise(nameof(ReportCode));
+        Raise(nameof(ReportName));
+        Raise(nameof(Client));
+        Raise(nameof(Area));
+        Raise(nameof(ReportSummary));
+        Raise(nameof(SectionCount));
+        Raise(nameof(OccurrenceCount));
+        RaiseStatusCounts();
+    }
+
     private void RefreshCore(Guid? selectedSectionId)
     {
         // Clearing the bound collection temporarily clears ListBox.SelectedItem,
@@ -211,17 +229,25 @@ internal sealed class VideoInspectionViewModel : INotifyPropertyChanged
 internal sealed class VideoInspectionSectionItemViewModel : INotifyPropertyChanged
 {
     private static readonly Brush SuccessBrush = FrozenBrush("#22C55E");
-    private static readonly Brush PendingBrush = FrozenBrush("#F59E0B");
-    private static readonly Brush AttentionBrush = FrozenBrush("#F97316");
-    private static readonly Brush ErrorBrush = FrozenBrush("#EF4444");
+    private static readonly Brush PendingBrush = FrozenBrush("#818CF8");
+    private static readonly Brush AttentionBrush = FrozenBrush("#FB923C");
+    private static readonly Brush ErrorBrush = FrozenBrush("#F87171");
+    private static readonly Brush WarningBrush = FrozenBrush("#F59E0B");
     private static readonly Brush SuccessBackground = FrozenBrush("#1A22C55E");
-    private static readonly Brush PendingBackground = FrozenBrush("#1AF59E0B");
-    private static readonly Brush AttentionBackground = FrozenBrush("#1AF97316");
-    private static readonly Brush ErrorBackground = FrozenBrush("#1AEF4444");
+    private static readonly Brush PendingBackground = FrozenBrush("#1F818CF8");
+    private static readonly Brush AttentionBackground = FrozenBrush("#1FFB923C");
+    private static readonly Brush ErrorBackground = FrozenBrush("#1FF87171");
     private static readonly Brush SuccessBorder = FrozenBrush("#3322C55E");
-    private static readonly Brush PendingBorder = FrozenBrush("#33F59E0B");
-    private static readonly Brush AttentionBorder = FrozenBrush("#33F97316");
-    private static readonly Brush ErrorBorder = FrozenBrush("#33EF4444");
+    private static readonly Brush PendingBorder = FrozenBrush("#40818CF8");
+    private static readonly Brush AttentionBorder = FrozenBrush("#40FB923C");
+    private static readonly Brush ErrorBorder = FrozenBrush("#40F87171");
+    private static readonly Brush WarningBackground = FrozenBrush("#12F59E0B");
+    private static readonly Brush WarningBorder = FrozenBrush("#33F59E0B");
+    private static readonly Brush CriticalBackground = FrozenBrush("#14EF4444");
+    private static readonly Brush CriticalBorder = FrozenBrush("#38EF4444");
+    private static readonly Brush StandardBorder = FrozenBrush("#1E2D4A");
+    private static readonly Brush MutedBrush = FrozenBrush("#4A6A96");
+    private static readonly Brush AttentionMetricBorderBrush = FrozenBrush("#33FB923C");
 
     public VideoInspectionSectionItemViewModel(InspectionSectionSession section)
     {
@@ -251,12 +277,28 @@ internal sealed class VideoInspectionSectionItemViewModel : INotifyPropertyChang
     public Brush StatusBrush { get; private set; } = PendingBrush;
     public Brush StatusBackground { get; private set; } = PendingBackground;
     public Brush StatusBorder { get; private set; } = PendingBorder;
+    public Color StatusColor { get; private set; } = (Color)ColorConverter.ConvertFromString("#818CF8");
     public Visibility AlertVisibility => string.IsNullOrWhiteSpace(AlertMessage)
         ? Visibility.Collapsed
         : Visibility.Visible;
     public string AlertMessage { get; private set; } = string.Empty;
+    public string AlertIcon { get; private set; } = string.Empty;
+    public Brush AlertBrush { get; private set; } = PendingBrush;
+    public Brush AlertBackground { get; private set; } = PendingBackground;
+    public Brush AlertBorder { get; private set; } = PendingBorder;
     public int PositionedCount { get; private set; }
     public int AttentionCount { get; private set; }
+    public int SeverityAttentionCount { get; private set; }
+    public string SeverityAttentionSummary => SeverityAttentionCount == 1
+        ? "1 atenção"
+        : $"{SeverityAttentionCount} atenção";
+    public Visibility SeverityAttentionVisibility => SeverityAttentionCount > 0
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+    public Brush AttentionMetricBrush => SeverityAttentionCount > 0 ? AttentionBrush : MutedBrush;
+    public Brush AttentionMetricBorder => SeverityAttentionCount > 0
+        ? AttentionMetricBorderBrush
+        : StandardBorder;
     public IReadOnlyList<VideoInspectionOccurrenceItemViewModel> Occurrences { get; private set; } = [];
     public Visibility OccurrencesEmptyVisibility => Occurrences.Count == 0
         ? Visibility.Visible
@@ -291,8 +333,9 @@ internal sealed class VideoInspectionSectionItemViewModel : INotifyPropertyChang
             : $"{section.Association.LastKnownGeometryLength.ToString("0.00", CultureInfo.CurrentCulture)} m";
         PositionedCount = section.PositionedEvents.Count(item => item.CanCommit && item.Locations.Count > 0);
         AttentionCount = section.PositionedEvents.Count(item => !item.CanCommit);
-        OccurrenceAttentionSummary = AttentionCount > 0
-            ? $"{OccurrenceSummary} · {AttentionCount} atenção"
+        SeverityAttentionCount = section.Occurrences.Count(item => item.IsSevere);
+        OccurrenceAttentionSummary = SeverityAttentionCount > 0
+            ? $"{OccurrenceSummary} · {SeverityAttentionCount} atenção"
             : OccurrenceSummary;
         PositionedOccurrences = PositionedCount.ToString(CultureInfo.CurrentCulture);
         AttentionOccurrences = AttentionCount.ToString(CultureInfo.CurrentCulture);
@@ -301,7 +344,7 @@ internal sealed class VideoInspectionSectionItemViewModel : INotifyPropertyChang
         {
             InspectionSectionStatus.Pending => "Pendente",
             InspectionSectionStatus.Associated => "Associado",
-            InspectionSectionStatus.Generated => "Gerado",
+            InspectionSectionStatus.Generated => "Associado",
             InspectionSectionStatus.Attention => "Atenção",
             InspectionSectionStatus.AssociationLost => "Erro",
             _ => "Erro",
@@ -315,6 +358,7 @@ internal sealed class VideoInspectionSectionItemViewModel : INotifyPropertyChang
             InspectionSectionStatus.Attention => (AttentionBrush, AttentionBackground, AttentionBorder),
             _ => (ErrorBrush, ErrorBackground, ErrorBorder),
         };
+        StatusColor = ((SolidColorBrush)StatusBrush).Color;
         AlertMessage = section.Status switch
         {
             InspectionSectionStatus.Pending => "Aguardando associação de geometria.",
@@ -326,6 +370,14 @@ internal sealed class VideoInspectionSectionItemViewModel : INotifyPropertyChang
                 ? "Não foi possível processar este trecho."
                 : section.StatusMessage,
             _ => string.Empty,
+        };
+        (AlertIcon, AlertBrush, AlertBackground, AlertBorder) = section.Status switch
+        {
+            InspectionSectionStatus.Pending => ("◷", WarningBrush, WarningBackground, WarningBorder),
+            InspectionSectionStatus.Attention => ("△", AttentionBrush, AttentionBackground, AttentionBorder),
+            InspectionSectionStatus.AssociationLost or InspectionSectionStatus.Error =>
+                ("i", ErrorBrush, CriticalBackground, CriticalBorder),
+            _ => (string.Empty, StatusBrush, StatusBackground, StatusBorder),
         };
         StatusMessage = section.StatusMessage ?? string.Empty;
         Occurrences = Array.AsReadOnly(section.Occurrences
@@ -354,6 +406,12 @@ internal sealed class VideoInspectionSectionItemViewModel : INotifyPropertyChang
 
 internal sealed class VideoInspectionOccurrenceItemViewModel
 {
+    private static readonly Brush StandardBorder = FrozenBrush("#1E2D4A");
+    private static readonly Brush AttentionBorder = FrozenBrush("#33FB923C");
+    private static readonly Brush AttentionAccent = FrozenBrush("#FB923C");
+    private static readonly Brush StandardDescription = FrozenBrush("#7A9BC7");
+    private static readonly Brush AttentionDescription = FrozenBrush("#F0C090");
+
     public VideoInspectionOccurrenceItemViewModel(InspectionOccurrenceSession occurrence)
     {
         Position = occurrence.LocationMode switch
@@ -378,9 +436,19 @@ internal sealed class VideoInspectionOccurrenceItemViewModel
     public string Description { get; }
     public string Code { get; }
     public bool RequiresAttention { get; }
+    public Brush CardBorderBrush => RequiresAttention ? AttentionBorder : StandardBorder;
+    public Brush CardAccentBrush => RequiresAttention ? AttentionAccent : StandardBorder;
+    public Brush DescriptionBrush => RequiresAttention ? AttentionDescription : StandardDescription;
 
     private static string Meter(decimal value) =>
         $"{value.ToString("0.##", CultureInfo.CurrentCulture)} m";
+
+    private static Brush FrozenBrush(string value)
+    {
+        var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(value));
+        brush.Freeze();
+        return brush;
+    }
 }
 
 internal sealed class VideoInspectionCommand(Action execute, Func<bool>? canExecute = null) : ICommand
