@@ -245,7 +245,7 @@ public sealed class InspectionAnnotationPlannerTests
 
     [Fact]
     [Trait("Category", "FAST")]
-    public void CallsUseTechnicalTwoLineContentAndOneAnchorForRanges()
+    public void CallsUseTechnicalContentAndPreserveBothRangeLimits()
     {
         var point = Event(InspectionLocationMode.Point, "Infiltração", Location(0, 12));
         var range = Event(
@@ -269,7 +269,11 @@ public sealed class InspectionAnnotationPlannerTests
         Assert.Equal("12,00 m", calls[0].LocationLine);
         Assert.Equal("INFILTRAÇÃO", calls[0].Cause);
         Assert.Equal("12,00 m\n40,00 m", calls[1].LocationLine);
+        Assert.Equal(12, calls[1].Anchor.InspectionDistance, 8);
+        Assert.NotNull(calls[1].IntervalEnd);
+        Assert.Equal(40, calls[1].IntervalEnd!.InspectionDistance, 8);
         Assert.Equal("A PARTIR DE 50,00 m", calls[2].LocationLine);
+        Assert.Null(calls[2].IntervalEnd);
         Assert.Equal("AO LONGO DE TODA A FILMAGEM", calls[3].LocationLine);
         Assert.Equal(0.3, calls[3].Anchor.CadDistance, 8);
     }
@@ -444,7 +448,7 @@ public sealed class InspectionCalloutLayoutEngineTests
 
     [Fact]
     [Trait("Category", "FAST")]
-    public void HorizontalAndVerticalPipesProduceApproximatelyPerpendicularCalls()
+    public void CallsStayPerpendicularWhileVerticalReferenceKeepsVerticalText()
     {
         var horizontal = Assert.Single(InspectionCalloutLayoutEngine.Arrange(
             [Call(0, 12.35, new LinearVector(1, 0, 0))]));
@@ -456,7 +460,61 @@ public sealed class InspectionCalloutLayoutEngineTests
         Assert.Equal(Math.PI / 2, horizontal.TextRotationRadians, 8);
         Assert.Equal(vertical.Call.Anchor.Position.Y, vertical.LeaderEndPoint.Y, 8);
         Assert.NotEqual(vertical.Call.Anchor.Position.X, vertical.LeaderEndPoint.X);
-        Assert.Equal(0, vertical.TextRotationRadians, 8);
+        Assert.Equal(Math.PI / 2, vertical.TextRotationRadians, 8);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void RangeUsesTwoTechnicalLimitsAndAnOffsetJunctionForTheCallout()
+    {
+        var start = new PositionedInspectionLocation(
+            0,
+            PositionedLocationRole.Start,
+            9,
+            9,
+            new LinearPoint(9, 0, 0),
+            new LinearVector(1, 0, 0));
+        var end = new PositionedInspectionLocation(
+            1,
+            PositionedLocationRole.End,
+            11,
+            11,
+            new LinearPoint(11, 0, 0),
+            new LinearVector(1, 0, 0));
+        var call = new InspectionAnnotationCall(
+            Guid.NewGuid(),
+            InspectionLocationMode.Range,
+            start,
+            "9,00 m\n11,00 m",
+            "FISSURA",
+            IntervalEnd: end);
+
+        var placement = Assert.Single(InspectionCalloutLayoutEngine.Arrange([call]));
+
+        Assert.Equal(start.Position, placement.Call.Anchor.Position);
+        Assert.Equal(end.Position, placement.Call.IntervalEnd!.Position);
+        Assert.Equal(10, placement.LeaderStartPoint.X, 8);
+        Assert.Equal(InspectionCalloutLayoutEngine.IntervalJunctionOffset,
+            placement.LeaderStartPoint.Y,
+            8);
+        Assert.Equal(placement.LeaderStartPoint.X, placement.LeaderEndPoint.X, 8);
+        Assert.True(placement.LeaderEndPoint.Y > placement.LeaderStartPoint.Y);
+    }
+
+    [Theory]
+    [InlineData(0, 1, Math.PI / 2)]
+    [InlineData(0, -1, Math.PI / 2)]
+    [InlineData(1, 0, 0)]
+    [Trait("Category", "FAST")]
+    public void ReferenceRotationIsReadableInEitherGeometryDirection(
+        double x,
+        double y,
+        double expected)
+    {
+        var rotation = InspectionCalloutLayoutEngine.ReadableReferenceRotation(
+            new LinearVector(x, y, 0));
+
+        Assert.Equal(expected, rotation, 8);
     }
 
     [Fact]
@@ -501,6 +559,7 @@ public sealed class InspectionCalloutLayoutEngineTests
     {
         Assert.Equal(0.30, InspectionCalloutLayoutEngine.MarkerRadius, 8);
         Assert.Equal(5.00, InspectionCalloutLayoutEngine.BaseCalloutLength, 8);
+        Assert.Equal(0.80, InspectionCalloutLayoutEngine.IntervalJunctionOffset, 8);
         Assert.Equal(0.15, InspectionCalloutLayoutEngine.TextGap, 8);
         Assert.True(InspectionCalloutLayoutEngine.LevelSpacing > 0);
     }
