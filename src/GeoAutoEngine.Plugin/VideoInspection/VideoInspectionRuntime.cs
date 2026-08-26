@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.IO;
 using Autodesk.AutoCAD.ApplicationServices;
-using Autodesk.AutoCAD.DatabaseServices;
 using GeoAutoEngine.Application.VideoInspection;
 using GeoAutoEngine.Cad2026.VideoInspection;
 using GeoAutoEngine.Plugin.VideoInspection.Transport;
@@ -12,12 +11,16 @@ namespace GeoAutoEngine.Plugin.VideoInspection;
 internal static class VideoInspectionRuntime
 {
     private const string SmokeMarkerEnvironmentVariable = "GEOAUTOENGINE_VIDEO_SMOKE_MARKER";
+    private const string DetailedDiagnosticsEnvironmentVariable =
+        "GEOAUTOENGINE_VIDEO_DETAILED_DIAGNOSTICS";
     private static readonly ConcurrentQueue<ReceivedInspection> Inbox = new();
     private static readonly InspectionExchangeSerializer Serializer = new();
     private static readonly AutoCadInspectionGeometryService GeometryService = new();
     private static readonly AutoCadInspectionRenderer Renderer = new();
     private static NamedPipeInspectionServer? _server;
-    private static Database? _activeDatabase;
+    private static Document? _restoredDocument;
+    private static Guid? _restoredReportId;
+    private static bool _restoringAssociations;
 
     internal static VideoInspectionSession? CurrentSession { get; private set; }
 
@@ -36,15 +39,19 @@ internal static class VideoInspectionRuntime
             "AutoCAD/Civil 3D",
             targetHostVersion);
         _server.Start();
+        AutoCadApplication.DocumentManager.DocumentBecameCurrent += OnDocumentBecameCurrent;
         AutoCadApplication.Idle += OnIdle;
     }
 
     internal static void Terminate()
     {
         AutoCadApplication.Idle -= OnIdle;
+        AutoCadApplication.DocumentManager.DocumentBecameCurrent -= OnDocumentBecameCurrent;
         _server?.Dispose();
         _server = null;
-        _activeDatabase = null;
+        _restoredDocument = null;
+        _restoredReportId = null;
+        _restoringAssociations = false;
         CurrentSession = null;
         while (Inbox.TryDequeue(out _))
         {
@@ -100,6 +107,7 @@ internal static class VideoInspectionRuntime
 
         section.Associate(association);
         var positioning = Position(document, section);
+        MarkAssociationsRestored(document, CurrentSession!.ReportId);
         GeoAutoEnginePalette.RefreshVideoInspection();
         document.Editor.WriteMessage(
             $"\nGeoAutoEngine: trecho associado à Polyline {association.GeometryHandle} " +
@@ -122,28 +130,32 @@ internal static class VideoInspectionRuntime
         }
 
         GeoAutoEnginePalette.RefreshVideoInspection();
-        foreach (var entity in result.Entities)
+        if (DetailedDiagnosticsEnabled)
         {
-            var commitDiagnostic =
-                $"VI COMMIT: Occurrence={entity.OccurrenceId:D}; Entity={entity.EntityType}; " +
-                $"ObjectId={entity.ObjectId}; Handle={entity.Handle}; " +
-                $"ObjectId.IsNull={entity.ObjectIdIsNull}; ObjectId.IsValid={entity.ObjectIdIsValid}; " +
-                $"Operation={(entity.Created ? "Created" : "Updated")}.";
-            PluginLog.Information(commitDiagnostic);
-            document.Editor.WriteMessage("\n" + commitDiagnostic);
+            foreach (var entity in result.Entities)
+            {
+                var commitDiagnostic =
+                    $"VI COMMIT: Occurrence={entity.OccurrenceId:D}; Entity={entity.EntityType}; " +
+                    $"ObjectId={entity.ObjectId}; Handle={entity.Handle}; " +
+                    $"ObjectId.IsNull={entity.ObjectIdIsNull}; ObjectId.IsValid={entity.ObjectIdIsValid}; " +
+                    $"Operation={(entity.Created ? "Created" : "Updated")}.";
+                PluginLog.Information(commitDiagnostic);
+            }
         }
 
-        var valid = positioned.Count(item => item.CanCommit && item.Locations.Count > 0);
-        var pipeline =
-            $"VI PIPELINE: SectionsLoaded={CurrentSession!.Sections.Count}; GeometryResolved=true; " +
-            $"Direction={section.Association!.Direction}; OccurrencesInput={section.Occurrences.Count}; " +
-            $"OccurrencesPositioned={valid}; " +
-            $"PermanentEntitiesCreated={result.CreatedCount}; " +
-            $"PermanentEntitiesUpdated={result.UpdatedCount}; " +
-            $"TransactionCommitted={result.TransactionCommitted}; CurrentSpace={result.CurrentSpaceName}; " +
-            $"CurrentSpaceIsModelSpace={result.CurrentSpaceIsModelSpace}; TargetSpace={result.TargetSpaceName}.";
-        PluginLog.Information(pipeline);
-        document.Editor.WriteMessage("\n" + pipeline);
+        if (DetailedDiagnosticsEnabled)
+        {
+            var valid = positioned.Count(item => item.CanCommit && item.Locations.Count > 0);
+            var pipeline =
+                $"VI PIPELINE: SectionsLoaded={CurrentSession!.Sections.Count}; GeometryResolved=true; " +
+                $"Direction={section.Association!.Direction}; OccurrencesInput={section.Occurrences.Count}; " +
+                $"OccurrencesPositioned={valid}; " +
+                $"PermanentEntitiesCreated={result.CreatedCount}; " +
+                $"PermanentEntitiesUpdated={result.UpdatedCount}; " +
+                $"TransactionCommitted={result.TransactionCommitted}; CurrentSpace={result.CurrentSpaceName}; " +
+                $"CurrentSpaceIsModelSpace={result.CurrentSpaceIsModelSpace}; TargetSpace={result.TargetSpaceName}.";
+            PluginLog.Information(pipeline);
+        }
         WriteSmokeMarker("committed", CurrentSession!, result);
         document.Editor.WriteMessage(
             $"\nGeoAutoEngine: vídeo-inspeção criada={result.CreatedCount}; atualizada={result.UpdatedCount}; " +
@@ -166,17 +178,24 @@ internal static class VideoInspectionRuntime
             return;
         }
 
-        if (!ReferenceEquals(_activeDatabase, document.Database))
+        DeliverPending();
+    }
+
+    private static void OnDocumentBecameCurrent(
+        object sender,
+        DocumentCollectionEventArgs eventArgs)
+    {
+        var document = eventArgs.Document;
+        var session = CurrentSession;
+        if (document is null || session is null)
         {
-            _activeDatabase = document.Database;
-            if (CurrentSession is not null)
-            {
-                RestoreAssociations(document, CurrentSession);
-                GeoAutoEnginePalette.RefreshVideoInspection();
-            }
+            return;
         }
 
-        DeliverPending();
+        if (RestoreAssociationsForDocument(document, session))
+        {
+            GeoAutoEnginePalette.RefreshVideoInspection();
+        }
     }
 
     private static void Activate(InspectionExchangeDocument document, string source)
@@ -191,8 +210,7 @@ internal static class VideoInspectionRuntime
         var activeDocument = AutoCadApplication.DocumentManager.MdiActiveDocument;
         if (activeDocument is not null)
         {
-            RestoreAssociations(activeDocument, session);
-            _activeDatabase = activeDocument.Database;
+            RestoreAssociationsForDocument(activeDocument, session, force: true);
         }
 
         CurrentSession = session;
@@ -204,6 +222,41 @@ internal static class VideoInspectionRuntime
                 $"ocorrências={session.OccurrenceCount}.");
             WriteSmokeMarker("received", session, null);
         }
+    }
+
+    private static bool RestoreAssociationsForDocument(
+        Document document,
+        VideoInspectionSession session,
+        bool force = false)
+    {
+        if (_restoringAssociations)
+        {
+            return false;
+        }
+
+        if (!force && ReferenceEquals(_restoredDocument, document) &&
+            _restoredReportId == session.ReportId)
+        {
+            return false;
+        }
+
+        _restoringAssociations = true;
+        try
+        {
+            RestoreAssociations(document, session);
+            MarkAssociationsRestored(document, session.ReportId);
+            return true;
+        }
+        finally
+        {
+            _restoringAssociations = false;
+        }
+    }
+
+    private static void MarkAssociationsRestored(Document document, Guid reportId)
+    {
+        _restoredDocument = document;
+        _restoredReportId = reportId;
     }
 
     private static void RestoreAssociations(Document document, VideoInspectionSession session)
@@ -252,7 +305,7 @@ internal static class VideoInspectionRuntime
         InspectionSectionSession section)
     {
         var positioning = GeometryService.ResolveWithDiagnostics(document, section);
-        WritePositioningDiagnostics(document, positioning);
+        WritePositioningDiagnostics(positioning);
         section.SetPositioning(positioning.PositionedEvents);
         return positioning;
     }
@@ -272,10 +325,13 @@ internal static class VideoInspectionRuntime
         CurrentSession?.FindSection(sectionId)
         ?? throw new InvalidOperationException("Selecione um trecho de inspeção válido.");
 
-    private static void WritePositioningDiagnostics(
-        Document document,
-        AutoCadInspectionPositioningResult positioning)
+    private static void WritePositioningDiagnostics(AutoCadInspectionPositioningResult positioning)
     {
+        if (!DetailedDiagnosticsEnabled)
+        {
+            return;
+        }
+
         foreach (var location in positioning.Locations)
         {
             var message = string.Join(string.Empty,
@@ -296,9 +352,13 @@ internal static class VideoInspectionRuntime
                     $"Deviation={location.PolylineDeviation:G6}; Document={location.DocumentName}; "),
                 $"Database={location.DatabaseFilename}; IsMdiActiveDocument={location.IsMdiActiveDocument}.");
             PluginLog.Information(message);
-            document.Editor.WriteMessage("\n" + message);
         }
     }
+
+    private static bool DetailedDiagnosticsEnabled => string.Equals(
+        Environment.GetEnvironmentVariable(DetailedDiagnosticsEnvironmentVariable),
+        "1",
+        StringComparison.Ordinal);
 
     private static void WriteSmokeMarker(
         string phase,
