@@ -9,7 +9,8 @@ public sealed record InspectionAnnotationCall(
     PositionedInspectionLocation Anchor,
     string LocationLine,
     string Cause,
-    string? PositionLine = null);
+    string? PositionLine = null,
+    PositionedInspectionLocation? IntervalEnd = null);
 
 public sealed record InspectionSectionIdentification(
     string SectionLine,
@@ -62,7 +63,8 @@ public static class InspectionAnnotationPlanner
                         $"{Meter(positionedEvent.Locations[0].InspectionDistance)}\n" +
                         Meter(positionedEvent.Locations[1].InspectionDistance),
                         cause,
-                        positionLine));
+                        positionLine,
+                        positionedEvent.Locations[1]));
                     break;
                 case InspectionLocationMode.From when positionedEvent.Locations.Count >= 1:
                     calls.Add(Call(
@@ -131,13 +133,15 @@ public static class InspectionAnnotationPlanner
         PositionedInspectionLocation location,
         string locationLine,
         string cause,
-        string? positionLine) => new(
+        string? positionLine,
+        PositionedInspectionLocation? intervalEnd = null) => new(
             positionedEvent.OccurrenceId,
             positionedEvent.LocationMode,
             location,
             locationLine,
             cause,
-            positionLine);
+            positionLine,
+            intervalEnd);
 
     private static string Meter(double value) =>
         $"{value.ToString("0.00", AnnotationCulture)} m";
