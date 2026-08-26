@@ -2,6 +2,7 @@ namespace GeoAutoEngine.Application.VideoInspection;
 
 public sealed record InspectionCalloutPlacement(
     InspectionAnnotationCall Call,
+    LinearPoint LeaderStartPoint,
     LinearPoint LeaderEndPoint,
     LinearPoint TextPoint,
     bool AttachAtRightEdge,
@@ -22,6 +23,7 @@ public static class InspectionCalloutLayoutEngine
     public const int MaxCharactersPerLine = 32;
     public const double MarkerRadius = 0.30;
     public const double BaseCalloutLength = 5.00;
+    public const double IntervalJunctionOffset = 0.80;
     public const double LevelSpacing = 1.25;
     public const double LateralSpacing = 1.50;
     public const double TextGap = 0.15;
@@ -115,6 +117,12 @@ public static class InspectionCalloutLayoutEngine
         return Array.AsReadOnly(lines.ToArray());
     }
 
+    public static double ReadableReferenceRotation(LinearVector tangent)
+    {
+        var direction = ReadablePlanarTangent(tangent);
+        return NormalizeReadableRotation(Math.Atan2(direction.Y, direction.X));
+    }
+
     private static IReadOnlyList<string> WrapWords(string value, int maximumCharacters)
     {
         var words = value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -198,21 +206,24 @@ public static class InspectionCalloutLayoutEngine
             leaderDeltaX * leaderDeltaX + leaderDeltaY * leaderDeltaY);
         var outwardX = leaderDeltaX / leaderLength;
         var outwardY = leaderDeltaY / leaderLength;
-        var anchor = call.Anchor.Position;
+        var leaderStartPoint = LeaderStartPoint(call, normalX, normalY, side);
         var leaderEndPoint = new LinearPoint(
-            anchor.X + leaderDeltaX,
-            anchor.Y + leaderDeltaY,
-            anchor.Z);
+            leaderStartPoint.X + leaderDeltaX,
+            leaderStartPoint.Y + leaderDeltaY,
+            leaderStartPoint.Z);
         var textPoint = new LinearPoint(
             leaderEndPoint.X + outwardX * TextGap,
             leaderEndPoint.Y + outwardY * TextGap,
             leaderEndPoint.Z);
-        var rotation = NormalizeReadableRotation(Math.Atan2(outwardY, outwardX));
+        var rotation = Math.Abs(tangentY) > Math.Abs(tangentX)
+            ? NormalizeReadableRotation(Math.Atan2(tangentY, tangentX))
+            : NormalizeReadableRotation(Math.Atan2(outwardY, outwardX));
         var textDirectionX = Math.Cos(rotation);
         var textDirectionY = Math.Sin(rotation);
         var attachAtRightEdge = outwardX * textDirectionX + outwardY * textDirectionY < 0;
         var placement = new InspectionCalloutPlacement(
             call,
+            leaderStartPoint,
             leaderEndPoint,
             textPoint,
             attachAtRightEdge,
@@ -222,9 +233,28 @@ public static class InspectionCalloutLayoutEngine
             rotation);
         return new PlacedCallout(
             placement,
-            anchor,
+            leaderStartPoint,
             leaderEndPoint,
             TextBounds.For(call, textPoint, attachAtRightEdge, rotation));
+    }
+
+    private static LinearPoint LeaderStartPoint(
+        InspectionAnnotationCall call,
+        double normalX,
+        double normalY,
+        int side)
+    {
+        if (call.IntervalEnd is not { } intervalEnd)
+        {
+            return call.Anchor.Position;
+        }
+
+        var start = call.Anchor.Position;
+        var end = intervalEnd.Position;
+        return new LinearPoint(
+            (start.X + end.X) / 2.0 + normalX * side * IntervalJunctionOffset,
+            (start.Y + end.Y) / 2.0 + normalY * side * IntervalJunctionOffset,
+            (start.Z + end.Z) / 2.0);
     }
 
     private static IEnumerable<int> LateralSlots(int level)
