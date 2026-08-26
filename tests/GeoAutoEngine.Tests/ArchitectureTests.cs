@@ -323,6 +323,42 @@ public sealed class ArchitectureTests
 
     [Fact]
     [Trait("Category", "REGRESSION")]
+    public void VideoInspection_AssociationRestoreIsEventDrivenAndDoesNotReprocessOnIdle()
+    {
+        var runtime = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "src",
+            "GeoAutoEngine.Plugin",
+            "VideoInspection",
+            "VideoInspectionRuntime.cs"));
+
+        var idleBody = runtime[
+            runtime.IndexOf("private static void OnIdle", StringComparison.Ordinal)..
+            runtime.IndexOf("private static void OnDocumentBecameCurrent", StringComparison.Ordinal)];
+
+        Assert.Contains(
+            "DocumentBecameCurrent += OnDocumentBecameCurrent",
+            runtime,
+            StringComparison.Ordinal);
+        Assert.Contains("if (_restoringAssociations)", runtime, StringComparison.Ordinal);
+        Assert.Contains(
+            "ReferenceEquals(_restoredDocument, document)",
+            runtime,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("RestoreAssociations", idleBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("_activeDatabase", runtime, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "document.Editor.WriteMessage(\"\\n\" + message)",
+            runtime,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "GEOAUTOENGINE_VIDEO_DETAILED_DIAGNOSTICS",
+            runtime,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("Category", "REGRESSION")]
     public void VideoInspectionCommit_TargetsModelSpaceAndValidatesCommittedObjectIds()
     {
         var renderer = File.ReadAllText(Path.Combine(
