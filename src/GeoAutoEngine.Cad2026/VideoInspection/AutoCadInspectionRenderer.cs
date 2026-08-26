@@ -33,6 +33,8 @@ public sealed class AutoCadInspectionRenderer
     private const short EventLayerColorIndex = 2;
     private const short ByLayerColorIndex = 256;
     private const string MarkerComponent = "MARKER";
+    private const string IntervalEndMarkerComponent = "INTERVAL_END_MARKER";
+    private const string IntervalConnectorComponent = "INTERVAL_CONNECTOR";
     private const string LeaderComponent = "LEADER";
     private const string TextComponent = "TEXT";
     private const string SectionNameComponent = "SECTION_NAME";
@@ -115,6 +117,10 @@ public sealed class AutoCadInspectionRenderer
                     call.Anchor.Role);
                 desiredKeys.Add(stableKey);
                 var anchor = polyline!.GetPointAtDist(call.Anchor.CadDistance);
+                var leaderStartPoint = RelativePoint(
+                    anchor,
+                    call.Anchor.Position,
+                    placement.LeaderStartPoint);
                 var leaderEndPoint = RelativePoint(
                     anchor,
                     call.Anchor.Position,
@@ -144,20 +150,85 @@ public sealed class AutoCadInspectionRenderer
                 retainedIds.Add(marker.ObjectId);
                 pendingEntities.Add((call.OccurrenceId, marker.ObjectId, markerCreated));
 
-                var leader = ExistingEntity<Line>(
+                if (call.IntervalEnd is { } intervalEnd)
+                {
+                    var intervalEndAnchor = polyline.GetPointAtDist(intervalEnd.CadDistance);
+                    var intervalEndMarker = ExistingEntity<Circle>(
+                        managedEntities,
+                        IntervalEndMarkerComponent,
+                        transaction);
+                    var intervalEndMarkerCreated = intervalEndMarker is null;
+                    if (intervalEndMarker is null)
+                    {
+                        intervalEndMarker = new Circle();
+                        intervalEndMarker.SetDatabaseDefaults(document.Database);
+                        modelSpace.AppendEntity(intervalEndMarker);
+                        transaction.AddNewlyCreatedDBObject(intervalEndMarker, true);
+                    }
+
+                    ApplyMarker(intervalEndMarker, intervalEndAnchor, eventLayerId);
+                    SetMetadata(
+                        intervalEndMarker,
+                        session,
+                        section,
+                        call,
+                        stableKey,
+                        IntervalEndMarkerComponent,
+                        intervalEnd);
+                    retainedIds.Add(intervalEndMarker.ObjectId);
+                    pendingEntities.Add((
+                        call.OccurrenceId,
+                        intervalEndMarker.ObjectId,
+                        intervalEndMarkerCreated));
+
+                    var intervalConnector = ExistingEntity<Polyline>(
+                        managedEntities,
+                        IntervalConnectorComponent,
+                        transaction);
+                    var intervalConnectorCreated = intervalConnector is null;
+                    if (intervalConnector is null)
+                    {
+                        intervalConnector = new Polyline();
+                        intervalConnector.SetDatabaseDefaults(document.Database);
+                        modelSpace.AppendEntity(intervalConnector);
+                        transaction.AddNewlyCreatedDBObject(intervalConnector, true);
+                    }
+
+                    ApplyCalloutPolyline(
+                        intervalConnector,
+                        [anchor, leaderStartPoint, intervalEndAnchor],
+                        eventLayerId);
+                    SetMetadata(
+                        intervalConnector,
+                        session,
+                        section,
+                        call,
+                        stableKey,
+                        IntervalConnectorComponent);
+                    retainedIds.Add(intervalConnector.ObjectId);
+                    pendingEntities.Add((
+                        call.OccurrenceId,
+                        intervalConnector.ObjectId,
+                        intervalConnectorCreated));
+                }
+
+                var leader = ExistingEntity<Polyline>(
                     managedEntities,
                     LeaderComponent,
                     transaction);
                 var leaderCreated = leader is null;
                 if (leader is null)
                 {
-                    leader = new Line();
+                    leader = new Polyline();
                     leader.SetDatabaseDefaults(document.Database);
                     modelSpace.AppendEntity(leader);
                     transaction.AddNewlyCreatedDBObject(leader, true);
                 }
 
-                ApplyLeader(leader, anchor, leaderEndPoint, eventLayerId);
+                ApplyCalloutPolyline(
+                    leader,
+                    [leaderStartPoint, leaderEndPoint],
+                    eventLayerId);
                 SetMetadata(leader, session, section, call, stableKey, LeaderComponent);
                 retainedIds.Add(leader.ObjectId);
                 pendingEntities.Add((call.OccurrenceId, leader.ObjectId, leaderCreated));
@@ -496,6 +567,8 @@ public sealed class AutoCadInspectionRenderer
         var center = polyline.GetPointAtDist(centerDistance);
         var tangent = polyline.GetFirstDerivative(center);
         var planarLength = Math.Sqrt(tangent.X * tangent.X + tangent.Y * tangent.Y);
+        var textRotation = InspectionCalloutLayoutEngine.ReadableReferenceRotation(
+            new LinearVector(tangent.X, tangent.Y, tangent.Z));
         var normal = planarLength <= GeometryTolerance
             ? Vector3d.YAxis
             : new Vector3d(-tangent.Y / planarLength, tangent.X / planarLength, 0);
@@ -515,6 +588,7 @@ public sealed class AutoCadInspectionRenderer
             SectionNameComponent,
             identification.SectionLine,
             center + normal * SectionIdentificationOffset,
+            textRotation,
             layerId,
             textStyleId,
             transaction);
@@ -528,6 +602,7 @@ public sealed class AutoCadInspectionRenderer
             SectionDiameterComponent,
             identification.DiameterLine,
             center - normal * SectionIdentificationOffset,
+            textRotation,
             layerId,
             textStyleId,
             transaction);
@@ -543,6 +618,7 @@ public sealed class AutoCadInspectionRenderer
         string component,
         string contents,
         Point3d location,
+        double rotation,
         ObjectId layerId,
         ObjectId textStyleId,
         Transaction transaction)
@@ -559,7 +635,7 @@ public sealed class AutoCadInspectionRenderer
             transaction.AddNewlyCreatedDBObject(text, true);
         }
 
-        ApplySectionText(text, location, contents, layerId, textStyleId);
+        ApplySectionText(text, location, contents, rotation, layerId, textStyleId);
         SetSectionMetadata(text, session, section, stableKey, component);
         EraseExcept(managedEntities, new HashSet<ObjectId> { text.ObjectId }, transaction);
     }
@@ -579,16 +655,33 @@ public sealed class AutoCadInspectionRenderer
         marker.Radius = InspectionCalloutLayoutEngine.MarkerRadius;
     }
 
-    private static void ApplyLeader(
-        Line leader,
-        Point3d anchor,
-        Point3d leaderEndPoint,
+    private static void ApplyCalloutPolyline(
+        Polyline callout,
+        IReadOnlyList<Point3d> vertices,
         ObjectId layerId)
     {
-        leader.LayerId = layerId;
-        leader.ColorIndex = ByLayerColorIndex;
-        leader.StartPoint = anchor;
-        leader.EndPoint = leaderEndPoint;
+        if (vertices.Count < 2)
+        {
+            throw new ArgumentException(
+                "A polyline do chamado deve possuir ao menos dois vértices.",
+                nameof(vertices));
+        }
+
+        callout.LayerId = layerId;
+        callout.ColorIndex = ByLayerColorIndex;
+        callout.Closed = false;
+        callout.Normal = Vector3d.ZAxis;
+        callout.Elevation = vertices[0].Z;
+        while (callout.NumberOfVertices > 0)
+        {
+            callout.RemoveVertexAt(callout.NumberOfVertices - 1);
+        }
+
+        for (var index = 0; index < vertices.Count; index++)
+        {
+            var vertex = vertices[index];
+            callout.AddVertexAt(index, new Point2d(vertex.X, vertex.Y), 0, 0, 0);
+        }
     }
 
     private static void ApplyText(
@@ -615,6 +708,7 @@ public sealed class AutoCadInspectionRenderer
         MText text,
         Point3d location,
         string contents,
+        double rotation,
         ObjectId layerId,
         ObjectId textStyleId)
     {
@@ -624,7 +718,7 @@ public sealed class AutoCadInspectionRenderer
         text.Location = location;
         text.TextHeight = TextHeight;
         text.TextStyleId = textStyleId;
-        text.Rotation = 0;
+        text.Rotation = rotation;
         text.Attachment = AttachmentPoint.MiddleCenter;
     }
 
@@ -652,8 +746,10 @@ public sealed class AutoCadInspectionRenderer
         InspectionSectionSession section,
         InspectionAnnotationCall call,
         string stableKey,
-        string component)
+        string component,
+        PositionedInspectionLocation? metadataLocation = null)
     {
+        var location = metadataLocation ?? call.Anchor;
         using var data = new ResultBuffer(
             new TypedValue((int)DxfCode.ExtendedDataRegAppName, RegisteredApplicationName),
             Value("SCHEMA_VERSION", InspectionExchangeSchema.CurrentVersion.ToString(
@@ -661,14 +757,14 @@ public sealed class AutoCadInspectionRenderer
             Value("REPORT_ID", session.ReportId.ToString("D")),
             Value("SECTION_ID", section.SectionId.ToString("D")),
             Value("OCCURRENCE_ID", call.OccurrenceId.ToString("D")),
-            Value("LOCATION_INDEX", call.Anchor.LocationIndex.ToString(
+            Value("LOCATION_INDEX", location.LocationIndex.ToString(
                 System.Globalization.CultureInfo.InvariantCulture)),
             Value("LOCATION_MODE", call.LocationMode.ToString()),
-            Value("ROLE", call.Anchor.Role.ToString().ToUpperInvariant()),
-            Value("INSPECTION_DISTANCE", call.Anchor.InspectionDistance.ToString(
+            Value("ROLE", location.Role.ToString().ToUpperInvariant()),
+            Value("INSPECTION_DISTANCE", location.InspectionDistance.ToString(
                 "R",
                 System.Globalization.CultureInfo.InvariantCulture)),
-            Value("CAD_DISTANCE", call.Anchor.CadDistance.ToString(
+            Value("CAD_DISTANCE", location.CadDistance.ToString(
                 "R",
                 System.Globalization.CultureInfo.InvariantCulture)),
             Value("COMPONENT", component),
