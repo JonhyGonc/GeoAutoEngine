@@ -11,9 +11,19 @@ public sealed record InspectionAnnotationCall(
     string Cause,
     string? PositionLine = null);
 
+public sealed record InspectionSectionIdentification(
+    string SectionLine,
+    string DiameterLine);
+
 public static class InspectionAnnotationPlanner
 {
     private static readonly CultureInfo AnnotationCulture = CultureInfo.GetCultureInfo("pt-BR");
+    private static readonly Regex FilmingDistanceDetail = new(
+        @"(?:\s*[-–—,:;]?\s*)\b(?:(?:ENTRE|DE)\s+\d+(?:[.,]\d+)?\s+(?:E|A|AT[ÉE])\s+\d+(?:[.,]\d+)?|A\s+PARTIR\s+DE\s+\d+(?:[.,]\d+)?|A(?:OS?)?\s+\d+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)\s*(?:M|METROS?)\s+(?:DO\s+)?IN[ÍI]CIO\s+DA\s+FILMAGEM\b\.?",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex EntireSectionDetail = new(
+        @"(?:\s*[-–—,:;]?\s*)\b(?:AO\s+LONGO\s+DE\s+TODA\s+A\s+FILMAGEM|TODO\s+O\s+TRECHO)\b\.?",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     public static IReadOnlyList<InspectionAnnotationCall> Create(
         IReadOnlyList<PositionedInspectionEvent> positionedEvents)
@@ -28,7 +38,7 @@ public static class InspectionAnnotationPlanner
                 continue;
             }
 
-            var cause = Cause(positionedEvent.Description);
+            var cause = Cause(positionedEvent);
             var positionLine = PositionLine(cause, positionedEvent.Position);
             switch (positionedEvent.LocationMode)
             {
@@ -49,7 +59,7 @@ public static class InspectionAnnotationPlanner
                     calls.Add(Call(
                         positionedEvent,
                         positionedEvent.Locations[0],
-                        $"{Meter(positionedEvent.Locations[0].InspectionDistance)} – " +
+                        $"{Meter(positionedEvent.Locations[0].InspectionDistance)}\n" +
                         Meter(positionedEvent.Locations[1].InspectionDistance),
                         cause,
                         positionLine));
@@ -66,7 +76,7 @@ public static class InspectionAnnotationPlanner
                     calls.Add(Call(
                         positionedEvent,
                         positionedEvent.Locations[0],
-                        "TODO O TRECHO",
+                        "AO LONGO DE TODA A FILMAGEM",
                         cause,
                         positionLine));
                     break;
@@ -74,6 +84,19 @@ public static class InspectionAnnotationPlanner
         }
 
         return Array.AsReadOnly(calls.ToArray());
+    }
+
+    public static InspectionSectionIdentification CreateSectionIdentification(
+        InspectionSectionSession section)
+    {
+        ArgumentNullException.ThrowIfNull(section);
+        var sectionNumber = Math.Max(1, section.Order + 1);
+        var diameter = section.Diameter is { } value
+            ? value.ToString("0.##", AnnotationCulture)
+            : "N/I";
+        return new InspectionSectionIdentification(
+            $"TRECHO {sectionNumber:00}",
+            $"Ø{diameter}");
     }
 
     public static double EntireSectionAnnotationOffset(decimal? investigatedMeters, double geometryLength)
@@ -119,9 +142,24 @@ public static class InspectionAnnotationPlanner
     private static string Meter(double value) =>
         $"{value.ToString("0.00", AnnotationCulture)} m";
 
-    private static string Cause(string value) => string.IsNullOrWhiteSpace(value)
-        ? "OCORRÊNCIA"
-        : Normalize(value);
+    private static string Cause(PositionedInspectionEvent positionedEvent)
+    {
+        if (string.IsNullOrWhiteSpace(positionedEvent.Description))
+        {
+            return "OCORRÊNCIA";
+        }
+
+        var value = FilmingDistanceDetail.Replace(
+            Normalize(positionedEvent.Description),
+            " ");
+        if (positionedEvent.LocationMode == InspectionLocationMode.EntireSection)
+        {
+            value = EntireSectionDetail.Replace(value, " ");
+        }
+
+        value = Normalize(value).Trim(' ', '-', '–', '—', ',', ';', ':', '.');
+        return string.IsNullOrWhiteSpace(value) ? "OCORRÊNCIA" : value;
+    }
 
     private static string? PositionLine(string cause, string? value)
     {
