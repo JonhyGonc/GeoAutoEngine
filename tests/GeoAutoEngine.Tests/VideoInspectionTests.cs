@@ -386,13 +386,14 @@ public sealed class InspectionAnnotationPlannerTests
 
     [Fact]
     [Trait("Category", "FAST")]
-    public void SectionIdentificationUsesSequentialTitleAndDiameterSymbol()
+    public void SectionIdentificationPreservesDatabaseNameExactlyAndDiameterSymbol()
     {
+        const string databaseName = "Trecho PV-07 → PV-08";
         var section = new InspectionSectionSession(
             Guid.NewGuid(),
             Guid.NewGuid(),
             "Local",
-            "Nome de campo",
+            databaseName,
             null,
             800m,
             null,
@@ -405,7 +406,7 @@ public sealed class InspectionAnnotationPlannerTests
 
         var identification = InspectionAnnotationPlanner.CreateSectionIdentification(section);
 
-        Assert.Equal("TRECHO 03", identification.SectionLine);
+        Assert.Equal(databaseName, identification.SectionLine);
         Assert.Equal("Ø800", identification.DiameterLine);
     }
 
@@ -900,7 +901,7 @@ public sealed class InspectionPipeProtocolTests
     {
         var bytes = await HeaderBytes();
         WriteInt32LittleEndian(bytes, 8, InspectionPipeProtocol.MaxPayloadBytes + 1);
-        await using var stream = new MemoryStream(bytes);
+        await using var stream = new MemoryStream(bytes.Concat(new byte[3]).ToArray());
 
         await Assert.ThrowsAsync<InvalidDataException>(() => InspectionPipeProtocol.ReadFrameAsync(stream));
     }
