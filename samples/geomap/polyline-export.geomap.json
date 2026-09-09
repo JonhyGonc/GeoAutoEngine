@@ -1,0 +1,38 @@
+{
+  "contractVersion": "0.1",
+  "sourceSystem": "Civil 3D",
+  "sourceCrs": "EPSG:31982",
+  "units": "metre",
+  "project": {
+    "externalId": "project-001",
+    "name": "Projeto exemplo"
+  },
+  "network": {
+    "externalId": "project-001:aguas_pluviais",
+    "name": "Águas pluviais",
+    "type": "stormwater"
+  },
+  "exportedAt": "2026-09-09T12:00:00.000Z",
+  "features": [
+    {
+      "sourceId": "2A7F",
+      "sourceType": "Polyline",
+      "sourceLayer": "GF-Rede Pluvial",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [688100.25, 7086400.75],
+          [688112.5, 7086411]
+        ]
+      },
+      "properties": {
+        "cadHandle": "2A7F",
+        "cadEntityType": "Polyline",
+        "vertexCount": 2,
+        "closed": false,
+        "cadElevation": 0,
+        "projectedTo2D": false
+      }
+    }
+  ]
+}
