@@ -275,7 +275,7 @@ public sealed class InspectionAnnotationPlannerTests
         Assert.Equal("50,00 m\n80,00 m", calls[2].LocationLine);
         Assert.NotNull(calls[2].IntervalEnd);
         Assert.Equal(80, calls[2].IntervalEnd!.InspectionDistance, 8);
-        Assert.Equal("AO LONGO DE TODA A FILMAGEM", calls[3].LocationLine);
+        Assert.Equal(string.Empty, calls[3].LocationLine);
         Assert.Equal(0.3, calls[3].Anchor.CadDistance, 8);
     }
 
@@ -299,17 +299,20 @@ public sealed class InspectionAnnotationPlannerTests
 
     [Fact]
     [Trait("Category", "FAST")]
-    public void EntireSectionUsesFilmingLabelAndKeepsOnlyTechnicalSummaryBelowIt()
+    public void EntireSectionUsesOnlyReportedDescriptionWithoutSyntheticFilmingLabel()
     {
         var entire = Event(
             InspectionLocationMode.EntireSection,
-            "Deslocamento das juntas ao longo de toda a filmagem",
+            "Deslocamento das juntas em todo trecho filmado",
             Location(0, 0, PositionedLocationRole.Start, cadDistance: 0.3));
 
         var call = Assert.Single(InspectionAnnotationPlanner.Create([entire]));
 
-        Assert.Equal("AO LONGO DE TODA A FILMAGEM", call.LocationLine);
-        Assert.Equal("DESLOCAMENTO DAS JUNTAS", call.Cause);
+        Assert.Equal(string.Empty, call.LocationLine);
+        Assert.Equal("DESLOCAMENTO DAS JUNTAS EM TODO TRECHO FILMADO", call.Cause);
+        Assert.Equal(
+            ["DESLOCAMENTO DAS JUNTAS EM TODO", "TRECHO FILMADO"],
+            InspectionCalloutLayoutEngine.FormatTextLines(call));
     }
 
     [Fact]
@@ -323,7 +326,7 @@ public sealed class InspectionAnnotationPlannerTests
             cadDistance: 0);
         var entire = Event(
             InspectionLocationMode.EntireSection,
-            "Deslocamento das juntas ao longo de toda a filmagem",
+            "Deslocamento das juntas em todo trecho filmado",
             Location(0, 0, PositionedLocationRole.Start, cadDistance: 0.3));
         var last = Event(
             InspectionLocationMode.Point,
@@ -337,7 +340,7 @@ public sealed class InspectionAnnotationPlannerTests
         Assert.False(calls[0].IsSyntheticStart);
         Assert.Equal(filmingStart, calls[0].Anchor);
         Assert.Equal(
-            ["INICIO:", "AO LONGO DE TODA A FILMAGEM", "DESLOCAMENTO DAS JUNTAS"],
+            ["INICIO:", "DESLOCAMENTO DAS JUNTAS EM TODO", "TRECHO FILMADO"],
             InspectionCalloutLayoutEngine.FormatTextLines(calls[0]));
         Assert.True(calls[1].IsFilmingEnd);
         Assert.Equal(
