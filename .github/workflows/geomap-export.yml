@@ -1,0 +1,38 @@
+name: GeoMap exporter
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/geomap-export.yml"
+      - "src/GeoAutoEngine.Application/GeoMapExport/**"
+      - "src/GeoAutoEngine.Cad2026/GeoMapExport/**"
+      - "src/GeoAutoEngine.Plugin/GeoMapExportCommands.cs"
+      - "tests/GeoAutoEngine.Tests/GeoMapExportTests.cs"
+      - "build/GeoAutoEngine.bundle/PackageContents.xml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/geomap-export.yml"
+      - "src/GeoAutoEngine.Application/GeoMapExport/**"
+      - "src/GeoAutoEngine.Cad2026/GeoMapExport/**"
+      - "src/GeoAutoEngine.Plugin/GeoMapExportCommands.cs"
+      - "tests/GeoAutoEngine.Tests/GeoMapExportTests.cs"
+      - "build/GeoAutoEngine.bundle/PackageContents.xml"
+
+permissions:
+  contents: read
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Run GeoMap exporter tests
+        run: >-
+          dotnet test tests/GeoAutoEngine.Tests/GeoAutoEngine.Tests.csproj
+          --configuration Release
+          --filter FullyQualifiedName~GeoMapExportTests

@@ -20,6 +20,7 @@
       <Commands GroupName="GEOAUTOENGINE3">
         <Command Global="GEOAUTO3PING" Local="GEOAUTO3PING" />
         <Command Global="GEOAUTO3PALETTE" Local="GEOAUTO3PALETTE" />
+        <Command Global="GEOAUTO3GEOMAPEXPORT" Local="GEOAUTO3GEOMAPEXPORT" />
         <Command Global="GEOAUTO3VIDEO" Local="GEOAUTO3VIDEO" />
         <Command Global="GEOAUTO3VIIMPORT" Local="GEOAUTO3VIIMPORT" />
         <Command Global="GEOAUTO3VIASSOCIATE" Local="GEOAUTO3VIASSOCIATE" />
@@ -44,6 +45,7 @@
       <Commands GroupName="GEOAUTOENGINE3">
         <Command Global="GEOAUTO3PING" Local="GEOAUTO3PING" />
         <Command Global="GEOAUTO3PALETTE" Local="GEOAUTO3PALETTE" />
+        <Command Global="GEOAUTO3GEOMAPEXPORT" Local="GEOAUTO3GEOMAPEXPORT" />
         <Command Global="GEOAUTO3VIDEO" Local="GEOAUTO3VIDEO" />
         <Command Global="GEOAUTO3VIIMPORT" Local="GEOAUTO3VIIMPORT" />
         <Command Global="GEOAUTO3VIASSOCIATE" Local="GEOAUTO3VIASSOCIATE" />
@@ -68,6 +70,7 @@
       <Commands GroupName="GEOAUTOENGINE3">
         <Command Global="GEOAUTO3PING" Local="GEOAUTO3PING" />
         <Command Global="GEOAUTO3PALETTE" Local="GEOAUTO3PALETTE" />
+        <Command Global="GEOAUTO3GEOMAPEXPORT" Local="GEOAUTO3GEOMAPEXPORT" />
         <Command Global="GEOAUTO3VIDEO" Local="GEOAUTO3VIDEO" />
         <Command Global="GEOAUTO3VIIMPORT" Local="GEOAUTO3VIIMPORT" />
         <Command Global="GEOAUTO3VIASSOCIATE" Local="GEOAUTO3VIASSOCIATE" />
