@@ -23,10 +23,10 @@ public static class InspectionAnnotationPlanner
 {
     private static readonly CultureInfo AnnotationCulture = CultureInfo.GetCultureInfo("pt-BR");
     private static readonly Regex FilmingDistanceDetail = new(
-        @"(?:\s*[-–—,:;]?\s*)\b(?:(?:ENTRE|DE)\s+\d+(?:[.,]\d+)?\s+(?:E|A|AT[ÉE])\s+\d+(?:[.,]\d+)?|A\s+PARTIR\s+DE\s+\d+(?:[.,]\d+)?|A(?:OS?)?\s+\d+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)\s*(?:M|METROS?)\s+(?:DO\s+)?IN[ÍI]CIO\s+DA\s+FILMAGEM\b\.?”",
+        @"(?:\s*[-–—,:;]?\s*)\b(?:(?:ENTRE|DE)\s+\d+(?:[.,]\d+)?\s+(?:E|A|AT[ÉE])\s+\d+(?:[.,]\d+)?|A\s+PARTIR\s+DE\s+\d+(?:[.,]\d+)?|A(?:OS?)?\s+\d+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)\s*(?:M|METROS?)\s+(?:DO\s+)?IN[ÍI]CIO\s+DA\s+FILMAGEM\b\.?",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     private static readonly Regex EntireSectionDetail = new(
-        @"(?:\s*[-–—,:;]?\s*)\b(?:AO\s+LONGO\s+DE\s+TODA\s+A\s+FILMAGEM|TODO\s+O\s+TRECHO)\b\.?”",
+        @"(?:\s*[-–—,:;]?\s*)\b(?:AO\s+LONGO\s+DE\s+TODA\s+A\s+FILMAGEM|TODO\s+O\s+TRECHO)\b\.?",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     public static IReadOnlyList<InspectionAnnotationCall> Create(
