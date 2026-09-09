@@ -86,7 +86,7 @@ public static class InspectionAnnotationPlanner
                     calls.Add(Call(
                         positionedEvent,
                         sharesFilmingStart ? filmingStart! : positionedEvent.Locations[0],
-                        "AO LONGO DE TODA A FILMAGEM",
+                        string.Empty,
                         cause,
                         positionLine) with
                     {
