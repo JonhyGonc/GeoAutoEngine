@@ -901,7 +901,7 @@ public sealed class InspectionPipeProtocolTests
     {
         var bytes = await HeaderBytes();
         WriteInt32LittleEndian(bytes, 8, InspectionPipeProtocol.MaxPayloadBytes + 1);
-        await using var stream = new MemoryStream(bytes.Concat(new byte[3]).ToArray());
+        await using var stream = new MemoryStream(bytes);
 
         await Assert.ThrowsAsync<InvalidDataException>(() => InspectionPipeProtocol.ReadFrameAsync(stream));
     }
