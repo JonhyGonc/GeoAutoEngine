@@ -196,6 +196,77 @@ public sealed class InspectionCorrectionTests
 
     [Fact]
     [Trait("Category", "FAST")]
+    public void AcceptedCorrectionsBecomeNewSynchronizedBaseline()
+    {
+        var occurrenceId = Guid.NewGuid();
+        var section = Section(Occurrence(
+            occurrenceId,
+            InspectionLocationMode.Point,
+            "Point",
+            10m,
+            "Texto original"));
+        var session = Session(Guid.NewGuid(), section);
+
+        section.ApplyOccurrenceEdit(new InspectionOccurrenceEdit(
+            section.SectionId,
+            occurrenceId,
+            12.50m,
+            null,
+            [],
+            "Texto sincronizado"));
+
+        Assert.Equal(1, session.EditedOccurrenceCount);
+        Assert.Single(session.CreateCorrectionPush().Corrections);
+
+        var accepted = session.AcceptCurrentCorrectionsAsBaseline();
+
+        Assert.Equal(1, accepted);
+        Assert.Equal(0, session.EditedOccurrenceCount);
+        Assert.Empty(session.CreateCorrectionPush().Corrections);
+        var baseline = section.FindOriginalOccurrence(occurrenceId);
+        Assert.NotNull(baseline);
+        Assert.Equal(12.50m, baseline!.Meterage);
+        Assert.Equal("Texto sincronizado", baseline.EffectiveDescription);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void RestoreAfterSynchronizationReturnsToLastAcceptedValues()
+    {
+        var occurrenceId = Guid.NewGuid();
+        var section = Section(Occurrence(
+            occurrenceId,
+            InspectionLocationMode.Point,
+            "Point",
+            10m,
+            "Primeira versão"));
+
+        section.ApplyOccurrenceEdit(new InspectionOccurrenceEdit(
+            section.SectionId,
+            occurrenceId,
+            12m,
+            null,
+            [],
+            "Versão aceita"));
+        section.AcceptCurrentCorrectionsAsBaseline();
+
+        section.ApplyOccurrenceEdit(new InspectionOccurrenceEdit(
+            section.SectionId,
+            occurrenceId,
+            15m,
+            null,
+            [],
+            "Nova alteração local"));
+
+        Assert.True(section.RestoreOccurrence(occurrenceId));
+        var restored = Assert.Single(section.Occurrences);
+        Assert.Equal(12m, restored.Meterage);
+        Assert.Equal("Versão aceita", restored.EffectiveDescription);
+        Assert.False(section.IsOccurrenceEdited(occurrenceId));
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
     public void MultiPointEditCannotChangeNumberOfTechnicalPoints()
     {
         var occurrenceId = Guid.NewGuid();
