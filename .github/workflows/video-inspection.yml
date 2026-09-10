@@ -31,4 +31,4 @@ jobs:
         run: >-
           dotnet test tests/GeoAutoEngine.Tests/GeoAutoEngine.Tests.csproj
           --configuration Release
-          --filter "FullyQualifiedName~VideoInspection|FullyQualifiedName~InspectionCorrection|FullyQualifiedName~LinearReference|FullyQualifiedName~InspectionPipe"
+          --filter "FullyQualifiedName~GeoAutoEngine.Tests.VideoInspectionContractTests|FullyQualifiedName~GeoAutoEngine.Tests.LinearReferenceEngineTests|FullyQualifiedName~GeoAutoEngine.Tests.InspectionAnnotationPlannerTests|FullyQualifiedName~GeoAutoEngine.Tests.InspectionCalloutLayoutEngineTests|FullyQualifiedName~GeoAutoEngine.Tests.InspectionPipeProtocolTests|FullyQualifiedName~GeoAutoEngine.Tests.InspectionCorrectionTests"
