@@ -6,6 +6,7 @@ using GeoAutoEngine.Application.VideoInspection;
 using GeoAutoEngine.Cad2026.VideoInspection;
 using GeoAutoEngine.Plugin.VideoInspection.Transport;
 using AutoCadApplication = Autodesk.AutoCAD.ApplicationServices.Core.Application;
+using MessageBox = System.Windows.MessageBox;
 
 namespace GeoAutoEngine.Plugin.VideoInspection;
 
