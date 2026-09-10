@@ -3,6 +3,13 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using GeoAutoEngine.Application.VideoInspection;
+using Button = System.Windows.Controls.Button;
+using ComboBox = System.Windows.Controls.ComboBox;
+using Control = System.Windows.Controls.Control;
+using TextBox = System.Windows.Controls.TextBox;
+using MessageBox = System.Windows.MessageBox;
+using Color = System.Windows.Media.Color;
+using Brushes = System.Windows.Media.Brushes;
 
 namespace GeoAutoEngine.Plugin.VideoInspection;
 
