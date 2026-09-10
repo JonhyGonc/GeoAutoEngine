@@ -27,7 +27,7 @@ public sealed class VideoInspectionCorrectionCommands
         {
             action();
         }
-        catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+        catch (System.Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
         {
             PluginLog.Error(operation, exception);
             Autodesk.AutoCAD.ApplicationServices.Core.Application.DocumentManager.MdiActiveDocument?.Editor.WriteMessage(
