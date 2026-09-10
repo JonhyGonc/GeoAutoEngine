@@ -29,6 +29,8 @@ internal sealed class NamedPipeInspectionServer : IDisposable
     private bool _connectionReady;
     private int _nextServerRequestId = 100000;
 
+    internal static NamedPipeInspectionServer? Current { get; private set; }
+
     public NamedPipeInspectionServer(
         InspectionExchangeSerializer serializer,
         Action<ReceivedInspection> accept,
@@ -65,6 +67,7 @@ internal sealed class NamedPipeInspectionServer : IDisposable
 
             _cancellation = new CancellationTokenSource();
             _listenerTask = ListenAsync(_cancellation.Token);
+            Current = this;
         }
 
         PluginLog.Information($"Named Pipe {InspectionPipeProtocol.DefaultPipeName} iniciado.");
@@ -77,6 +80,11 @@ internal sealed class NamedPipeInspectionServer : IDisposable
         {
             if (_listenerTask is null)
             {
+                if (ReferenceEquals(Current, this))
+                {
+                    Current = null;
+                }
+
                 return;
             }
 
@@ -85,6 +93,10 @@ internal sealed class NamedPipeInspectionServer : IDisposable
             _connectionReady = false;
             listener = _listenerTask;
             _listenerTask = null;
+            if (ReferenceEquals(Current, this))
+            {
+                Current = null;
+            }
         }
 
         FailPendingCorrections(new OperationCanceledException("O Named Pipe foi encerrado."));
