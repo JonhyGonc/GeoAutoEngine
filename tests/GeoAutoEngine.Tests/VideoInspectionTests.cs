@@ -585,20 +585,24 @@ public sealed class InspectionCalloutLayoutEngineTests
 
     [Fact]
     [Trait("Category", "FAST")]
-    public void MappingObstacleMovesOnlyInspectionCallout()
+    public void MappingObstaclesDoNotMoveInspectionCallout()
     {
         var call = Call(0, 10, new LinearVector(1, 0, 0));
         var technicalAnchor = call.Anchor.Position;
         var obstacle = new InspectionLayoutObstacle(-1, 0.25, 12, 2.25);
 
-        var placement = Assert.Single(InspectionCalloutLayoutEngine.Arrange(
+        var baseline = Assert.Single(InspectionCalloutLayoutEngine.Arrange([call]));
+        var withObstacle = Assert.Single(InspectionCalloutLayoutEngine.Arrange(
             [call],
             [obstacle]));
 
-        Assert.Equal(technicalAnchor, placement.Call.Anchor.Position);
-        Assert.Equal(10, placement.Call.Anchor.CadDistance, 8);
-        Assert.Equal(-1, placement.Side);
-        Assert.True(placement.LeaderEndPoint.Y < technicalAnchor.Y);
+        Assert.Equal(technicalAnchor, withObstacle.Call.Anchor.Position);
+        Assert.Equal(10, withObstacle.Call.Anchor.CadDistance, 8);
+        Assert.Equal(baseline.Side, withObstacle.Side);
+        Assert.Equal(baseline.Level, withObstacle.Level);
+        Assert.Equal(baseline.LateralSlot, withObstacle.LateralSlot);
+        Assert.Equal(baseline.LeaderEndPoint, withObstacle.LeaderEndPoint);
+        Assert.Equal(baseline.TextPoint, withObstacle.TextPoint);
     }
 
     [Fact]
