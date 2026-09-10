@@ -113,7 +113,7 @@ internal static class VideoInspectionCorrectionRuntime
                     : acknowledgement.Message);
         }
 
-        if (acknowledgement.Accepted && acknowledgement.Results.Count > 0)
+        if ((acknowledgement.Accepted || partial) && acknowledgement.Results.Count > 0)
         {
             var synchronized = session.AcceptConfirmedCorrectionsAsBaseline(acknowledgement.Results);
             var remaining = session.EditedOccurrenceCount;
