@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO;
 using System.IO.Pipes;
 using System.Text.Json;
@@ -19,9 +20,14 @@ internal sealed class NamedPipeInspectionServer : IDisposable
     private readonly string _applicationVersion;
     private readonly string _cadProduct;
     private readonly string _cadVersion;
+    private readonly SemaphoreSlim _writeGate = new(1, 1);
+    private readonly ConcurrentDictionary<int, TaskCompletionSource<InspectionCorrectionAcknowledgement>>
+        _pendingCorrectionAcks = new();
     private CancellationTokenSource? _cancellation;
     private Task? _listenerTask;
     private NamedPipeServerStream? _activePipe;
+    private bool _connectionReady;
+    private int _nextServerRequestId = 100000;
 
     public NamedPipeInspectionServer(
         InspectionExchangeSerializer serializer,
@@ -35,6 +41,17 @@ internal sealed class NamedPipeInspectionServer : IDisposable
         _applicationVersion = applicationVersion;
         _cadProduct = cadProduct;
         _cadVersion = cadVersion;
+    }
+
+    public bool IsCorrectionClientConnected
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _connectionReady && _activePipe?.IsConnected == true;
+            }
+        }
     }
 
     public void Start()
@@ -65,10 +82,12 @@ internal sealed class NamedPipeInspectionServer : IDisposable
 
             _cancellation!.Cancel();
             _activePipe?.Dispose();
+            _connectionReady = false;
             listener = _listenerTask;
             _listenerTask = null;
         }
 
+        FailPendingCorrections(new OperationCanceledException("O Named Pipe foi encerrado."));
         try
         {
             listener.GetAwaiter().GetResult();
@@ -86,6 +105,7 @@ internal sealed class NamedPipeInspectionServer : IDisposable
             lock (_sync)
             {
                 _activePipe = null;
+                _connectionReady = false;
                 _cancellation?.Dispose();
                 _cancellation = null;
             }
@@ -94,7 +114,88 @@ internal sealed class NamedPipeInspectionServer : IDisposable
         PluginLog.Information($"Named Pipe {InspectionPipeProtocol.DefaultPipeName} encerrado.");
     }
 
-    public void Dispose() => Stop();
+    public async Task<InspectionCorrectionAcknowledgement> SendCorrectionsAsync(
+        InspectionCorrectionPush corrections,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(corrections);
+        if (corrections.Corrections.Count == 0)
+        {
+            throw new InvalidOperationException("Não existem correções para enviar ao GeoAutoDocs.");
+        }
+
+        if (timeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(timeout));
+        }
+
+        NamedPipeServerStream pipe;
+        lock (_sync)
+        {
+            if (!_connectionReady || _activePipe?.IsConnected != true)
+            {
+                throw new InvalidOperationException(
+                    "O GeoAutoDocs não está conectado para receber correções. " +
+                    "Abra o relatório no GeoAutoDocs e mantenha a conexão com o GeoAutoEngine ativa.");
+            }
+
+            pipe = _activePipe;
+        }
+
+        var requestId = Interlocked.Increment(ref _nextServerRequestId);
+        var completion = new TaskCompletionSource<InspectionCorrectionAcknowledgement>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!_pendingCorrectionAcks.TryAdd(requestId, completion))
+        {
+            throw new InvalidOperationException("Não foi possível reservar a solicitação de correção.");
+        }
+
+        using var timeoutCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCancellation.CancelAfter(timeout);
+        using var registration = timeoutCancellation.Token.Register(() =>
+            completion.TrySetCanceled(timeoutCancellation.Token));
+
+        try
+        {
+            await WriteFrameAsync(
+                pipe,
+                InspectionPipeMessageType.CorrectionPush,
+                requestId,
+                InspectionPipeProtocol.SerializePayload(corrections),
+                cancellationToken).ConfigureAwait(false);
+            PluginLog.Information(
+                $"CorrectionPush enviado requestId={requestId}; ReportId={corrections.ReportId:D}; " +
+                $"correções={corrections.Corrections.Count}.");
+
+            try
+            {
+                return await completion.Task.ConfigureAwait(false);
+            }
+            catch (TaskCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException(
+                    "O GeoAutoDocs não respondeu ao envio das correções dentro do tempo esperado.",
+                    exception);
+            }
+        }
+        catch (Exception exception) when (exception is IOException or ObjectDisposedException)
+        {
+            throw new InvalidOperationException(
+                "A conexão com o GeoAutoDocs foi encerrada durante o envio das correções.",
+                exception);
+        }
+        finally
+        {
+            _pendingCorrectionAcks.TryRemove(requestId, out _);
+        }
+    }
+
+    public void Dispose()
+    {
+        Stop();
+        _writeGate.Dispose();
+    }
 
     private async Task ListenAsync(CancellationToken cancellationToken)
     {
@@ -112,6 +213,7 @@ internal sealed class NamedPipeInspectionServer : IDisposable
                 lock (_sync)
                 {
                     _activePipe = pipe;
+                    _connectionReady = false;
                 }
 
                 await pipe.WaitForConnectionAsync(cancellationToken).ConfigureAwait(false);
@@ -145,9 +247,11 @@ internal sealed class NamedPipeInspectionServer : IDisposable
                     if (ReferenceEquals(_activePipe, pipe))
                     {
                         _activePipe = null;
+                        _connectionReady = false;
                     }
                 }
 
+                FailPendingCorrections(new IOException("A conexão com o GeoAutoDocs foi encerrada."));
                 pipe?.Dispose();
             }
         }
@@ -229,50 +333,84 @@ internal sealed class NamedPipeInspectionServer : IDisposable
             CadProduct = _cadProduct,
             CadVersion = _cadVersion,
         };
-        await InspectionPipeProtocol.WriteFrameAsync(
+        await WriteFrameAsync(
             pipe,
             InspectionPipeMessageType.HelloAck,
             helloFrame.RequestId,
             InspectionPipeProtocol.SerializePayload(helloAck),
             cancellationToken).ConfigureAwait(false);
+        lock (_sync)
+        {
+            if (ReferenceEquals(_activePipe, pipe) && pipe.IsConnected)
+            {
+                _connectionReady = true;
+            }
+        }
+
         PluginLog.Information(
             $"Handshake GADX aceito requestId={helloFrame.RequestId}; cliente={hello.Application}; " +
             $"versão={hello.ApplicationVersion}.");
 
-        InspectionPipeFrame pushFrame;
-        try
+        while (!cancellationToken.IsCancellationRequested && pipe.IsConnected)
         {
-            pushFrame = await InspectionPipeProtocol.ReadFrameAsync(pipe, cancellationToken).ConfigureAwait(false);
-        }
-        catch (EndOfStreamException)
-        {
-            PluginLog.Information(
-                $"Sonda de disponibilidade GADX concluída requestId={helloFrame.RequestId}.");
-            return;
-        }
-        catch (InvalidDataException exception)
-        {
-            PluginLog.Error("Frame InspectionPush inválido", exception);
-            return;
-        }
+            InspectionPipeFrame frame;
+            try
+            {
+                frame = await InspectionPipeProtocol.ReadFrameAsync(pipe, cancellationToken).ConfigureAwait(false);
+            }
+            catch (EndOfStreamException)
+            {
+                PluginLog.Information(
+                    $"Conexão GADX encerrada pelo cliente após requestId={helloFrame.RequestId}.");
+                return;
+            }
+            catch (InvalidDataException exception)
+            {
+                PluginLog.Error("Frame GADX inválido", exception);
+                return;
+            }
 
-        if (pushFrame.ProtocolVersion != InspectionPipeProtocol.CurrentVersion ||
-            pushFrame.MessageType != InspectionPipeMessageType.InspectionPush)
-        {
-            await WriteErrorAsync(
-                pipe,
-                pushFrame.RequestId,
-                "CommunicationError",
-                $"Mensagem de inspeção inesperada: {pushFrame.MessageType}.",
-                cancellationToken).ConfigureAwait(false);
-            return;
-        }
+            if (frame.ProtocolVersion != InspectionPipeProtocol.CurrentVersion)
+            {
+                await WriteErrorAsync(
+                    pipe,
+                    frame.RequestId,
+                    "IncompatibleVersion",
+                    $"Protocolo GADX {frame.ProtocolVersion} não é suportado.",
+                    cancellationToken).ConfigureAwait(false);
+                continue;
+            }
 
+            switch (frame.MessageType)
+            {
+                case InspectionPipeMessageType.InspectionPush:
+                    await HandleInspectionPushAsync(pipe, frame, cancellationToken).ConfigureAwait(false);
+                    break;
+                case InspectionPipeMessageType.CorrectionAck:
+                    HandleCorrectionAck(frame);
+                    break;
+                default:
+                    await WriteErrorAsync(
+                        pipe,
+                        frame.RequestId,
+                        "CommunicationError",
+                        $"Mensagem inesperada após o handshake: {frame.MessageType}.",
+                        cancellationToken).ConfigureAwait(false);
+                    break;
+            }
+        }
+    }
+
+    private async Task HandleInspectionPushAsync(
+        NamedPipeServerStream pipe,
+        InspectionPipeFrame pushFrame,
+        CancellationToken cancellationToken)
+    {
         try
         {
             var document = _serializer.Deserialize(pushFrame.Payload);
             _accept(new ReceivedInspection(document, pushFrame.RequestId, DateTime.UtcNow, "Named Pipe"));
-            await InspectionPipeProtocol.WriteFrameAsync(
+            await WriteFrameAsync(
                 pipe,
                 InspectionPipeMessageType.InspectionAck,
                 pushFrame.RequestId,
@@ -290,7 +428,7 @@ internal sealed class NamedPipeInspectionServer : IDisposable
         }
         catch (Exception exception) when (exception is InvalidDataException or NotSupportedException or JsonException)
         {
-            await InspectionPipeProtocol.WriteFrameAsync(
+            await WriteFrameAsync(
                 pipe,
                 InspectionPipeMessageType.InspectionAck,
                 pushFrame.RequestId,
@@ -305,12 +443,47 @@ internal sealed class NamedPipeInspectionServer : IDisposable
         }
     }
 
-    private static Task WriteErrorAsync(
+    private void HandleCorrectionAck(InspectionPipeFrame frame)
+    {
+        InspectionCorrectionAcknowledgement acknowledgement;
+        try
+        {
+            acknowledgement = InspectionPipeProtocol.DeserializePayload<InspectionCorrectionAcknowledgement>(
+                frame.Payload);
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidDataException)
+        {
+            if (_pendingCorrectionAcks.TryRemove(frame.RequestId, out var invalidCompletion))
+            {
+                invalidCompletion.TrySetException(new InvalidDataException(
+                    "O GeoAutoDocs respondeu com um CorrectionAck inválido.",
+                    exception));
+            }
+
+            PluginLog.Error($"CorrectionAck inválido requestId={frame.RequestId}", exception);
+            return;
+        }
+
+        if (_pendingCorrectionAcks.TryRemove(frame.RequestId, out var completion))
+        {
+            completion.TrySetResult(acknowledgement);
+            PluginLog.Information(
+                $"CorrectionAck recebido requestId={frame.RequestId}; Accepted={acknowledgement.Accepted}; " +
+                $"Status={acknowledgement.Status}; Applied={acknowledgement.AppliedCount}; " +
+                $"Rejected={acknowledgement.RejectedCount}.");
+        }
+        else
+        {
+            PluginLog.Information($"CorrectionAck sem solicitação pendente requestId={frame.RequestId}.");
+        }
+    }
+
+    private async Task WriteErrorAsync(
         Stream pipe,
         int requestId,
         string status,
         string message,
-        CancellationToken cancellationToken) => InspectionPipeProtocol.WriteFrameAsync(
+        CancellationToken cancellationToken) => await WriteFrameAsync(
             pipe,
             InspectionPipeMessageType.Error,
             requestId,
@@ -319,5 +492,39 @@ internal sealed class NamedPipeInspectionServer : IDisposable
                 Status = status,
                 Message = message,
             }),
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
+
+    private async Task WriteFrameAsync(
+        Stream pipe,
+        InspectionPipeMessageType messageType,
+        int requestId,
+        byte[] payload,
+        CancellationToken cancellationToken)
+    {
+        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await InspectionPipeProtocol.WriteFrameAsync(
+                pipe,
+                messageType,
+                requestId,
+                payload,
+                cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _writeGate.Release();
+        }
+    }
+
+    private void FailPendingCorrections(Exception exception)
+    {
+        foreach (var pending in _pendingCorrectionAcks.ToArray())
+        {
+            if (_pendingCorrectionAcks.TryRemove(pending.Key, out var completion))
+            {
+                completion.TrySetException(exception);
+            }
+        }
+    }
 }
