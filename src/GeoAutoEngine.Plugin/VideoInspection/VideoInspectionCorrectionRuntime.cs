@@ -113,10 +113,26 @@ internal static class VideoInspectionCorrectionRuntime
                     : acknowledgement.Message);
         }
 
-        var status = partial ? "parcialmente recebidas" : "recebidas";
+        var fullyApplied = acknowledgement.Accepted &&
+            acknowledgement.RejectedCount == 0 &&
+            acknowledgement.AppliedCount == push.Corrections.Count;
+        if (fullyApplied)
+        {
+            var synchronized = session.AcceptCurrentCorrectionsAsBaseline();
+            GeoAutoEnginePalette.RefreshVideoInspection();
+            ActiveDocument().Editor.WriteMessage(
+                $"\nGeoAutoEngine: {synchronized} correção(ões) sincronizada(s) com o GeoAutoDocs. " +
+                $"Aplicadas={acknowledgement.AppliedCount}; rejeitadas=0. " +
+                $"{acknowledgement.Message}\n");
+            return;
+        }
+
+        var status = partial ? "parcialmente recebidas" : "recebidas sem confirmação completa";
+        GeoAutoEnginePalette.RefreshVideoInspection();
         ActiveDocument().Editor.WriteMessage(
             $"\nGeoAutoEngine: {push.Corrections.Count} correção(ões) {status} pelo GeoAutoDocs. " +
             $"Aplicadas={acknowledgement.AppliedCount}; rejeitadas={acknowledgement.RejectedCount}. " +
+            "As correções permanecem pendentes no GeoAutoEngine para evitar perda de alterações. " +
             $"{acknowledgement.Message}\n");
     }
 
