@@ -80,11 +80,14 @@ public sealed class VideoInspectionSession
             .SelectMany(section => section.GetCorrections())
             .ToArray()),
     };
+
+    public int AcceptCurrentCorrectionsAsBaseline() =>
+        Sections.Sum(section => section.AcceptCurrentCorrectionsAsBaseline());
 }
 
 public sealed class InspectionSectionSession
 {
-    private readonly IReadOnlyDictionary<Guid, InspectionOccurrenceSession> _originalOccurrences;
+    private readonly Dictionary<Guid, InspectionOccurrenceSession> _originalOccurrences;
 
     public InspectionSectionSession(
         Guid sectionId,
@@ -208,6 +211,23 @@ public sealed class InspectionSectionSession
                 Description = occurrence.EffectiveDescription,
             })
             .ToArray());
+
+    public int AcceptCurrentCorrectionsAsBaseline()
+    {
+        var accepted = 0;
+        foreach (var occurrence in Occurrences)
+        {
+            if (!IsOccurrenceEdited(occurrence.OccurrenceId))
+            {
+                continue;
+            }
+
+            _originalOccurrences[occurrence.OccurrenceId] = occurrence;
+            accepted++;
+        }
+
+        return accepted;
+    }
 
     public void Associate(CadSectionAssociation association)
     {
