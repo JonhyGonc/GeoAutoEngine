@@ -133,11 +133,14 @@ public static class InspectionAnnotationPlanner
         InspectionSectionSession section)
     {
         ArgumentNullException.ThrowIfNull(section);
+        var sectionLine = string.IsNullOrWhiteSpace(section.Name)
+            ? $"TRECHO {Math.Max(1, section.Order + 1):00}"
+            : section.Name.Trim();
         var diameter = section.Diameter is { } value
             ? value.ToString("0.##", AnnotationCulture)
             : "N/I";
         return new InspectionSectionIdentification(
-            section.Name,
+            sectionLine,
             $"Ø{diameter}");
     }
 
