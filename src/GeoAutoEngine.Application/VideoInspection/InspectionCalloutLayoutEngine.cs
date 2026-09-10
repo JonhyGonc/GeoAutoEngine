@@ -37,8 +37,6 @@ public static class InspectionCalloutLayoutEngine
     private const double LineHeightFactor = 1.25;
     private const double TextOverlapPenalty = 10000.0;
     private const double LineThroughTextPenalty = 1000.0;
-    private const double MappingLineCrossingPenalty = 12.0;
-    private const double LeaderCrossingPenalty = 3.0;
     private const double LengthPenaltyFactor = 1.0;
     private const double LateralPenaltyFactor = 0.75;
     private const double OppositeSidePenalty = 0.10;
@@ -50,7 +48,6 @@ public static class InspectionCalloutLayoutEngine
         IReadOnlyList<InspectionLayoutObstacle>? obstacles = null)
     {
         ArgumentNullException.ThrowIfNull(calls);
-        obstacles ??= Array.Empty<InspectionLayoutObstacle>();
         if (calls.Count == 0)
         {
             return Array.Empty<InspectionCalloutPlacement>();
@@ -84,7 +81,6 @@ public static class InspectionCalloutLayoutEngine
                 var score = Score(
                     candidate,
                     placed,
-                    obstacles,
                     preferredSide,
                     position.AttemptIndex);
                 if (selectedScore is null || score.CompareTo(selectedScore.Value) < 0)
@@ -181,7 +177,6 @@ public static class InspectionCalloutLayoutEngine
     private static CandidateScore Score(
         PlacedCallout candidate,
         IReadOnlyList<PlacedCallout> placed,
-        IReadOnlyList<InspectionLayoutObstacle> obstacles,
         int preferredSide,
         int attemptIndex)
     {
@@ -209,42 +204,6 @@ public static class InspectionCalloutLayoutEngine
                     TextClearance))
             {
                 penalty += LineThroughTextPenalty;
-            }
-
-            if (ContainsTechnicalPoint(
-                    existing.Bounds,
-                    candidate.Placement.Call) ||
-                ContainsTechnicalPoint(
-                    candidate.Bounds,
-                    existing.Placement.Call))
-            {
-                penalty += TextOverlapPenalty;
-            }
-
-            if (SegmentsIntersect(
-                    candidate.LeaderStart,
-                    candidate.LeaderEnd,
-                    existing.LeaderStart,
-                    existing.LeaderEnd))
-            {
-                penalty += LeaderCrossingPenalty;
-            }
-        }
-
-        foreach (var obstacle in obstacles)
-        {
-            if (candidate.Bounds.Intersects(obstacle, TextClearance))
-            {
-                penalty += TextOverlapPenalty;
-            }
-
-            if (SegmentIntersectsObstacle(
-                candidate.LeaderStart,
-                candidate.LeaderEnd,
-                obstacle,
-                TextClearance))
-            {
-                penalty += MappingLineCrossingPenalty;
             }
         }
 
