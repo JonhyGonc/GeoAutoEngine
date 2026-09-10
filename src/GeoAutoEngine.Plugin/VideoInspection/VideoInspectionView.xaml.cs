@@ -4,6 +4,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using GeoAutoEngine.Application.VideoInspection;
+using Button = System.Windows.Controls.Button;
+using Control = System.Windows.Controls.Control;
+using UserControl = System.Windows.Controls.UserControl;
 
 namespace GeoAutoEngine.Plugin.VideoInspection;
 
