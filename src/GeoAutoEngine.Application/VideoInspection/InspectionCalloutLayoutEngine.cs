@@ -116,16 +116,28 @@ public static class InspectionCalloutLayoutEngine
             lines.Add("INICIO:");
         }
 
+        var locationLines = string.IsNullOrWhiteSpace(call.LocationLine)
+            ? []
+            : call.LocationLine
+                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+                .Select(line => line.Trim())
+                .ToArray();
+
         if (call.IsFilmingEnd)
         {
-            lines.Add("FIM:");
+            if (locationLines.Length > 0)
+            {
+                lines.Add($"FIM: {locationLines[0]}");
+                lines.AddRange(locationLines.Skip(1));
+            }
+            else
+            {
+                lines.Add("FIM:");
+            }
         }
-
-        if (!string.IsNullOrWhiteSpace(call.LocationLine))
+        else
         {
-            lines.AddRange(call.LocationLine
-                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-                .Select(line => line.Trim()));
+            lines.AddRange(locationLines);
         }
 
         if (!string.IsNullOrWhiteSpace(call.Cause))
