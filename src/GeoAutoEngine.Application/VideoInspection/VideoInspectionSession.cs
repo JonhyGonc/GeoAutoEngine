@@ -67,13 +67,25 @@ public sealed class VideoInspectionSession
     public DateTime GeneratedAtUtc { get; }
     public IReadOnlyList<InspectionSectionSession> Sections { get; }
     public int OccurrenceCount => Sections.Sum(section => section.Occurrences.Count);
+    public int EditedOccurrenceCount => Sections.Sum(section => section.EditedOccurrenceCount);
 
     public InspectionSectionSession? FindSection(Guid sectionId) =>
         Sections.FirstOrDefault(section => section.SectionId == sectionId);
+
+    public InspectionCorrectionPush CreateCorrectionPush() => new()
+    {
+        ReportId = ReportId,
+        GeneratedAtUtc = DateTime.UtcNow,
+        Corrections = Array.AsReadOnly(Sections
+            .SelectMany(section => section.GetCorrections())
+            .ToArray()),
+    };
 }
 
 public sealed class InspectionSectionSession
 {
+    private readonly IReadOnlyDictionary<Guid, InspectionOccurrenceSession> _originalOccurrences;
+
     public InspectionSectionSession(
         Guid sectionId,
         Guid locationId,
@@ -101,7 +113,8 @@ public sealed class InspectionSectionSession
         InvestigatedMeters = investigatedMeters;
         Order = order;
         VideoReferences = videoReferences;
-        Occurrences = occurrences;
+        Occurrences = Array.AsReadOnly(occurrences.ToArray());
+        _originalOccurrences = occurrences.ToDictionary(occurrence => occurrence.OccurrenceId);
     }
 
     public Guid SectionId { get; }
@@ -116,11 +129,85 @@ public sealed class InspectionSectionSession
     public decimal? InvestigatedMeters { get; }
     public int Order { get; }
     public IReadOnlyList<InspectionVideoReferenceSession> VideoReferences { get; }
-    public IReadOnlyList<InspectionOccurrenceSession> Occurrences { get; }
+    public IReadOnlyList<InspectionOccurrenceSession> Occurrences { get; private set; }
     public CadSectionAssociation? Association { get; private set; }
     public IReadOnlyList<PositionedInspectionEvent> PositionedEvents { get; private set; } = [];
     public InspectionSectionStatus Status { get; private set; } = InspectionSectionStatus.Pending;
     public string? StatusMessage { get; private set; }
+    public int EditedOccurrenceCount => Occurrences.Count(occurrence => IsOccurrenceEdited(occurrence.OccurrenceId));
+
+    public InspectionOccurrenceSession? FindOccurrence(Guid occurrenceId) =>
+        Occurrences.FirstOrDefault(occurrence => occurrence.OccurrenceId == occurrenceId);
+
+    public InspectionOccurrenceSession? FindOriginalOccurrence(Guid occurrenceId) =>
+        _originalOccurrences.TryGetValue(occurrenceId, out var occurrence) ? occurrence : null;
+
+    public bool IsOccurrenceEdited(Guid occurrenceId)
+    {
+        var current = FindOccurrence(occurrenceId);
+        return current is not null &&
+            _originalOccurrences.TryGetValue(occurrenceId, out var original) &&
+            !EditableValuesEqual(current, original);
+    }
+
+    public void ApplyOccurrenceEdit(InspectionOccurrenceEdit edit)
+    {
+        ArgumentNullException.ThrowIfNull(edit);
+        if (edit.SectionId != SectionId)
+        {
+            throw new ArgumentException("A correção não pertence ao trecho informado.", nameof(edit));
+        }
+
+        var index = FindOccurrenceIndex(edit.OccurrenceId);
+        if (index < 0 || !_originalOccurrences.TryGetValue(edit.OccurrenceId, out var original))
+        {
+            throw new InvalidOperationException("A ocorrência que será editada não existe neste trecho.");
+        }
+
+        if (string.IsNullOrWhiteSpace(edit.Description))
+        {
+            throw new ArgumentException("O texto da ocorrência não pode ficar vazio.", nameof(edit));
+        }
+
+        var current = Occurrences[index];
+        var edited = ApplyEditableValues(current, original, edit);
+        var replacement = EditableValuesEqual(edited, original) ? original : edited;
+        ReplaceOccurrence(index, replacement);
+        InvalidatePositioningAfterEdit();
+    }
+
+    public bool RestoreOccurrence(Guid occurrenceId)
+    {
+        var index = FindOccurrenceIndex(occurrenceId);
+        if (index < 0 || !_originalOccurrences.TryGetValue(occurrenceId, out var original))
+        {
+            return false;
+        }
+
+        if (EditableValuesEqual(Occurrences[index], original))
+        {
+            return false;
+        }
+
+        ReplaceOccurrence(index, original);
+        InvalidatePositioningAfterEdit();
+        return true;
+    }
+
+    public IReadOnlyList<InspectionOccurrenceCorrection> GetCorrections() =>
+        Array.AsReadOnly(Occurrences
+            .Where(occurrence => IsOccurrenceEdited(occurrence.OccurrenceId))
+            .Select(occurrence => new InspectionOccurrenceCorrection
+            {
+                SectionId = SectionId,
+                OccurrenceId = occurrence.OccurrenceId,
+                LocationMode = occurrence.WireLocationMode,
+                Meterage = occurrence.Meterage,
+                EndMeterage = occurrence.EndMeterage,
+                MeteragePoints = Array.AsReadOnly(occurrence.MeteragePoints.ToArray()),
+                Description = occurrence.EffectiveDescription,
+            })
+            .ToArray());
 
     public void Associate(CadSectionAssociation association)
     {
@@ -166,6 +253,130 @@ public sealed class InspectionSectionSession
         Status = InspectionSectionStatus.Error;
         StatusMessage = message;
     }
+
+    private InspectionOccurrenceSession ApplyEditableValues(
+        InspectionOccurrenceSession current,
+        InspectionOccurrenceSession original,
+        InspectionOccurrenceEdit edit)
+    {
+        var description = edit.Description;
+        switch (original.LocationMode)
+        {
+            case InspectionLocationMode.Point:
+                ValidateRequiredMeterage(edit.Meterage, "metragem");
+                return current with
+                {
+                    Meterage = edit.Meterage,
+                    EffectiveDescription = description,
+                };
+            case InspectionLocationMode.Range:
+                ValidateRequiredMeterage(edit.Meterage, "metragem inicial");
+                ValidateRequiredMeterage(edit.EndMeterage, "metragem final");
+                if (edit.EndMeterage < edit.Meterage)
+                {
+                    throw new ArgumentException("A metragem final não pode ser menor que a metragem inicial.", nameof(edit));
+                }
+
+                return current with
+                {
+                    Meterage = edit.Meterage,
+                    EndMeterage = edit.EndMeterage,
+                    EffectiveDescription = description,
+                };
+            case InspectionLocationMode.MultiPoint:
+                ArgumentNullException.ThrowIfNull(edit.MeteragePoints);
+                if (edit.MeteragePoints.Count != original.MeteragePoints.Count)
+                {
+                    throw new ArgumentException(
+                        "A edição multiponto deve manter a mesma quantidade de pontos da ocorrência original.",
+                        nameof(edit));
+                }
+
+                foreach (var meterage in edit.MeteragePoints)
+                {
+                    ValidateRequiredMeterage(meterage, "metragem multiponto");
+                }
+
+                return current with
+                {
+                    MeteragePoints = Array.AsReadOnly(edit.MeteragePoints.ToArray()),
+                    EffectiveDescription = description,
+                };
+            case InspectionLocationMode.From:
+                ValidateRequiredMeterage(edit.Meterage, "metragem inicial");
+                return current with
+                {
+                    Meterage = edit.Meterage,
+                    EffectiveDescription = description,
+                };
+            case InspectionLocationMode.EntireSection:
+            case InspectionLocationMode.NotApplicable:
+            case InspectionLocationMode.Unknown:
+            default:
+                return current with { EffectiveDescription = description };
+        }
+    }
+
+    private static void ValidateRequiredMeterage(decimal? value, string fieldName)
+    {
+        if (!value.HasValue)
+        {
+            throw new ArgumentException($"Informe a {fieldName} da ocorrência.");
+        }
+
+        ValidateRequiredMeterage(value.Value, fieldName);
+    }
+
+    private static void ValidateRequiredMeterage(decimal value, string fieldName)
+    {
+        if (value < 0)
+        {
+            throw new ArgumentOutOfRangeException(fieldName, "A metragem não pode ser negativa.");
+        }
+    }
+
+    private int FindOccurrenceIndex(Guid occurrenceId)
+    {
+        for (var index = 0; index < Occurrences.Count; index++)
+        {
+            if (Occurrences[index].OccurrenceId == occurrenceId)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private void ReplaceOccurrence(int index, InspectionOccurrenceSession occurrence)
+    {
+        var occurrences = Occurrences.ToArray();
+        occurrences[index] = occurrence;
+        Occurrences = Array.AsReadOnly(occurrences);
+    }
+
+    private void InvalidatePositioningAfterEdit()
+    {
+        PositionedEvents = [];
+        if (Association is not null)
+        {
+            Status = InspectionSectionStatus.Associated;
+            StatusMessage = "Ocorrência editada; posicionamento será recalculado.";
+        }
+        else if (Status != InspectionSectionStatus.AssociationLost)
+        {
+            Status = InspectionSectionStatus.Pending;
+            StatusMessage = "Ocorrência editada; associe a geometria para reposicionar.";
+        }
+    }
+
+    private static bool EditableValuesEqual(
+        InspectionOccurrenceSession first,
+        InspectionOccurrenceSession second) =>
+        first.Meterage == second.Meterage &&
+        first.EndMeterage == second.EndMeterage &&
+        first.MeteragePoints.SequenceEqual(second.MeteragePoints) &&
+        string.Equals(first.EffectiveDescription, second.EffectiveDescription, StringComparison.Ordinal);
 }
 
 public sealed record InspectionVideoReferenceSession(
