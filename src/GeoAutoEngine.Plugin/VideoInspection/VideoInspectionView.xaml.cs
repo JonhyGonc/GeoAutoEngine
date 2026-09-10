@@ -73,6 +73,12 @@ public partial class VideoInspectionView : UserControl
             return;
         }
 
+        if (!VideoInspectionRuntime.ConfirmDiscardPendingCorrections("remover a inspeção carregada"))
+        {
+            ResetRemoveJsonButton();
+            return;
+        }
+
         ResetRemoveJsonButton();
         DetailState.Visibility = Visibility.Collapsed;
         ListState.Visibility = Visibility.Visible;
