@@ -11,6 +11,7 @@ internal static class VideoInspectionCorrectionRuntime
     private static readonly object Sync = new();
     private static readonly AutoCadInspectionGeometryService GeometryService = new();
     private static readonly AutoCadInspectionRenderer Renderer = new();
+    private static readonly AutoCadInspectionManagedEntityProbe ManagedEntityProbe = new();
     private static InspectionOccurrenceEdit? _pendingEdit;
     private static (Guid SectionId, Guid OccurrenceId)? _pendingRestore;
 
@@ -49,9 +50,8 @@ internal static class VideoInspectionCorrectionRuntime
 
         var session = RequiredSession();
         var section = RequiredSection(session, edit.SectionId);
-        var wasGenerated = section.Status == InspectionSectionStatus.Generated;
         section.ApplyOccurrenceEdit(edit);
-        RefreshPositioningAndDrawing(session, section, wasGenerated);
+        RefreshPositioningAndDrawing(session, section);
         GeoAutoEnginePalette.RefreshVideoInspection();
 
         ActiveDocument().Editor.WriteMessage(
@@ -71,14 +71,13 @@ internal static class VideoInspectionCorrectionRuntime
 
         var session = RequiredSession();
         var section = RequiredSection(session, pending.SectionId);
-        var wasGenerated = section.Status == InspectionSectionStatus.Generated;
         if (!section.RestoreOccurrence(pending.OccurrenceId))
         {
             ActiveDocument().Editor.WriteMessage("\nGeoAutoEngine: a ocorrência já está com os valores originais.\n");
             return;
         }
 
-        RefreshPositioningAndDrawing(session, section, wasGenerated);
+        RefreshPositioningAndDrawing(session, section);
         GeoAutoEnginePalette.RefreshVideoInspection();
         ActiveDocument().Editor.WriteMessage(
             $"\nGeoAutoEngine: ocorrência restaurada; correções locais pendentes={session.EditedOccurrenceCount}.\n");
@@ -162,8 +161,7 @@ internal static class VideoInspectionCorrectionRuntime
 
     private static void RefreshPositioningAndDrawing(
         VideoInspectionSession session,
-        InspectionSectionSession section,
-        bool redrawExisting)
+        InspectionSectionSession section)
     {
         if (section.Association is null)
         {
@@ -171,6 +169,10 @@ internal static class VideoInspectionCorrectionRuntime
         }
 
         var document = ActiveDocument();
+        var redrawExisting = ManagedEntityProbe.HasManagedEntities(
+            document,
+            session.ReportId,
+            section.SectionId);
         var positioning = GeometryService.ResolveWithDiagnostics(document, section);
         section.SetPositioning(positioning.PositionedEvents);
         if (!redrawExisting)
