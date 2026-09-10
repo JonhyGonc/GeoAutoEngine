@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.IO;
+using System.Windows;
 using Autodesk.AutoCAD.ApplicationServices;
 using GeoAutoEngine.Application.VideoInspection;
 using GeoAutoEngine.Cad2026.VideoInspection;
@@ -61,6 +62,11 @@ internal static class VideoInspectionRuntime
     internal static void ImportFile(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (!ConfirmDiscardPendingCorrections("importar outro arquivo de inspeção"))
+        {
+            return;
+        }
+
         VideoInspectionPerformanceProbe.BeginImport(path);
         VideoInspectionPerformanceProbe.Count("ImportFile");
         try
@@ -92,6 +98,24 @@ internal static class VideoInspectionRuntime
             VideoInspectionPerformanceProbe.FailImport(exception);
             throw;
         }
+    }
+
+    internal static bool ConfirmDiscardPendingCorrections(string action)
+    {
+        var pending = CurrentSession?.EditedOccurrenceCount ?? 0;
+        if (pending == 0)
+        {
+            return true;
+        }
+
+        var result = MessageBox.Show(
+            $"Existem {pending} correção(ões) local(is) ainda não sincronizada(s) com o GeoAutoDocs.\n\n" +
+            $"Deseja {action} e descartar essas correções?",
+            "Correções pendentes — GeoAutoEngine",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+        return result == MessageBoxResult.Yes;
     }
 
     internal static void Associate(Guid sectionId)
@@ -164,6 +188,11 @@ internal static class VideoInspectionRuntime
 
     internal static void DeliverPending()
     {
+        if ((CurrentSession?.EditedOccurrenceCount ?? 0) > 0)
+        {
+            return;
+        }
+
         while (Inbox.TryDequeue(out var received))
         {
             Activate(received.Document, "Inspeção recebida");
