@@ -9,6 +9,7 @@ using Control = System.Windows.Controls.Control;
 using TextBox = System.Windows.Controls.TextBox;
 using MessageBox = System.Windows.MessageBox;
 using Color = System.Windows.Media.Color;
+using ColorConverter = System.Windows.Media.ColorConverter;
 using Brushes = System.Windows.Media.Brushes;
 
 namespace GeoAutoEngine.Plugin.VideoInspection;
