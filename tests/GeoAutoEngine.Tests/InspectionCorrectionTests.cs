@@ -40,6 +40,129 @@ public sealed class InspectionCorrectionTests
 
     [Fact]
     [Trait("Category", "FAST")]
+    public void RangeEditUpdatesBothLimitsAndRejectsInvertedRange()
+    {
+        var occurrenceId = Guid.NewGuid();
+        var section = Section(new InspectionOccurrenceSession(
+            occurrenceId,
+            0,
+            InspectionLocationMode.Range,
+            "Range",
+            10m,
+            20m,
+            [],
+            null,
+            null,
+            null,
+            "Fissura",
+            false,
+            false,
+            null,
+            null));
+
+        section.ApplyOccurrenceEdit(new InspectionOccurrenceEdit(
+            section.SectionId,
+            occurrenceId,
+            11.25m,
+            22.50m,
+            [],
+            "Fissura corrigida"));
+
+        var edited = Assert.Single(section.Occurrences);
+        Assert.Equal(11.25m, edited.Meterage);
+        Assert.Equal(22.50m, edited.EndMeterage);
+        Assert.Equal("Fissura corrigida", edited.EffectiveDescription);
+
+        var exception = Assert.Throws<ArgumentException>(() => section.ApplyOccurrenceEdit(
+            new InspectionOccurrenceEdit(
+                section.SectionId,
+                occurrenceId,
+                30m,
+                25m,
+                [],
+                "Intervalo inválido")));
+
+        Assert.Contains("final", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(11.25m, Assert.Single(section.Occurrences).Meterage);
+        Assert.Equal(22.50m, Assert.Single(section.Occurrences).EndMeterage);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void FromEditChangesStartMeterageAndDescription()
+    {
+        var occurrenceId = Guid.NewGuid();
+        var section = Section(new InspectionOccurrenceSession(
+            occurrenceId,
+            0,
+            InspectionLocationMode.From,
+            "From",
+            35m,
+            null,
+            [],
+            null,
+            null,
+            null,
+            "Infiltração",
+            false,
+            false,
+            null,
+            null));
+
+        section.ApplyOccurrenceEdit(new InspectionOccurrenceEdit(
+            section.SectionId,
+            occurrenceId,
+            38.40m,
+            null,
+            [],
+            "Infiltração corrigida"));
+
+        var edited = Assert.Single(section.Occurrences);
+        Assert.Equal(38.40m, edited.Meterage);
+        Assert.Null(edited.EndMeterage);
+        Assert.Equal("Infiltração corrigida", edited.EffectiveDescription);
+        Assert.True(section.IsOccurrenceEdited(occurrenceId));
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void EntireSectionEditChangesOnlyDisplayedDescription()
+    {
+        var occurrenceId = Guid.NewGuid();
+        var section = Section(new InspectionOccurrenceSession(
+            occurrenceId,
+            0,
+            InspectionLocationMode.EntireSection,
+            "EntireSection",
+            null,
+            null,
+            [],
+            null,
+            null,
+            null,
+            "Deslocamento das juntas em todo trecho filmado",
+            false,
+            false,
+            null,
+            null));
+
+        section.ApplyOccurrenceEdit(new InspectionOccurrenceEdit(
+            section.SectionId,
+            occurrenceId,
+            999m,
+            1000m,
+            [1m, 2m],
+            "Deslocamento corrigido em todo trecho filmado"));
+
+        var edited = Assert.Single(section.Occurrences);
+        Assert.Null(edited.Meterage);
+        Assert.Null(edited.EndMeterage);
+        Assert.Empty(edited.MeteragePoints);
+        Assert.Equal("Deslocamento corrigido em todo trecho filmado", edited.EffectiveDescription);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
     public void CorrectionPushContainsOnlyEditedOccurrences()
     {
         var editedId = Guid.NewGuid();
@@ -130,6 +253,38 @@ public sealed class InspectionCorrectionTests
         Assert.Equal(InspectionPipeMessageType.CorrectionPush, frame.MessageType);
         Assert.Equal(901, frame.RequestId);
         Assert.Equal(push.ReportId, InspectionPipeProtocol.DeserializePayload<InspectionCorrectionPush>(frame.Payload).ReportId);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public async Task CorrectionAcknowledgementRoundTripsAppliedAndRejectedCounts()
+    {
+        await using var stream = new MemoryStream();
+        var acknowledgement = new InspectionCorrectionAcknowledgement
+        {
+            Accepted = true,
+            Status = "Partial",
+            Message = "Uma correção aplicada e uma rejeitada.",
+            AppliedCount = 1,
+            RejectedCount = 1,
+        };
+
+        await InspectionPipeProtocol.WriteFrameAsync(
+            stream,
+            InspectionPipeMessageType.CorrectionAck,
+            902,
+            InspectionPipeProtocol.SerializePayload(acknowledgement));
+        stream.Position = 0;
+
+        var frame = await InspectionPipeProtocol.ReadFrameAsync(stream);
+        var received = InspectionPipeProtocol.DeserializePayload<InspectionCorrectionAcknowledgement>(frame.Payload);
+
+        Assert.Equal(InspectionPipeMessageType.CorrectionAck, frame.MessageType);
+        Assert.Equal(902, frame.RequestId);
+        Assert.True(received.Accepted);
+        Assert.Equal("Partial", received.Status);
+        Assert.Equal(1, received.AppliedCount);
+        Assert.Equal(1, received.RejectedCount);
     }
 
     private static VideoInspectionSession Session(Guid reportId, InspectionSectionSession section) => new(
