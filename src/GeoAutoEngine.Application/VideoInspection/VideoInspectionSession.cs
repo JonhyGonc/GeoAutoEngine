@@ -83,6 +83,35 @@ public sealed class VideoInspectionSession
 
     public int AcceptCurrentCorrectionsAsBaseline() =>
         Sections.Sum(section => section.AcceptCurrentCorrectionsAsBaseline());
+
+    public int AcceptConfirmedCorrectionsAsBaseline(
+        IReadOnlyList<InspectionCorrectionItemAcknowledgement> results)
+    {
+        ArgumentNullException.ThrowIfNull(results);
+        var accepted = 0;
+        var processed = new HashSet<(Guid SectionId, Guid OccurrenceId)>();
+        foreach (var result in results)
+        {
+            if (!IsConfirmed(result) ||
+                !processed.Add((result.SectionId, result.OccurrenceId)))
+            {
+                continue;
+            }
+
+            var section = FindSection(result.SectionId);
+            if (section?.AcceptCurrentCorrectionAsBaseline(result.OccurrenceId) == true)
+            {
+                accepted++;
+            }
+        }
+
+        return accepted;
+    }
+
+    private static bool IsConfirmed(InspectionCorrectionItemAcknowledgement result) =>
+        result.Applied ||
+        string.Equals(result.Status, "Applied", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(result.Status, "Unchanged", StringComparison.OrdinalIgnoreCase);
 }
 
 public sealed class InspectionSectionSession
@@ -217,16 +246,25 @@ public sealed class InspectionSectionSession
         var accepted = 0;
         foreach (var occurrence in Occurrences)
         {
-            if (!IsOccurrenceEdited(occurrence.OccurrenceId))
+            if (AcceptCurrentCorrectionAsBaseline(occurrence.OccurrenceId))
             {
-                continue;
+                accepted++;
             }
-
-            _originalOccurrences[occurrence.OccurrenceId] = occurrence;
-            accepted++;
         }
 
         return accepted;
+    }
+
+    public bool AcceptCurrentCorrectionAsBaseline(Guid occurrenceId)
+    {
+        var current = FindOccurrence(occurrenceId);
+        if (current is null || !IsOccurrenceEdited(occurrenceId))
+        {
+            return false;
+        }
+
+        _originalOccurrences[occurrenceId] = current;
+        return true;
     }
 
     public void Associate(CadSectionAssociation association)
