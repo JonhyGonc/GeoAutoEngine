@@ -231,6 +231,94 @@ public sealed class InspectionCorrectionTests
 
     [Fact]
     [Trait("Category", "FAST")]
+    public void PartialAcknowledgementAcceptsOnlyConfirmedOccurrences()
+    {
+        var acceptedId = Guid.NewGuid();
+        var rejectedId = Guid.NewGuid();
+        var section = Section(
+            Occurrence(acceptedId, InspectionLocationMode.Point, "Point", 10m, "Primeira"),
+            Occurrence(rejectedId, InspectionLocationMode.Point, "Point", 20m, "Segunda"));
+        var session = Session(Guid.NewGuid(), section);
+
+        section.ApplyOccurrenceEdit(new InspectionOccurrenceEdit(
+            section.SectionId,
+            acceptedId,
+            11m,
+            null,
+            [],
+            "Primeira corrigida"));
+        section.ApplyOccurrenceEdit(new InspectionOccurrenceEdit(
+            section.SectionId,
+            rejectedId,
+            21m,
+            null,
+            [],
+            "Segunda corrigida"));
+
+        var accepted = session.AcceptConfirmedCorrectionsAsBaseline(
+        [
+            new InspectionCorrectionItemAcknowledgement
+            {
+                SectionId = section.SectionId,
+                OccurrenceId = acceptedId,
+                Applied = true,
+                Status = "Applied",
+            },
+            new InspectionCorrectionItemAcknowledgement
+            {
+                SectionId = section.SectionId,
+                OccurrenceId = rejectedId,
+                Applied = false,
+                Status = "Invalid",
+            },
+        ]);
+
+        Assert.Equal(1, accepted);
+        Assert.False(section.IsOccurrenceEdited(acceptedId));
+        Assert.True(section.IsOccurrenceEdited(rejectedId));
+        Assert.Equal(1, session.EditedOccurrenceCount);
+        var pending = Assert.Single(session.CreateCorrectionPush().Corrections);
+        Assert.Equal(rejectedId, pending.OccurrenceId);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void UnchangedAcknowledgementAlsoConfirmsCurrentBaseline()
+    {
+        var occurrenceId = Guid.NewGuid();
+        var section = Section(Occurrence(
+            occurrenceId,
+            InspectionLocationMode.Point,
+            "Point",
+            10m,
+            "Original"));
+        var session = Session(Guid.NewGuid(), section);
+        section.ApplyOccurrenceEdit(new InspectionOccurrenceEdit(
+            section.SectionId,
+            occurrenceId,
+            12m,
+            null,
+            [],
+            "Já estava no GeoAutoDocs"));
+
+        var accepted = session.AcceptConfirmedCorrectionsAsBaseline(
+        [
+            new InspectionCorrectionItemAcknowledgement
+            {
+                SectionId = section.SectionId,
+                OccurrenceId = occurrenceId,
+                Applied = false,
+                Status = "Unchanged",
+            },
+        ]);
+
+        Assert.Equal(1, accepted);
+        Assert.Equal(0, session.EditedOccurrenceCount);
+        Assert.Empty(session.CreateCorrectionPush().Corrections);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
     public void RestoreAfterSynchronizationReturnsToLastAcceptedValues()
     {
         var occurrenceId = Guid.NewGuid();
@@ -328,16 +416,39 @@ public sealed class InspectionCorrectionTests
 
     [Fact]
     [Trait("Category", "FAST")]
-    public async Task CorrectionAcknowledgementRoundTripsAppliedAndRejectedCounts()
+    public async Task CorrectionAcknowledgementRoundTripsDetailedResults()
     {
         await using var stream = new MemoryStream();
+        var sectionId = Guid.NewGuid();
+        var appliedId = Guid.NewGuid();
+        var rejectedId = Guid.NewGuid();
         var acknowledgement = new InspectionCorrectionAcknowledgement
         {
             Accepted = true,
             Status = "Partial",
             Message = "Uma correção aplicada e uma rejeitada.",
+            RequestedCount = 2,
             AppliedCount = 1,
             RejectedCount = 1,
+            Results =
+            [
+                new InspectionCorrectionItemAcknowledgement
+                {
+                    SectionId = sectionId,
+                    OccurrenceId = appliedId,
+                    Applied = true,
+                    Status = "Applied",
+                    Message = "Correção aplicada.",
+                },
+                new InspectionCorrectionItemAcknowledgement
+                {
+                    SectionId = sectionId,
+                    OccurrenceId = rejectedId,
+                    Applied = false,
+                    Status = "Invalid",
+                    Message = "Correção inválida.",
+                },
+            ],
         };
 
         await InspectionPipeProtocol.WriteFrameAsync(
@@ -354,8 +465,14 @@ public sealed class InspectionCorrectionTests
         Assert.Equal(902, frame.RequestId);
         Assert.True(received.Accepted);
         Assert.Equal("Partial", received.Status);
+        Assert.Equal(2, received.RequestedCount);
         Assert.Equal(1, received.AppliedCount);
         Assert.Equal(1, received.RejectedCount);
+        Assert.Equal(2, received.Results.Count);
+        Assert.Equal(appliedId, received.Results[0].OccurrenceId);
+        Assert.True(received.Results[0].Applied);
+        Assert.Equal(rejectedId, received.Results[1].OccurrenceId);
+        Assert.Equal("Invalid", received.Results[1].Status);
     }
 
     private static VideoInspectionSession Session(Guid reportId, InspectionSectionSession section) => new(
