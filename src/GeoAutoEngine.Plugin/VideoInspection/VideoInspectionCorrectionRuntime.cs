@@ -113,6 +113,30 @@ internal static class VideoInspectionCorrectionRuntime
                     : acknowledgement.Message);
         }
 
+        if (acknowledgement.Accepted && acknowledgement.Results.Count > 0)
+        {
+            var synchronized = session.AcceptConfirmedCorrectionsAsBaseline(acknowledgement.Results);
+            var remaining = session.EditedOccurrenceCount;
+            GeoAutoEnginePalette.RefreshVideoInspection();
+
+            if (remaining == 0)
+            {
+                ActiveDocument().Editor.WriteMessage(
+                    $"\nGeoAutoEngine: {synchronized} correção(ões) sincronizada(s) com o GeoAutoDocs. " +
+                    $"Confirmadas={acknowledgement.AppliedCount}; rejeitadas={acknowledgement.RejectedCount}. " +
+                    $"{acknowledgement.Message}\n");
+                return;
+            }
+
+            ActiveDocument().Editor.WriteMessage(
+                $"\nGeoAutoEngine: sincronização parcial concluída. " +
+                $"Confirmadas neste retorno={synchronized}; pendentes={remaining}; " +
+                $"rejeitadas={acknowledgement.RejectedCount}. " +
+                "Somente as ocorrências não confirmadas permanecem marcadas como [EDITADO]. " +
+                $"{acknowledgement.Message}\n");
+            return;
+        }
+
         var fullyApplied = acknowledgement.Accepted &&
             acknowledgement.RejectedCount == 0 &&
             acknowledgement.AppliedCount == push.Corrections.Count;
@@ -132,7 +156,7 @@ internal static class VideoInspectionCorrectionRuntime
         ActiveDocument().Editor.WriteMessage(
             $"\nGeoAutoEngine: {push.Corrections.Count} correção(ões) {status} pelo GeoAutoDocs. " +
             $"Aplicadas={acknowledgement.AppliedCount}; rejeitadas={acknowledgement.RejectedCount}. " +
-            "As correções permanecem pendentes no GeoAutoEngine para evitar perda de alterações. " +
+            "O receptor não informou resultados individuais; as correções permanecem pendentes para evitar perda de alterações. " +
             $"{acknowledgement.Message}\n");
     }
 
