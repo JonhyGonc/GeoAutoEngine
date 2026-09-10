@@ -31,6 +31,17 @@ public sealed class InspectionCorrectionAcknowledgement
     public bool Accepted { get; set; }
     public string Status { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
+    public int RequestedCount { get; set; }
     public int AppliedCount { get; set; }
     public int RejectedCount { get; set; }
+    public IReadOnlyList<InspectionCorrectionItemAcknowledgement> Results { get; set; } = [];
+}
+
+public sealed class InspectionCorrectionItemAcknowledgement
+{
+    public Guid SectionId { get; set; }
+    public Guid OccurrenceId { get; set; }
+    public bool Applied { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
 }
