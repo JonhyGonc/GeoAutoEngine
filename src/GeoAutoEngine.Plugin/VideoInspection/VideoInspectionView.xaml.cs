@@ -7,6 +7,8 @@ using GeoAutoEngine.Application.VideoInspection;
 using Button = System.Windows.Controls.Button;
 using Control = System.Windows.Controls.Control;
 using UserControl = System.Windows.Controls.UserControl;
+using MessageBox = System.Windows.MessageBox;
+using Color = System.Windows.Media.Color;
 
 namespace GeoAutoEngine.Plugin.VideoInspection;
 
