@@ -352,10 +352,16 @@ internal sealed class VideoInspectionOccurrenceEditDialog : Window
         };
         var marker = edited ? " [EDITADO]" : string.Empty;
         var description = occurrence.EffectiveDescription.Length > 55
-            ? occurrence.EffectiveDescription[..55] + "…"
+            ? occurrence.EffectiveDescription.Substring(0, 55) + "…"
             : occurrence.EffectiveDescription;
         return $"{position} — {description}{marker}";
     }
+
+    private static void ShowValidation(string message) => MessageBox.Show(
+        message,
+        "GeoAutoEngine",
+        MessageBoxButton.OK,
+        MessageBoxImage.Warning);
 
     private sealed record OccurrenceChoice(InspectionOccurrenceSession Occurrence, string Label);
 }
