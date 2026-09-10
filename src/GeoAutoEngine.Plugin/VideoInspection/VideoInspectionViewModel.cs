@@ -411,7 +411,9 @@ internal sealed class VideoInspectionSectionItemViewModel : INotifyPropertyChang
         };
         StatusMessage = section.StatusMessage ?? string.Empty;
         Occurrences = Array.AsReadOnly(section.Occurrences
-            .Select(occurrence => new VideoInspectionOccurrenceItemViewModel(occurrence))
+            .Select(occurrence => new VideoInspectionOccurrenceItemViewModel(
+                occurrence,
+                section.IsOccurrenceEdited(occurrence.OccurrenceId)))
             .ToArray());
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
     }
@@ -439,10 +441,15 @@ internal sealed class VideoInspectionOccurrenceItemViewModel
     private static readonly Brush StandardBorder = FrozenBrush("#1E2D4A");
     private static readonly Brush AttentionBorder = FrozenBrush("#33FB923C");
     private static readonly Brush AttentionAccent = FrozenBrush("#FB923C");
+    private static readonly Brush EditedBorder = FrozenBrush("#334FC3F7");
+    private static readonly Brush EditedAccent = FrozenBrush("#38BDF8");
     private static readonly Brush StandardDescription = FrozenBrush("#7A9BC7");
     private static readonly Brush AttentionDescription = FrozenBrush("#F0C090");
+    private static readonly Brush EditedDescription = FrozenBrush("#BAE6FD");
 
-    public VideoInspectionOccurrenceItemViewModel(InspectionOccurrenceSession occurrence)
+    public VideoInspectionOccurrenceItemViewModel(
+        InspectionOccurrenceSession occurrence,
+        bool isEdited)
     {
         Position = occurrence.LocationMode switch
         {
@@ -455,9 +462,11 @@ internal sealed class VideoInspectionOccurrenceItemViewModel
             InspectionLocationMode.NotApplicable => "Sem posição CAD",
             _ => "Posição incompleta",
         };
-        Description = string.IsNullOrWhiteSpace(occurrence.EffectiveDescription)
+        var description = string.IsNullOrWhiteSpace(occurrence.EffectiveDescription)
             ? "Ocorrência sem descrição"
             : occurrence.EffectiveDescription;
+        IsEdited = isEdited;
+        Description = isEdited ? $"[EDITADO] {description}" : description;
         Code = occurrence.WireLocationMode;
         RequiresAttention = occurrence.IsSevere;
     }
@@ -466,9 +475,16 @@ internal sealed class VideoInspectionOccurrenceItemViewModel
     public string Description { get; }
     public string Code { get; }
     public bool RequiresAttention { get; }
-    public Brush CardBorderBrush => RequiresAttention ? AttentionBorder : StandardBorder;
-    public Brush CardAccentBrush => RequiresAttention ? AttentionAccent : StandardBorder;
-    public Brush DescriptionBrush => RequiresAttention ? AttentionDescription : StandardDescription;
+    public bool IsEdited { get; }
+    public Brush CardBorderBrush => RequiresAttention
+        ? AttentionBorder
+        : IsEdited ? EditedBorder : StandardBorder;
+    public Brush CardAccentBrush => RequiresAttention
+        ? AttentionAccent
+        : IsEdited ? EditedAccent : StandardBorder;
+    public Brush DescriptionBrush => RequiresAttention
+        ? AttentionDescription
+        : IsEdited ? EditedDescription : StandardDescription;
 
     private static string Meter(decimal value) =>
         $"{value.ToString("0.##", CultureInfo.CurrentCulture)} m";
@@ -488,4 +504,3 @@ internal sealed class VideoInspectionCommand(Action execute, Func<bool>? canExec
     public void Execute(object? parameter) => execute();
     public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
 }
-
