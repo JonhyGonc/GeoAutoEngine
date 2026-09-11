@@ -38,6 +38,7 @@ public sealed class AutoCadInspectionCoverageController
     private const short InterruptedLayerColorIndex = 1;
     private const short ByLayerColorIndex = 256;
     private const double GeometryTolerance = 1e-6;
+    private const double VertexDistanceTolerance = 1e-5;
     private const double StateLengthTolerance = 1e-3;
 
     public AutoCadInspectionCoverageResult Apply(
@@ -507,29 +508,87 @@ public sealed class AutoCadInspectionCoverageController
                 $"O ponto de BREAK ({cadDistance:0.###} m) não está no interior da Polyline ({source.Length:0.###} m).");
         }
 
-        var point = source.GetPointAtDist(cadDistance);
-        var objects = source.GetSplitCurves(new Point3dCollection { point });
-        var pieces = objects.Cast<DBObject>().OfType<Polyline>().ToArray();
-        foreach (var other in objects.Cast<DBObject>().Where(item => item is not Polyline))
+        // GetSplitCurves pode lançar eDegenerateGeometry quando o ponto de corte cai
+        // exatamente em um vértice existente. Nesse caso o BREAK já é geometricamente
+        // definido pelo próprio vértice, então fazemos a separação sem pedir ao AutoCAD
+        // para criar um novo vértice coincidente.
+        for (var vertexIndex = 1; vertexIndex < source.NumberOfVertices - 1; vertexIndex++)
         {
-            other.Dispose();
+            var vertexDistance = source.GetDistAtPoint(source.GetPoint3dAt(vertexIndex));
+            if (Math.Abs(vertexDistance - cadDistance) <= VertexDistanceTolerance)
+            {
+                return SplitAtVertex(source, vertexIndex);
+            }
         }
 
-        if (pieces.Length != 2)
+        var point = source.GetPointAtDist(cadDistance);
+        try
         {
-            foreach (var piece in pieces)
+            var objects = source.GetSplitCurves(new Point3dCollection { point });
+            var pieces = objects.Cast<DBObject>().OfType<Polyline>().ToArray();
+            foreach (var other in objects.Cast<DBObject>().Where(item => item is not Polyline))
             {
-                piece.Dispose();
+                other.Dispose();
             }
 
+            if (pieces.Length != 2)
+            {
+                foreach (var piece in pieces)
+                {
+                    piece.Dispose();
+                }
+
+                throw new InvalidOperationException(
+                    $"O BREAK retornou {pieces.Length} segmento(s); eram esperados exatamente 2.");
+            }
+
+            var firstIndex = pieces[0].StartPoint.DistanceTo(source.StartPoint) <= GeometryTolerance ? 0 : 1;
+            return firstIndex == 0
+                ? new SplitPair(pieces[0], pieces[1])
+                : new SplitPair(pieces[1], pieces[0]);
+        }
+        catch (Autodesk.AutoCAD.Runtime.Exception exception)
+        {
             throw new InvalidOperationException(
-                $"O BREAK retornou {pieces.Length} segmento(s); eram esperados exatamente 2.");
+                $"Falha ao dividir a Polyline em {cadDistance:0.###} m " +
+                $"(comprimento={source.Length:0.###} m; vértices={source.NumberOfVertices}; " +
+                $"AutoCAD={exception.ErrorStatus}).",
+                exception);
+        }
+    }
+
+    private static SplitPair SplitAtVertex(Polyline source, int vertexIndex)
+    {
+        if (vertexIndex <= 0 || vertexIndex >= source.NumberOfVertices - 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(vertexIndex));
         }
 
-        var firstIndex = pieces[0].StartPoint.DistanceTo(source.StartPoint) <= GeometryTolerance ? 0 : 1;
-        return firstIndex == 0
-            ? new SplitPair(pieces[0], pieces[1])
-            : new SplitPair(pieces[1], pieces[0]);
+        var first = CreatePolylineSlice(source, 0, vertexIndex);
+        var second = CreatePolylineSlice(source, vertexIndex, source.NumberOfVertices - 1);
+        return new SplitPair(first, second);
+    }
+
+    private static Polyline CreatePolylineSlice(Polyline source, int firstVertex, int lastVertex)
+    {
+        var result = new Polyline();
+        result.Normal = source.Normal;
+        result.Elevation = source.Elevation;
+        result.Thickness = source.Thickness;
+
+        for (var sourceIndex = firstVertex; sourceIndex <= lastVertex; sourceIndex++)
+        {
+            var isLast = sourceIndex == lastVertex;
+            result.AddVertexAt(
+                result.NumberOfVertices,
+                source.GetPoint2dAt(sourceIndex),
+                isLast ? 0.0 : source.GetBulgeAt(sourceIndex),
+                source.GetStartWidthAt(sourceIndex),
+                source.GetEndWidthAt(sourceIndex));
+        }
+
+        result.Closed = false;
+        return result;
     }
 
     private static Polyline UpsertOverlay(
@@ -561,15 +620,31 @@ public sealed class AutoCadInspectionCoverageController
 
     private static void CopyGeometry(Polyline source, Polyline target)
     {
-        while (target.NumberOfVertices > 0)
+        if (source.NumberOfVertices < 2)
         {
-            target.RemoveVertexAt(target.NumberOfVertices - 1);
+            throw new InvalidOperationException(
+                $"A geometria de origem possui apenas {source.NumberOfVertices} vértice(s). " +
+                "Uma Polyline de cobertura precisa de pelo menos dois vértices.");
         }
 
         target.Normal = source.Normal;
         target.Elevation = source.Elevation;
         target.Thickness = source.Thickness;
-        for (var index = 0; index < source.NumberOfVertices; index++)
+
+        // Não esvaziar uma Polyline já residente no DWG. Remover todos os vértices
+        // temporariamente pode fazer o AutoCAD lançar eDegenerateGeometry. Atualizamos
+        // os vértices existentes, adicionamos os que faltam e só então removemos excessos,
+        // garantindo pelo menos dois vértices durante toda a operação.
+        var commonVertices = Math.Min(target.NumberOfVertices, source.NumberOfVertices);
+        for (var index = 0; index < commonVertices; index++)
+        {
+            target.SetPointAt(index, source.GetPoint2dAt(index));
+            target.SetBulgeAt(index, source.GetBulgeAt(index));
+            target.SetStartWidthAt(index, source.GetStartWidthAt(index));
+            target.SetEndWidthAt(index, source.GetEndWidthAt(index));
+        }
+
+        for (var index = target.NumberOfVertices; index < source.NumberOfVertices; index++)
         {
             target.AddVertexAt(
                 target.NumberOfVertices,
@@ -577,6 +652,11 @@ public sealed class AutoCadInspectionCoverageController
                 source.GetBulgeAt(index),
                 source.GetStartWidthAt(index),
                 source.GetEndWidthAt(index));
+        }
+
+        for (var index = target.NumberOfVertices - 1; index >= source.NumberOfVertices; index--)
+        {
+            target.RemoveVertexAt(index);
         }
 
         target.Closed = source.Closed;
