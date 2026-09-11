@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 using GeoAutoEngine.Application.VideoInspection;
 using Button = System.Windows.Controls.Button;
@@ -144,9 +145,22 @@ public partial class VideoInspectionView : UserControl
         _exportCorrectionsButton.SetResourceReference(StyleProperty, "SecondaryButton");
         _exportCorrectionsButton.Click += ExportCorrectionsClick;
 
+        var removeAssociationButton = new Button
+        {
+            Content = "Remover associação de geometria",
+            Padding = new Thickness(9),
+            Margin = new Thickness(0, 0, 0, 7),
+        };
+        removeAssociationButton.SetResourceReference(StyleProperty, "SecondaryButton");
+        removeAssociationButton.SetBinding(
+            IsEnabledProperty,
+            new Binding("SelectedSection.HasAssociation"));
+        removeAssociationButton.Click += RemoveGeometryAssociationClick;
+
         actions.Children.Insert(0, _correctionStatusText);
         actions.Children.Insert(1, editButton);
         actions.Children.Insert(2, _exportCorrectionsButton);
+        actions.Children.Insert(3, removeAssociationButton);
     }
 
     private void EditOccurrencesClick(object sender, RoutedEventArgs eventArgs)
