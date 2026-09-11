@@ -38,10 +38,26 @@ public sealed class AutoCadInspectionGeometryService
                 return null;
             }
 
-            handle = polyline.Handle.ToString();
-            length = polyline.Length;
-            start = new LinearPoint(polyline.StartPoint.X, polyline.StartPoint.Y, polyline.StartPoint.Z);
-            end = new LinearPoint(polyline.EndPoint.X, polyline.EndPoint.Y, polyline.EndPoint.Z);
+            var selectedHandle = polyline.Handle.ToString();
+            handle = AutoCadInspectionSharedCoverageStore.NormalizeRootHandle(
+                document.Database,
+                transaction,
+                reportId,
+                selectedHandle);
+            using var logicalGeometry = AutoCadInspectionSharedCoverageStore.CreateLogicalGeometry(
+                document.Database,
+                transaction,
+                reportId,
+                handle);
+            length = logicalGeometry.Length;
+            start = new LinearPoint(
+                logicalGeometry.StartPoint.X,
+                logicalGeometry.StartPoint.Y,
+                logicalGeometry.StartPoint.Z);
+            end = new LinearPoint(
+                logicalGeometry.EndPoint.X,
+                logicalGeometry.EndPoint.Y,
+                logicalGeometry.EndPoint.Z);
             transaction.Commit();
         }
 
@@ -67,7 +83,33 @@ public sealed class AutoCadInspectionGeometryService
     public CadSectionAssociation? RestoreAssociation(
         Document document,
         Guid reportId,
-        Guid sectionId) => _associationStore.Load(document.Database, reportId, sectionId);
+        Guid sectionId)
+    {
+        var association = _associationStore.Load(document.Database, reportId, sectionId);
+        if (association is null)
+        {
+            return null;
+        }
+
+        using var transaction = document.Database.TransactionManager.StartOpenCloseTransaction();
+        var rootHandle = AutoCadInspectionSharedCoverageStore.NormalizeRootHandle(
+            document.Database,
+            transaction,
+            reportId,
+            association.GeometryHandle);
+        using var logicalGeometry = AutoCadInspectionSharedCoverageStore.CreateLogicalGeometry(
+            document.Database,
+            transaction,
+            reportId,
+            rootHandle);
+        var restored = association with
+        {
+            GeometryHandle = rootHandle,
+            LastKnownGeometryLength = logicalGeometry.Length,
+        };
+        transaction.Commit();
+        return restored;
+    }
 
     public bool RemoveAssociation(Document document, Guid reportId, Guid sectionId)
     {
@@ -78,15 +120,26 @@ public sealed class AutoCadInspectionGeometryService
 
     public bool GeometryExists(Document document, CadSectionAssociation association)
     {
-        using var transaction = document.Database.TransactionManager.StartOpenCloseTransaction();
-        var exists = AutoCadInspectionAssociationStore.TryResolvePolyline(
-            document.Database,
-            transaction,
-            association.GeometryHandle,
-            OpenMode.ForRead,
-            out _);
-        transaction.Commit();
-        return exists;
+        try
+        {
+            using var transaction = document.Database.TransactionManager.StartOpenCloseTransaction();
+            var rootHandle = AutoCadInspectionSharedCoverageStore.NormalizeRootHandle(
+                document.Database,
+                transaction,
+                association.ReportId,
+                association.GeometryHandle);
+            using var geometry = AutoCadInspectionSharedCoverageStore.CreateLogicalGeometry(
+                document.Database,
+                transaction,
+                association.ReportId,
+                rootHandle);
+            transaction.Commit();
+            return geometry.NumberOfVertices > 0;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     public IReadOnlyList<PositionedInspectionEvent> Resolve(
@@ -103,27 +156,28 @@ public sealed class AutoCadInspectionGeometryService
         var association = section.Association
             ?? throw new InvalidOperationException("O trecho ainda não possui geometria associada.");
         using var transaction = document.Database.TransactionManager.StartOpenCloseTransaction();
-        if (!AutoCadInspectionAssociationStore.TryResolvePolyline(
-                document.Database,
-                transaction,
-                association.GeometryHandle,
-                OpenMode.ForRead,
-                out var polyline))
-        {
-            throw new InvalidOperationException("A geometria associada não existe mais.");
-        }
+        var rootHandle = AutoCadInspectionSharedCoverageStore.NormalizeRootHandle(
+            document.Database,
+            transaction,
+            association.ReportId,
+            association.GeometryHandle);
+        using var polyline = AutoCadInspectionSharedCoverageStore.CreateLogicalGeometry(
+            document.Database,
+            transaction,
+            association.ReportId,
+            rootHandle);
 
         var positionedEvents = _linearReferenceEngine.ResolveSection(
             section,
-            new AutoCadPolylineGeometry(polyline!),
+            new AutoCadPolylineGeometry(polyline),
             association.Direction)
             .Select(positionedEvent => PositionEntireSection(
                 section,
-                polyline!,
+                polyline,
                 association.Direction,
                 positionedEvent))
             .ToArray();
-        var geometryLength = polyline!.Length;
+        var geometryLength = polyline.Length;
         ValidateFinite(geometryLength, "GeometryLength");
         var diagnostics = positionedEvents
             .Where(positionedEvent => positionedEvent.CanCommit)
