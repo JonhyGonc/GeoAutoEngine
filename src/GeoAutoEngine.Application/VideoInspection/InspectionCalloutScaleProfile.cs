@@ -9,7 +9,8 @@ public sealed record InspectionCalloutScaleProfile(
     double TextClearance,
     double IntervalJunctionOffset,
     double LateralSpacing,
-    double TextGap)
+    double TextGap,
+    double MarkerRadius)
 {
     private static readonly int[] SupportedDenominators = [125, 200, 250, 500, 750];
 
@@ -22,7 +23,8 @@ public sealed record InspectionCalloutScaleProfile(
         InspectionCalloutLayoutEngine.TextClearance,
         InspectionCalloutLayoutEngine.IntervalJunctionOffset,
         InspectionCalloutLayoutEngine.LateralSpacing,
-        InspectionCalloutLayoutEngine.TextGap);
+        InspectionCalloutLayoutEngine.TextGap,
+        InspectionCalloutLayoutEngine.MarkerRadius);
 
     public static InspectionCalloutScaleProfile Default { get; } = Create(250, 0.50, 2.00);
 
@@ -50,6 +52,9 @@ public sealed record InspectionCalloutScaleProfile(
         var lineFactor = baseCalloutLength / InspectionCalloutLayoutEngine.BaseCalloutLength;
         var textFactor = textHeight / InspectionCalloutLayoutEngine.TextHeight;
         var proportionalMaximum = InspectionCalloutLayoutEngine.MaxCalloutLength * lineFactor;
+        var markerRadius = Math.Min(
+            InspectionCalloutLayoutEngine.MarkerRadius,
+            InspectionCalloutLayoutEngine.MarkerRadius * denominator / 250.0);
         return new InspectionCalloutScaleProfile(
             denominator,
             textHeight,
@@ -59,6 +64,7 @@ public sealed record InspectionCalloutScaleProfile(
             InspectionCalloutLayoutEngine.TextClearance * textFactor,
             InspectionCalloutLayoutEngine.IntervalJunctionOffset * lineFactor,
             InspectionCalloutLayoutEngine.LateralSpacing * lineFactor,
-            InspectionCalloutLayoutEngine.TextGap * textFactor);
+            InspectionCalloutLayoutEngine.TextGap * textFactor,
+            markerRadius);
     }
 }
