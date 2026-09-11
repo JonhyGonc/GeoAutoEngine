@@ -195,6 +195,29 @@ public partial class VideoInspectionView : UserControl
         }
     }
 
+    private void RemoveGeometryAssociationClick(object sender, RoutedEventArgs eventArgs)
+    {
+        var selected = _viewModel.SelectedSection;
+        if (selected?.HasAssociation != true)
+        {
+            return;
+        }
+
+        var result = MessageBox.Show(
+            $"Remover a associação de geometria de '{selected.Name}'?\n\n" +
+            "A Polyline original não será apagada nem unida. Se já houver um BREAK, ele será mantido.",
+            "Remover associação — GeoAutoEngine",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+        if (result != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        VideoInspectionAssociationRemovalRuntime.Request(selected.SectionId);
+    }
+
     private void ExportCorrectionsClick(object sender, RoutedEventArgs eventArgs) =>
         VideoInspectionCorrectionRuntime.RequestExport();
 
