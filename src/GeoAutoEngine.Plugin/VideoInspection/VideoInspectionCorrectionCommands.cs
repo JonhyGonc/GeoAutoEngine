@@ -21,6 +21,11 @@ public sealed class VideoInspectionCorrectionCommands
         "Exportação de correções para o GeoAutoDocs",
         VideoInspectionCorrectionRuntime.ExportCorrections);
 
+    [CommandMethod("GEOAUTO3VIAPPLYSCALE", CommandFlags.Modal)]
+    public void ApplyScale() => Execute(
+        "Aplicação da escala da vídeo-inspeção",
+        VideoInspectionScaleRuntime.ApplyToCurrentDrawing);
+
     private static void Execute(string operation, Action action)
     {
         try
