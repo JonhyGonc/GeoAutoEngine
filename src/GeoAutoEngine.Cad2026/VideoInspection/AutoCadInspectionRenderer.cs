@@ -142,7 +142,7 @@ public sealed class AutoCadInspectionRenderer
                     transaction.AddNewlyCreatedDBObject(marker, true);
                 }
 
-                ApplyMarker(marker, anchor, eventLayerId);
+                ApplyMarker(marker, anchor, eventLayerId, scale.MarkerRadius);
                 SetMetadata(marker, session, section, call, stableKey, MarkerComponent);
                 retainedIds.Add(marker.ObjectId);
                 pendingEntities.Add((call.OccurrenceId, marker.ObjectId, markerCreated));
@@ -163,7 +163,7 @@ public sealed class AutoCadInspectionRenderer
                         transaction.AddNewlyCreatedDBObject(intervalEndMarker, true);
                     }
 
-                    ApplyMarker(intervalEndMarker, intervalEndAnchor, eventLayerId);
+                    ApplyMarker(intervalEndMarker, intervalEndAnchor, eventLayerId, scale.MarkerRadius);
                     SetMetadata(
                         intervalEndMarker,
                         session,
@@ -696,13 +696,14 @@ public sealed class AutoCadInspectionRenderer
     private static void ApplyMarker(
         Circle marker,
         Point3d anchor,
-        ObjectId layerId)
+        ObjectId layerId,
+        double markerRadius)
     {
         marker.LayerId = layerId;
         marker.ColorIndex = ByLayerColorIndex;
         marker.Center = anchor;
         marker.Normal = Vector3d.ZAxis;
-        marker.Radius = InspectionCalloutLayoutEngine.MarkerRadius;
+        marker.Radius = markerRadius;
     }
 
     private static void ApplyCalloutPolyline(
