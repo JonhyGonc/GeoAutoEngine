@@ -73,7 +73,7 @@ public sealed class InspectionCoveragePlannerTests
             0m,
             95.0,
             InspectionDirection.Forward,
-            [PositionedEventAt(68.0)]);
+            new[] { PositionedEventAt(68.0) });
 
         Assert.Equal(68.0, plan.InspectedLength, 8);
         Assert.Equal(27.0, plan.RemainingLength, 8);
@@ -89,7 +89,7 @@ public sealed class InspectionCoveragePlannerTests
             42m,
             95.0,
             InspectionDirection.Reverse,
-            [PositionedEventAt(68.0)]);
+            new[] { PositionedEventAt(68.0) });
 
         Assert.Equal(68.0, plan.InspectedLength, 8);
         Assert.Equal(27.0, plan.RemainingLength, 8);
@@ -110,7 +110,7 @@ public sealed class InspectionCoveragePlannerTests
             Guid.NewGuid(),
             InspectionLocationMode.Point,
             "ANOMALIA",
-            Array.AsReadOnly([location]),
+            Array.AsReadOnly(new[] { location }),
             Array.Empty<string>(),
             true);
     }
