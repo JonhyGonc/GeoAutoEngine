@@ -19,7 +19,7 @@ internal static class VideoInspectionRuntime
     private static readonly InspectionExchangeSerializer Serializer = new();
     private static readonly AutoCadInspectionGeometryService GeometryService = new();
     private static readonly AutoCadInspectionRenderer Renderer = new();
-    private static readonly AutoCadInspectionCoverageRenderer CoverageRenderer = new();
+    private static readonly AutoCadInspectionCoverageController CoverageController = new();
     private static NamedPipeInspectionServer? _server;
     private static Document? _restoredDocument;
     private static Guid? _restoredReportId;
@@ -147,17 +147,21 @@ internal static class VideoInspectionRuntime
         var section = RequiredSection(sectionId);
         var positioning = Position(document, section);
         var positioned = positioning.PositionedEvents;
+        var settings = PaletteSettingsStore.Load();
         var result = Renderer.Commit(
             document,
             CurrentSession!,
             section,
             positioned,
-            PaletteSettingsStore.LoadVideoInspectionScaleProfile());
-        var coverage = CoverageRenderer.Apply(
+            InspectionCalloutScaleProfile.Resolve(settings.VideoInspectionScaleDenominator));
+        var coverage = CoverageController.Apply(
             document,
             CurrentSession!,
             section,
-            positioned);
+            positioned,
+            new AutoCadInspectionCoverageOptions(
+                settings.AddVideoInspectionCoverageLines,
+                settings.ApplyVideoInspectionBreak));
         var invalid = positioned.Count(item => !item.CanCommit);
         if (invalid == 0)
         {
@@ -192,6 +196,8 @@ internal static class VideoInspectionRuntime
                 $"PermanentEntitiesUpdated={result.UpdatedCount}; " +
                 $"TransactionCommitted={result.TransactionCommitted}; CurrentSpace={result.CurrentSpaceName}; " +
                 $"CurrentSpaceIsModelSpace={result.CurrentSpaceIsModelSpace}; TargetSpace={result.TargetSpaceName}; " +
+                $"CoverageLinesEnabled={settings.AddVideoInspectionCoverageLines}; " +
+                $"CoverageBreakEnabled={settings.ApplyVideoInspectionBreak}; " +
                 $"CoverageInspected={coverage.InspectedLength:F3}; " +
                 $"CoverageRemaining={coverage.RemainingLength:F3}; " +
                 $"CoverageBreakApplied={coverage.BreakApplied}.";
