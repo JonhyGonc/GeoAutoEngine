@@ -5,22 +5,24 @@ namespace GeoAutoEngine.Tests;
 public sealed class VideoInspectionScaleTests
 {
     [Theory]
-    [InlineData(125, 0.25, 1.00)]
-    [InlineData(200, 0.40, 1.60)]
-    [InlineData(250, 0.50, 2.00)]
-    [InlineData(500, 1.00, 4.00)]
-    [InlineData(750, 1.50, 6.00)]
+    [InlineData(125, 0.25, 1.00, 0.15)]
+    [InlineData(200, 0.40, 1.60, 0.24)]
+    [InlineData(250, 0.50, 2.00, 0.30)]
+    [InlineData(500, 1.00, 4.00, 0.30)]
+    [InlineData(750, 1.50, 6.00, 0.30)]
     [Trait("Category", "FAST")]
-    public void SupportedScaleUsesConfiguredTextHeightAndBaseLeaderLength(
+    public void SupportedScaleUsesConfiguredDimensions(
         int denominator,
         double expectedTextHeight,
-        double expectedLeaderLength)
+        double expectedLeaderLength,
+        double expectedMarkerRadius)
     {
         var scale = InspectionCalloutScaleProfile.Resolve(denominator);
 
         Assert.Equal(denominator, scale.ScaleDenominator);
         Assert.Equal(expectedTextHeight, scale.TextHeight, 8);
         Assert.Equal(expectedLeaderLength, scale.BaseCalloutLength, 8);
+        Assert.Equal(expectedMarkerRadius, scale.MarkerRadius, 8);
     }
 
     [Theory]
@@ -65,5 +67,6 @@ public sealed class VideoInspectionScaleTests
         Assert.Equal(250, scale.ScaleDenominator);
         Assert.Equal(0.50, scale.TextHeight, 8);
         Assert.Equal(2.00, scale.BaseCalloutLength, 8);
+        Assert.Equal(0.30, scale.MarkerRadius, 8);
     }
 }
