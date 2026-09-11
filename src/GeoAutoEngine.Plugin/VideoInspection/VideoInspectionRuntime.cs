@@ -146,7 +146,12 @@ internal static class VideoInspectionRuntime
         var section = RequiredSection(sectionId);
         var positioning = Position(document, section);
         var positioned = positioning.PositionedEvents;
-        var result = Renderer.Commit(document, CurrentSession!, section, positioned);
+        var result = Renderer.Commit(
+            document,
+            CurrentSession!,
+            section,
+            positioned,
+            PaletteSettingsStore.LoadVideoInspectionScaleProfile());
         var invalid = positioned.Count(item => !item.CanCommit);
         if (invalid == 0)
         {
