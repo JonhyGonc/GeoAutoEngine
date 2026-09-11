@@ -8,6 +8,9 @@ namespace GeoAutoEngine.Cad2026.VideoInspection;
 
 public sealed class AutoCadInspectionGeometryService
 {
+    private const double GeometryTolerance = 1e-6;
+    private const string LegacyNotInspectedLayerName = "GF-VideoInspecao-NaoInspecionado";
+
     private readonly AutoCadInspectionAssociationStore _associationStore = new();
     private readonly LinearReferenceEngine _linearReferenceEngine = new();
 
@@ -38,12 +41,11 @@ public sealed class AutoCadInspectionGeometryService
                 return null;
             }
 
-            var selectedHandle = polyline.Handle.ToString();
-            handle = AutoCadInspectionSharedCoverageStore.NormalizeRootHandle(
+            handle = ResolveAssociationHandle(
                 document.Database,
                 transaction,
                 reportId,
-                selectedHandle);
+                polyline);
             using var logicalGeometry = AutoCadInspectionSharedCoverageStore.CreateLogicalGeometry(
                 document.Database,
                 transaction,
@@ -195,6 +197,95 @@ public sealed class AutoCadInspectionGeometryService
             positionedEvents,
             Array.AsReadOnly(diagnostics));
     }
+
+    private static string ResolveAssociationHandle(
+        Database database,
+        Transaction transaction,
+        Guid reportId,
+        Polyline selectedPolyline)
+    {
+        var selectedHandle = selectedPolyline.Handle.ToString();
+        var normalized = AutoCadInspectionSharedCoverageStore.NormalizeRootHandle(
+            database,
+            transaction,
+            reportId,
+            selectedHandle);
+        if (!string.Equals(normalized, selectedHandle, StringComparison.OrdinalIgnoreCase))
+        {
+            return normalized;
+        }
+
+        if (!IsCoverageOverlayLayer(selectedPolyline.Layer))
+        {
+            return selectedHandle;
+        }
+
+        var physical = FindCoincidentPhysicalPolyline(database, transaction, selectedPolyline);
+        if (physical is null)
+        {
+            throw new InvalidOperationException(
+                "A linha selecionada é uma cobertura visual da vídeo inspeção, mas a Polyline física " +
+                "correspondente não foi encontrada. Selecione diretamente um segmento da rede original.");
+        }
+
+        return AutoCadInspectionSharedCoverageStore.NormalizeRootHandle(
+            database,
+            transaction,
+            reportId,
+            physical.Handle.ToString());
+    }
+
+    private static Polyline? FindCoincidentPhysicalPolyline(
+        Database database,
+        Transaction transaction,
+        Polyline overlay)
+    {
+        var blockTable = (BlockTable)transaction.GetObject(database.BlockTableId, OpenMode.ForRead);
+        var modelSpace = (BlockTableRecord)transaction.GetObject(
+            blockTable[BlockTableRecord.ModelSpace],
+            OpenMode.ForRead);
+        foreach (ObjectId objectId in modelSpace)
+        {
+            if (objectId == overlay.ObjectId ||
+                transaction.GetObject(objectId, OpenMode.ForRead, openErased: false) is not Polyline candidate ||
+                IsCoverageOverlayLayer(candidate.Layer))
+            {
+                continue;
+            }
+
+            if (Math.Abs(candidate.Length - overlay.Length) > GeometryTolerance)
+            {
+                continue;
+            }
+
+            var sameDirection =
+                candidate.StartPoint.DistanceTo(overlay.StartPoint) <= GeometryTolerance &&
+                candidate.EndPoint.DistanceTo(overlay.EndPoint) <= GeometryTolerance;
+            var oppositeDirection =
+                candidate.StartPoint.DistanceTo(overlay.EndPoint) <= GeometryTolerance &&
+                candidate.EndPoint.DistanceTo(overlay.StartPoint) <= GeometryTolerance;
+            if (sameDirection || oppositeDirection)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsCoverageOverlayLayer(string? layerName) =>
+        string.Equals(
+            layerName,
+            AutoCadInspectionCoverageRenderer.InspectedLayerName,
+            StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(
+            layerName,
+            AutoCadInspectionCoverageRenderer.NotInspectedLayerName,
+            StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(
+            layerName,
+            LegacyNotInspectedLayerName,
+            StringComparison.OrdinalIgnoreCase);
 
     private static PositionedInspectionEvent PositionEntireSection(
         InspectionSectionSession section,
