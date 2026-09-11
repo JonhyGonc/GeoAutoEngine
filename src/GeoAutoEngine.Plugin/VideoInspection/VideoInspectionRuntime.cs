@@ -19,6 +19,7 @@ internal static class VideoInspectionRuntime
     private static readonly InspectionExchangeSerializer Serializer = new();
     private static readonly AutoCadInspectionGeometryService GeometryService = new();
     private static readonly AutoCadInspectionRenderer Renderer = new();
+    private static readonly AutoCadInspectionRenderGeometryBridge RenderGeometryBridge = new();
     private static readonly AutoCadInspectionSharedCoverageService CoverageController = new();
     private static NamedPipeInspectionServer? _server;
     private static Document? _restoredDocument;
@@ -148,12 +149,19 @@ internal static class VideoInspectionRuntime
         var positioning = Position(document, section);
         var positioned = positioning.PositionedEvents;
         var settings = PaletteSettingsStore.Load();
-        var result = Renderer.Commit(
-            document,
-            CurrentSession!,
-            section,
-            positioned,
-            InspectionCalloutScaleProfile.Resolve(settings.VideoInspectionScaleDenominator));
+        AutoCadInspectionCommitResult result;
+        using (RenderGeometryBridge.Prepare(
+                   document,
+                   CurrentSession!.ReportId,
+                   section.Association!.GeometryHandle))
+        {
+            result = Renderer.Commit(
+                document,
+                CurrentSession!,
+                section,
+                positioned,
+                InspectionCalloutScaleProfile.Resolve(settings.VideoInspectionScaleDenominator));
+        }
         var coverage = CoverageController.Apply(
             document,
             CurrentSession!,
