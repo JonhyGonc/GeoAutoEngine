@@ -128,6 +128,9 @@ internal sealed partial class SurveyPaletteView : UserControl
     private void RestoreDrawingPresentationDefaults(object sender, RoutedEventArgs eventArgs) =>
         _viewModel.RestoreDrawingPresentationDefaults();
 
+    private void ApplyVideoInspectionScale(object sender, RoutedEventArgs eventArgs) =>
+        VideoInspection.VideoInspectionScaleRuntime.RequestApply();
+
     private void ClosePalette(object sender, RoutedEventArgs eventArgs) => GeoAutoEnginePalette.Hide();
 
     private static string[] GetDroppedCsvFiles(IDataObject data) =>
