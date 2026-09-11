@@ -129,9 +129,9 @@ internal static class AutoCadInspectionSharedCoverageStore
             }
         }
 
-        var handles = state is { PhysicalSegmentHandles.Count: > 0 }
+        var handles = state is not null && state.PhysicalSegmentHandles.Count > 0
             ? state.PhysicalSegmentHandles
-            : Array.AsReadOnly([normalizedRoot]);
+            : Array.AsReadOnly(new[] { normalizedRoot });
         Polyline? merged = null;
         foreach (var handle in handles)
         {
@@ -179,6 +179,10 @@ internal static class AutoCadInspectionSharedCoverageStore
 
             if (string.Equals(state.RootHandle, handle, StringComparison.OrdinalIgnoreCase) ||
                 state.PhysicalSegmentHandles.Any(item =>
+                    string.Equals(item, handle, StringComparison.OrdinalIgnoreCase)) ||
+                state.InspectedOverlayHandles.Any(item =>
+                    string.Equals(item, handle, StringComparison.OrdinalIgnoreCase)) ||
+                state.NotInspectedOverlayHandles.Any(item =>
                     string.Equals(item, handle, StringComparison.OrdinalIgnoreCase)))
             {
                 return state;
@@ -403,10 +407,19 @@ internal static class AutoCadInspectionSharedCoverageStore
     private static string? Value(IReadOnlyDictionary<string, string> values, string key) =>
         values.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value) ? value : null;
 
-    private static IReadOnlyList<string> ParseStrings(string? value) =>
-        string.IsNullOrWhiteSpace(value)
-            ? Array.Empty<string>()
-            : Array.AsReadOnly(value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+    private static IReadOnlyList<string> ParseStrings(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return Array.Empty<string>();
+        }
+
+        return Array.AsReadOnly(value
+            .Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(item => item.Trim())
+            .Where(item => item.Length > 0)
+            .ToArray());
+    }
 
     private static IReadOnlyList<Guid> ParseGuids(string? value) =>
         ParseStrings(value)
@@ -415,10 +428,10 @@ internal static class AutoCadInspectionSharedCoverageStore
             .ToArray();
 
     private static string JoinStrings(IEnumerable<string> values) =>
-        string.Join(';', values.Where(value => !string.IsNullOrWhiteSpace(value)));
+        string.Join(";", values.Where(value => !string.IsNullOrWhiteSpace(value)));
 
     private static string JoinGuids(IEnumerable<Guid> values) =>
-        string.Join(';', values.Where(value => value != Guid.Empty).Select(value => value.ToString("D")));
+        string.Join(";", values.Where(value => value != Guid.Empty).Select(value => value.ToString("D")));
 
     private static string EntryKey(Guid reportId, string rootHandle) =>
         $"R_{reportId:N}_H_{rootHandle.Trim().ToUpperInvariant()}";
