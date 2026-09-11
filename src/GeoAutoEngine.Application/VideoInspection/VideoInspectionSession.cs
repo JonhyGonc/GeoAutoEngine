@@ -281,14 +281,6 @@ public sealed class InspectionSectionSession
         StatusMessage = null;
     }
 
-    public void RemoveAssociation()
-    {
-        Association = null;
-        PositionedEvents = [];
-        Status = InspectionSectionStatus.Pending;
-        StatusMessage = "Associação de geometria removida.";
-    }
-
     public void MarkAssociationLost(string message)
     {
         Association = null;

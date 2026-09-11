@@ -29,7 +29,6 @@ internal sealed partial class SurveyPaletteView : UserControl
         _viewModel = viewModel;
         InitializeComponent();
         DataContext = viewModel;
-        RefreshVideoInspectionCoverageButtons();
     }
 
     private void AddCsvFiles(object sender, RoutedEventArgs eventArgs) =>
@@ -124,7 +123,6 @@ internal sealed partial class SurveyPaletteView : UserControl
         DiagnosticTabButton.FontWeight = FontWeights.Normal;
         SummaryIndicator.Visibility = Visibility.Collapsed;
         DiagnosticIndicator.Visibility = Visibility.Collapsed;
-        RefreshVideoInspectionCoverageButtons();
     }
 
     private void RestoreDrawingPresentationDefaults(object sender, RoutedEventArgs eventArgs) =>
@@ -132,38 +130,6 @@ internal sealed partial class SurveyPaletteView : UserControl
 
     private void ApplyVideoInspectionScale(object sender, RoutedEventArgs eventArgs) =>
         VideoInspection.VideoInspectionScaleRuntime.RequestApply();
-
-    private void ToggleVideoInspectionCoverageLines(object sender, RoutedEventArgs eventArgs)
-    {
-        var settings = PaletteSettingsStore.Load();
-        settings.AddVideoInspectionCoverageLines = !settings.AddVideoInspectionCoverageLines;
-        PaletteSettingsStore.Save(settings);
-        RefreshVideoInspectionCoverageButtons();
-    }
-
-    private void ToggleVideoInspectionBreak(object sender, RoutedEventArgs eventArgs)
-    {
-        var settings = PaletteSettingsStore.Load();
-        settings.ApplyVideoInspectionBreak = !settings.ApplyVideoInspectionBreak;
-        PaletteSettingsStore.Save(settings);
-        RefreshVideoInspectionCoverageButtons();
-    }
-
-    private void RefreshVideoInspectionCoverageButtons()
-    {
-        if (CoverageLinesToggleButton is null || CoverageBreakToggleButton is null)
-        {
-            return;
-        }
-
-        var settings = PaletteSettingsStore.Load();
-        CoverageLinesToggleButton.Content = settings.AddVideoInspectionCoverageLines
-            ? "Linhas de cobertura: ATIVADAS"
-            : "Linhas de cobertura: DESATIVADAS";
-        CoverageBreakToggleButton.Content = settings.ApplyVideoInspectionBreak
-            ? "BREAK no fim da inspeção: ATIVADO"
-            : "BREAK no fim da inspeção: DESATIVADO";
-    }
 
     private void ClosePalette(object sender, RoutedEventArgs eventArgs) => GeoAutoEnginePalette.Hide();
 

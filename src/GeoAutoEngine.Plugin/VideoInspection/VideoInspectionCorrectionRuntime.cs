@@ -180,19 +180,17 @@ internal static class VideoInspectionCorrectionRuntime
             return;
         }
 
-        var settings = PaletteSettingsStore.Load();
         var result = Renderer.Commit(
             document,
             session,
             section,
             positioning.PositionedEvents,
-            InspectionCalloutScaleProfile.Resolve(settings.VideoInspectionScaleDenominator));
+            PaletteSettingsStore.LoadVideoInspectionScaleProfile());
         var invalid = positioning.PositionedEvents.Count(item => !item.CanCommit);
         if (invalid == 0)
         {
             section.MarkGenerated(
-                $"Atualizado após edição: {result.CreatedCount} novo(s), {result.UpdatedCount} atualizado(s). " +
-                "A cobertura física existente foi preservada.");
+                $"Atualizado após edição: {result.CreatedCount} novo(s), {result.UpdatedCount} atualizado(s).");
         }
     }
 

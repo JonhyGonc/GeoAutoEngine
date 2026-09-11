@@ -8,9 +8,6 @@ namespace GeoAutoEngine.Cad2026.VideoInspection;
 
 public sealed class AutoCadInspectionGeometryService
 {
-    private const double GeometryTolerance = 1e-6;
-    private const string LegacyNotInspectedLayerName = "GF-VideoInspecao-NaoInspecionado";
-
     private readonly AutoCadInspectionAssociationStore _associationStore = new();
     private readonly LinearReferenceEngine _linearReferenceEngine = new();
 
@@ -35,26 +32,16 @@ public sealed class AutoCadInspectionGeometryService
         LinearPoint end;
         using (var transaction = document.Database.TransactionManager.StartOpenCloseTransaction())
         {
-            if (transaction.GetObject(selected.ObjectId, OpenMode.ForRead) is not Polyline selectedPolyline)
+            if (transaction.GetObject(selected.ObjectId, OpenMode.ForRead) is not Polyline polyline)
             {
                 document.Editor.WriteMessage("\nGeoAutoEngine: a entidade selecionada não é uma Polyline 2D.\n");
                 return null;
             }
 
-            var physicalPolyline = ResolvePhysicalSelection(
-                document.Database,
-                transaction,
-                selectedPolyline);
-            handle = physicalPolyline.Handle.ToString();
-            length = physicalPolyline.Length;
-            start = new LinearPoint(
-                physicalPolyline.StartPoint.X,
-                physicalPolyline.StartPoint.Y,
-                physicalPolyline.StartPoint.Z);
-            end = new LinearPoint(
-                physicalPolyline.EndPoint.X,
-                physicalPolyline.EndPoint.Y,
-                physicalPolyline.EndPoint.Z);
+            handle = polyline.Handle.ToString();
+            length = polyline.Length;
+            start = new LinearPoint(polyline.StartPoint.X, polyline.StartPoint.Y, polyline.StartPoint.Z);
+            end = new LinearPoint(polyline.EndPoint.X, polyline.EndPoint.Y, polyline.EndPoint.Z);
             transaction.Commit();
         }
 
@@ -80,59 +67,19 @@ public sealed class AutoCadInspectionGeometryService
     public CadSectionAssociation? RestoreAssociation(
         Document document,
         Guid reportId,
-        Guid sectionId)
-    {
-        var association = _associationStore.Load(document.Database, reportId, sectionId);
-        if (association is null)
-        {
-            return null;
-        }
-
-        using var transaction = document.Database.TransactionManager.StartOpenCloseTransaction();
-        var geometry = AutoCadInspectionSharedCoverageStore.ResolvePolyline(
-            document.Database,
-            transaction,
-            association.GeometryHandle,
-            OpenMode.ForRead);
-        if (geometry is null)
-        {
-            transaction.Commit();
-            return association;
-        }
-
-        var restored = association with
-        {
-            LastKnownGeometryLength = geometry.Length,
-        };
-        transaction.Commit();
-        return restored;
-    }
-
-    public bool RemoveAssociation(Document document, Guid reportId, Guid sectionId)
-    {
-        ArgumentNullException.ThrowIfNull(document);
-        using var documentLock = document.LockDocument();
-        return _associationStore.Remove(document.Database, reportId, sectionId);
-    }
+        Guid sectionId) => _associationStore.Load(document.Database, reportId, sectionId);
 
     public bool GeometryExists(Document document, CadSectionAssociation association)
     {
-        try
-        {
-            using var transaction = document.Database.TransactionManager.StartOpenCloseTransaction();
-            var geometry = AutoCadInspectionSharedCoverageStore.ResolvePolyline(
-                document.Database,
-                transaction,
-                association.GeometryHandle,
-                OpenMode.ForRead);
-            var exists = geometry is not null && geometry.NumberOfVertices > 0;
-            transaction.Commit();
-            return exists;
-        }
-        catch (InvalidOperationException)
-        {
-            return false;
-        }
+        using var transaction = document.Database.TransactionManager.StartOpenCloseTransaction();
+        var exists = AutoCadInspectionAssociationStore.TryResolvePolyline(
+            document.Database,
+            transaction,
+            association.GeometryHandle,
+            OpenMode.ForRead,
+            out _);
+        transaction.Commit();
+        return exists;
     }
 
     public IReadOnlyList<PositionedInspectionEvent> Resolve(
@@ -149,25 +96,27 @@ public sealed class AutoCadInspectionGeometryService
         var association = section.Association
             ?? throw new InvalidOperationException("O trecho ainda não possui geometria associada.");
         using var transaction = document.Database.TransactionManager.StartOpenCloseTransaction();
-        var polyline = AutoCadInspectionSharedCoverageStore.ResolvePolyline(
-            document.Database,
-            transaction,
-            association.GeometryHandle,
-            OpenMode.ForRead)
-            ?? throw new InvalidOperationException(
-                "O segmento físico associado ao trecho não existe mais. Remova a associação e selecione a geometria novamente.");
+        if (!AutoCadInspectionAssociationStore.TryResolvePolyline(
+                document.Database,
+                transaction,
+                association.GeometryHandle,
+                OpenMode.ForRead,
+                out var polyline))
+        {
+            throw new InvalidOperationException("A geometria associada não existe mais.");
+        }
 
         var positionedEvents = _linearReferenceEngine.ResolveSection(
             section,
-            new AutoCadPolylineGeometry(polyline),
+            new AutoCadPolylineGeometry(polyline!),
             association.Direction)
             .Select(positionedEvent => PositionEntireSection(
                 section,
-                polyline,
+                polyline!,
                 association.Direction,
                 positionedEvent))
             .ToArray();
-        var geometryLength = polyline.Length;
+        var geometryLength = polyline!.Length;
         ValidateFinite(geometryLength, "GeometryLength");
         var diagnostics = positionedEvents
             .Where(positionedEvent => positionedEvent.CanCommit)
@@ -185,79 +134,6 @@ public sealed class AutoCadInspectionGeometryService
             positionedEvents,
             Array.AsReadOnly(diagnostics));
     }
-
-    private static Polyline ResolvePhysicalSelection(
-        Database database,
-        Transaction transaction,
-        Polyline selectedPolyline)
-    {
-        if (!IsCoverageOverlayLayer(selectedPolyline.Layer))
-        {
-            return selectedPolyline;
-        }
-
-        var physical = FindCoincidentPhysicalPolyline(database, transaction, selectedPolyline);
-        if (physical is not null)
-        {
-            return physical;
-        }
-
-        throw new InvalidOperationException(
-            "A linha selecionada é uma cobertura visual da vídeo inspeção, mas o segmento físico " +
-            "correspondente não foi encontrado. Selecione diretamente a Polyline da rede por baixo da cobertura.");
-    }
-
-    private static Polyline? FindCoincidentPhysicalPolyline(
-        Database database,
-        Transaction transaction,
-        Polyline overlay)
-    {
-        var blockTable = (BlockTable)transaction.GetObject(database.BlockTableId, OpenMode.ForRead);
-        var modelSpace = (BlockTableRecord)transaction.GetObject(
-            blockTable[BlockTableRecord.ModelSpace],
-            OpenMode.ForRead);
-        foreach (ObjectId objectId in modelSpace)
-        {
-            if (objectId == overlay.ObjectId ||
-                transaction.GetObject(objectId, OpenMode.ForRead, openErased: false) is not Polyline candidate ||
-                IsCoverageOverlayLayer(candidate.Layer))
-            {
-                continue;
-            }
-
-            if (Math.Abs(candidate.Length - overlay.Length) > GeometryTolerance)
-            {
-                continue;
-            }
-
-            var sameDirection =
-                candidate.StartPoint.DistanceTo(overlay.StartPoint) <= GeometryTolerance &&
-                candidate.EndPoint.DistanceTo(overlay.EndPoint) <= GeometryTolerance;
-            var oppositeDirection =
-                candidate.StartPoint.DistanceTo(overlay.EndPoint) <= GeometryTolerance &&
-                candidate.EndPoint.DistanceTo(overlay.StartPoint) <= GeometryTolerance;
-            if (sameDirection || oppositeDirection)
-            {
-                return candidate;
-            }
-        }
-
-        return null;
-    }
-
-    private static bool IsCoverageOverlayLayer(string? layerName) =>
-        string.Equals(
-            layerName,
-            AutoCadInspectionCoverageRenderer.InspectedLayerName,
-            StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(
-            layerName,
-            AutoCadInspectionCoverageRenderer.NotInspectedLayerName,
-            StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(
-            layerName,
-            LegacyNotInspectedLayerName,
-            StringComparison.OrdinalIgnoreCase);
 
     private static PositionedInspectionEvent PositionEntireSection(
         InspectionSectionSession section,

@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Media;
 using GeoAutoEngine.Application.VideoInspection;
 using Button = System.Windows.Controls.Button;
@@ -10,7 +9,6 @@ using Control = System.Windows.Controls.Control;
 using UserControl = System.Windows.Controls.UserControl;
 using MessageBox = System.Windows.MessageBox;
 using Color = System.Windows.Media.Color;
-using Binding = System.Windows.Data.Binding;
 
 namespace GeoAutoEngine.Plugin.VideoInspection;
 
@@ -146,22 +144,9 @@ public partial class VideoInspectionView : UserControl
         _exportCorrectionsButton.SetResourceReference(StyleProperty, "SecondaryButton");
         _exportCorrectionsButton.Click += ExportCorrectionsClick;
 
-        var removeAssociationButton = new Button
-        {
-            Content = "Remover associação de geometria",
-            Padding = new Thickness(9),
-            Margin = new Thickness(0, 0, 0, 7),
-        };
-        removeAssociationButton.SetResourceReference(StyleProperty, "SecondaryButton");
-        removeAssociationButton.SetBinding(
-            IsEnabledProperty,
-            new Binding("SelectedSection.HasAssociation"));
-        removeAssociationButton.Click += RemoveGeometryAssociationClick;
-
         actions.Children.Insert(0, _correctionStatusText);
         actions.Children.Insert(1, editButton);
         actions.Children.Insert(2, _exportCorrectionsButton);
-        actions.Children.Insert(3, removeAssociationButton);
     }
 
     private void EditOccurrencesClick(object sender, RoutedEventArgs eventArgs)
@@ -208,29 +193,6 @@ public partial class VideoInspectionView : UserControl
         {
             VideoInspectionCorrectionRuntime.RequestRestore(section.SectionId, occurrenceId);
         }
-    }
-
-    private void RemoveGeometryAssociationClick(object sender, RoutedEventArgs eventArgs)
-    {
-        var selected = _viewModel.SelectedSection;
-        if (selected?.HasAssociation != true)
-        {
-            return;
-        }
-
-        var result = MessageBox.Show(
-            $"Remover a associação de geometria de '{selected.Name}'?\n\n" +
-            "A Polyline original não será apagada nem unida. Se já houver um BREAK, ele será mantido.",
-            "Remover associação — GeoAutoEngine",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No);
-        if (result != MessageBoxResult.Yes)
-        {
-            return;
-        }
-
-        VideoInspectionAssociationRemovalRuntime.Request(selected.SectionId);
     }
 
     private void ExportCorrectionsClick(object sender, RoutedEventArgs eventArgs) =>

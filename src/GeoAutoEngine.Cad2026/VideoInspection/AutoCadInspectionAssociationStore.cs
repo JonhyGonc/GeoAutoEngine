@@ -82,40 +82,6 @@ public sealed class AutoCadInspectionAssociationStore
         return new CadSectionAssociation(reportId, sectionId, handle, direction, length, storageVersion);
     }
 
-    public bool Remove(Database database, Guid reportId, Guid sectionId)
-    {
-        ArgumentNullException.ThrowIfNull(database);
-        using var transaction = database.TransactionManager.StartTransaction();
-        var namedObjects = (DBDictionary)transaction.GetObject(
-            database.NamedObjectsDictionaryId,
-            OpenMode.ForRead);
-        if (!namedObjects.Contains(DictionaryName))
-        {
-            transaction.Commit();
-            return false;
-        }
-
-        var dictionary = (DBDictionary)transaction.GetObject(
-            namedObjects.GetAt(DictionaryName),
-            OpenMode.ForWrite);
-        var key = EntryKey(reportId, sectionId);
-        if (!dictionary.Contains(key))
-        {
-            transaction.Commit();
-            return false;
-        }
-
-        var recordId = dictionary.GetAt(key);
-        dictionary.Remove(key);
-        if (!recordId.IsNull && transaction.GetObject(recordId, OpenMode.ForWrite, openErased: false) is DBObject record)
-        {
-            record.Erase();
-        }
-
-        transaction.Commit();
-        return true;
-    }
-
     public static bool TryResolvePolyline(
         Database database,
         Transaction transaction,

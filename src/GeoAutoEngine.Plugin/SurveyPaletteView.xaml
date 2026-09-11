@@ -359,22 +359,6 @@
                                        TextWrapping="Wrap" Margin="0,8,0,0" />
                             <Button Style="{StaticResource SecondaryButton}" Click="ApplyVideoInspectionScale"
                                     Margin="0,14,0,0" Content="Aplicar ao desenho atual" />
-
-                            <TextBlock Text="Cobertura da inspeção"
-                                       Foreground="{StaticResource MutedBrush}" Margin="0,18,0,5" />
-                            <Button x:Name="CoverageLinesToggleButton"
-                                    Style="{StaticResource SecondaryButton}"
-                                    Click="ToggleVideoInspectionCoverageLines"
-                                    Margin="0,4,0,0"
-                                    Content="Linhas de cobertura: ATIVADAS" />
-                            <Button x:Name="CoverageBreakToggleButton"
-                                    Style="{StaticResource SecondaryButton}"
-                                    Click="ToggleVideoInspectionBreak"
-                                    Margin="0,8,0,0"
-                                    Content="BREAK no fim da inspeção: ATIVADO" />
-                            <TextBlock Text="Os controles são independentes. Desativar o BREAK impede novas divisões e não une automaticamente redes já quebradas."
-                                       Foreground="{StaticResource VeryMutedBrush}" FontSize="11"
-                                       TextWrapping="Wrap" Margin="0,8,0,0" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
