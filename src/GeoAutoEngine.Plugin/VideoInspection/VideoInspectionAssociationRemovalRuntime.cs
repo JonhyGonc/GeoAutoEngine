@@ -44,14 +44,27 @@ internal static class VideoInspectionAssociationRemovalRuntime
             return;
         }
 
+        var sharedCoverageUpdated = false;
         try
         {
             var settings = PaletteSettingsStore.Load();
+            // Primeiro converte qualquer estado antigo por trecho para o estado compartilhado.
+            // O BREAK fica desativado aqui para que a simples remoção da associação nunca
+            // faça uma nova alteração física na rede.
+            SharedCoverage.Apply(
+                document,
+                session,
+                section,
+                section.PositionedEvents,
+                new AutoCadInspectionCoverageOptions(
+                    settings.AddVideoInspectionCoverageLines,
+                    ApplyBreak: false));
             SharedCoverage.RemoveContribution(
                 document,
                 session,
                 section,
                 settings.AddVideoInspectionCoverageLines);
+            sharedCoverageUpdated = true;
         }
         catch (System.Exception exception) when (
             exception is not StackOverflowException and not OutOfMemoryException)
@@ -60,16 +73,19 @@ internal static class VideoInspectionAssociationRemovalRuntime
         }
 
         GeometryService.RemoveAssociation(document, session.ReportId, section.SectionId);
-        try
+        if (sharedCoverageUpdated)
         {
-            // Limpa qualquer estado legado daquele trecho. Os segmentos físicos de BREAK
-            // continuam no DWG; remover associação nunca une nem apaga a rede original.
-            CoverageCleaner.Clear(document, session.ReportId, section.SectionId);
-        }
-        catch (System.Exception exception) when (
-            exception is not StackOverflowException and not OutOfMemoryException)
-        {
-            PluginLog.Error("Limpeza da cobertura ao remover associação", exception);
+            try
+            {
+                // Após a migração, remove apenas eventual registro legado remanescente.
+                // Os segmentos físicos de BREAK continuam no DWG.
+                CoverageCleaner.Clear(document, session.ReportId, section.SectionId);
+            }
+            catch (System.Exception exception) when (
+                exception is not StackOverflowException and not OutOfMemoryException)
+            {
+                PluginLog.Error("Limpeza da cobertura legada ao remover associação", exception);
+            }
         }
 
         section.RemoveAssociation();
