@@ -69,6 +69,13 @@ public sealed class AutoCadInspectionGeometryService
         Guid reportId,
         Guid sectionId) => _associationStore.Load(document.Database, reportId, sectionId);
 
+    public bool RemoveAssociation(Document document, Guid reportId, Guid sectionId)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        using var documentLock = document.LockDocument();
+        return _associationStore.Remove(document.Database, reportId, sectionId);
+    }
+
     public bool GeometryExists(Document document, CadSectionAssociation association)
     {
         using var transaction = document.Database.TransactionManager.StartOpenCloseTransaction();
