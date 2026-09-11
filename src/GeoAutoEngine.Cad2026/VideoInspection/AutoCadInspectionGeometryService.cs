@@ -8,6 +8,7 @@ namespace GeoAutoEngine.Cad2026.VideoInspection;
 
 public sealed class AutoCadInspectionGeometryService
 {
+    private const double CoverageSelectionTolerance = 1e-4;
     private readonly AutoCadInspectionAssociationStore _associationStore = new();
     private readonly LinearReferenceEngine _linearReferenceEngine = new();
 
@@ -18,7 +19,7 @@ public sealed class AutoCadInspectionGeometryService
     {
         ArgumentNullException.ThrowIfNull(document);
         var options = new PromptEntityOptions("\nSelecione a Polyline correspondente ao trecho: ");
-        options.SetRejectMessage("\nVídeo-inspeção V0.1 aceita somente Polyline 2D.");
+        options.SetRejectMessage("\nVídeo-inspeção aceita somente Polyline 2D.");
         options.AddAllowedClass(typeof(Polyline), exactMatch: true);
         var selected = document.Editor.GetEntity(options);
         if (selected.Status != PromptStatus.OK)
@@ -32,16 +33,27 @@ public sealed class AutoCadInspectionGeometryService
         LinearPoint end;
         using (var transaction = document.Database.TransactionManager.StartOpenCloseTransaction())
         {
-            if (transaction.GetObject(selected.ObjectId, OpenMode.ForRead) is not Polyline polyline)
+            if (transaction.GetObject(selected.ObjectId, OpenMode.ForRead) is not Polyline selectedPolyline)
             {
                 document.Editor.WriteMessage("\nGeoAutoEngine: a entidade selecionada não é uma Polyline 2D.\n");
                 return null;
             }
 
-            handle = polyline.Handle.ToString();
-            length = polyline.Length;
-            start = new LinearPoint(polyline.StartPoint.X, polyline.StartPoint.Y, polyline.StartPoint.Z);
-            end = new LinearPoint(polyline.EndPoint.X, polyline.EndPoint.Y, polyline.EndPoint.Z);
+            var physical = ResolvePhysicalPolylineFromSelection(
+                document.Database,
+                transaction,
+                selectedPolyline);
+            if (physical is null)
+            {
+                document.Editor.WriteMessage(
+                    "\nGeoAutoEngine: não foi possível localizar a Polyline física correspondente à cobertura selecionada.\n");
+                return null;
+            }
+
+            handle = physical.Handle.ToString();
+            length = physical.Length;
+            start = new LinearPoint(physical.StartPoint.X, physical.StartPoint.Y, physical.StartPoint.Z);
+            end = new LinearPoint(physical.EndPoint.X, physical.EndPoint.Y, physical.EndPoint.Z);
             transaction.Commit();
         }
 
@@ -68,6 +80,13 @@ public sealed class AutoCadInspectionGeometryService
         Document document,
         Guid reportId,
         Guid sectionId) => _associationStore.Load(document.Database, reportId, sectionId);
+
+    public bool RemoveAssociation(Document document, Guid reportId, Guid sectionId)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        using var documentLock = document.LockDocument();
+        return _associationStore.Remove(document.Database, reportId, sectionId);
+    }
 
     public bool GeometryExists(Document document, CadSectionAssociation association)
     {
@@ -134,6 +153,74 @@ public sealed class AutoCadInspectionGeometryService
             positionedEvents,
             Array.AsReadOnly(diagnostics));
     }
+
+    private static Polyline? ResolvePhysicalPolylineFromSelection(
+        Database database,
+        Transaction transaction,
+        Polyline selected)
+    {
+        if (AutoCadInspectionCoverageController.TryGetPhysicalSourceHandle(selected, out var sourceHandle) &&
+            AutoCadInspectionAssociationStore.TryResolvePolyline(
+                database,
+                transaction,
+                sourceHandle,
+                OpenMode.ForRead,
+                out var physicalFromMetadata))
+        {
+            return physicalFromMetadata;
+        }
+
+        if (!IsCoverageLayer(selected.Layer))
+        {
+            return selected;
+        }
+
+        var blockTable = (BlockTable)transaction.GetObject(database.BlockTableId, OpenMode.ForRead);
+        var modelSpace = (BlockTableRecord)transaction.GetObject(
+            blockTable[BlockTableRecord.ModelSpace],
+            OpenMode.ForRead);
+        foreach (ObjectId objectId in modelSpace)
+        {
+            if (objectId == selected.ObjectId ||
+                transaction.GetObject(objectId, OpenMode.ForRead, openErased: false) is not Polyline candidate ||
+                IsCoverageLayer(candidate.Layer))
+            {
+                continue;
+            }
+
+            if (Math.Abs(candidate.Length - selected.Length) > CoverageSelectionTolerance)
+            {
+                continue;
+            }
+
+            var sameDirection =
+                candidate.StartPoint.DistanceTo(selected.StartPoint) <= CoverageSelectionTolerance &&
+                candidate.EndPoint.DistanceTo(selected.EndPoint) <= CoverageSelectionTolerance;
+            var reverseDirection =
+                candidate.StartPoint.DistanceTo(selected.EndPoint) <= CoverageSelectionTolerance &&
+                candidate.EndPoint.DistanceTo(selected.StartPoint) <= CoverageSelectionTolerance;
+            if (sameDirection || reverseDirection)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsCoverageLayer(string? layerName) =>
+        string.Equals(
+            layerName,
+            AutoCadInspectionCoverageController.InspectedLayerName,
+            StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(
+            layerName,
+            AutoCadInspectionCoverageController.InterruptedLayerName,
+            StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(
+            layerName,
+            "GF-VideoInspecao-NaoInspecionado",
+            StringComparison.OrdinalIgnoreCase);
 
     private static PositionedInspectionEvent PositionEntireSection(
         InspectionSectionSession section,

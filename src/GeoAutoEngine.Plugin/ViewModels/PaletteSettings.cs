@@ -9,6 +9,8 @@ internal sealed class PaletteSettingsData
 {
     public bool OpenPaletteOnStartup { get; set; } = true;
     public int VideoInspectionScaleDenominator { get; set; } = 250;
+    public bool AddVideoInspectionCoverageLines { get; set; } = true;
+    public bool ApplyVideoInspectionBreak { get; set; } = true;
 }
 
 internal static class PaletteSettingsStore
