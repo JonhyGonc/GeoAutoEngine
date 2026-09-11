@@ -35,12 +35,21 @@ internal static class PaletteSettingsStore
                 settings.VideoInspectionScaleDenominator = InspectionCalloutScaleProfile.Default.ScaleDenominator;
             }
 
+            // Durante a estabilização da cobertura, estes recursos ficam obrigatoriamente ativos.
+            // Isso remove os toggles da equação de diagnóstico: clicar nos botões não pode
+            // desativar linha verde/vermelha nem o BREAK.
+            settings.AddVideoInspectionCoverageLines = true;
+            settings.ApplyVideoInspectionBreak = true;
             return settings;
         }
         catch (Exception exception)
         {
             PluginLog.Error("Leitura das configurações da interface", exception);
-            return new();
+            return new PaletteSettingsData
+            {
+                AddVideoInspectionCoverageLines = true,
+                ApplyVideoInspectionBreak = true,
+            };
         }
     }
 
@@ -52,6 +61,10 @@ internal static class PaletteSettingsStore
             {
                 settings.VideoInspectionScaleDenominator = InspectionCalloutScaleProfile.Default.ScaleDenominator;
             }
+
+            // Mantém cobertura e BREAK ativos mesmo se a interface tentar alterná-los.
+            settings.AddVideoInspectionCoverageLines = true;
+            settings.ApplyVideoInspectionBreak = true;
 
             Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
             File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, new JsonSerializerOptions
