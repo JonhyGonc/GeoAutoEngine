@@ -39,7 +39,6 @@ public sealed class AutoCadInspectionRenderer
     private const string TextComponent = "TEXT";
     private const string SectionNameComponent = "SECTION_NAME";
     private const string SectionDiameterComponent = "SECTION_DIAMETER";
-    private const double TextHeight = InspectionCalloutLayoutEngine.TextHeight;
     private const double SectionIdentificationOffset = 0.45;
     private const double GeometryTolerance = 1e-9;
 
@@ -47,12 +46,14 @@ public sealed class AutoCadInspectionRenderer
         Document document,
         VideoInspectionSession session,
         InspectionSectionSession section,
-        IReadOnlyList<PositionedInspectionEvent> positionedEvents)
+        IReadOnlyList<PositionedInspectionEvent> positionedEvents,
+        InspectionCalloutScaleProfile? scaleProfile = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(section);
         ArgumentNullException.ThrowIfNull(positionedEvents);
+        var scale = scaleProfile ?? InspectionCalloutScaleProfile.Legacy;
         var association = section.Association
             ?? throw new InvalidOperationException("O trecho ainda não possui geometria associada.");
         using var documentLock = document.LockDocument();
@@ -105,7 +106,7 @@ public sealed class AutoCadInspectionRenderer
                 session.ReportId,
                 section.SectionId,
                 transaction);
-            var placements = InspectionCalloutLayoutEngine.Arrange(calls, obstacles);
+            var placements = InspectionCalloutLayoutEngine.Arrange(calls, scale, obstacles);
             var desiredKeys = new HashSet<string>(StringComparer.Ordinal);
             foreach (var placement in placements)
             {
@@ -248,7 +249,8 @@ public sealed class AutoCadInspectionRenderer
                     call,
                     placement,
                     eventLayerId,
-                    eventTextStyleId);
+                    eventTextStyleId,
+                    scale.TextHeight);
                 SetMetadata(text, session, section, call, stableKey, TextComponent);
                 retainedIds.Add(text.ObjectId);
                 pendingEntities.Add((call.OccurrenceId, text.ObjectId, textCreated));
@@ -279,6 +281,7 @@ public sealed class AutoCadInspectionRenderer
                 desiredKeys,
                 eventLayerId,
                 eventTextStyleId,
+                scale.TextHeight,
                 transaction);
 
             EraseStaleManagedEntities(
@@ -561,6 +564,7 @@ public sealed class AutoCadInspectionRenderer
         ISet<string> desiredKeys,
         ObjectId layerId,
         ObjectId textStyleId,
+        double textHeight,
         Transaction transaction)
     {
         var identification = InspectionAnnotationPlanner.CreateSectionIdentification(section);
@@ -579,6 +583,7 @@ public sealed class AutoCadInspectionRenderer
             normal = -normal;
         }
 
+        var identificationOffset = Math.Max(SectionIdentificationOffset, textHeight * 0.90);
         UpsertSectionText(
             database,
             modelSpace,
@@ -588,10 +593,11 @@ public sealed class AutoCadInspectionRenderer
             desiredKeys,
             SectionNameComponent,
             identification.SectionLine,
-            center + normal * SectionIdentificationOffset,
+            center + normal * identificationOffset,
             textRotation,
             layerId,
             textStyleId,
+            textHeight,
             transaction);
         UpsertSectionText(
             database,
@@ -602,10 +608,11 @@ public sealed class AutoCadInspectionRenderer
             desiredKeys,
             SectionDiameterComponent,
             identification.DiameterLine,
-            center - normal * SectionIdentificationOffset,
+            center - normal * identificationOffset,
             textRotation,
             layerId,
             textStyleId,
+            textHeight,
             transaction);
     }
 
@@ -622,6 +629,7 @@ public sealed class AutoCadInspectionRenderer
         double rotation,
         ObjectId layerId,
         ObjectId textStyleId,
+        double textHeight,
         Transaction transaction)
     {
         var stableKey = SectionStableKey(session.ReportId, section.SectionId, component);
@@ -636,7 +644,7 @@ public sealed class AutoCadInspectionRenderer
             transaction.AddNewlyCreatedDBObject(text, true);
         }
 
-        ApplySectionText(text, location, contents, rotation, layerId, textStyleId);
+        ApplySectionText(text, location, contents, rotation, layerId, textStyleId, textHeight);
         SetSectionMetadata(text, session, section, stableKey, component);
         EraseExcept(managedEntities, new HashSet<ObjectId> { text.ObjectId }, transaction);
     }
@@ -732,13 +740,14 @@ public sealed class AutoCadInspectionRenderer
         InspectionAnnotationCall call,
         InspectionCalloutPlacement placement,
         ObjectId layerId,
-        ObjectId textStyleId)
+        ObjectId textStyleId,
+        double textHeight)
     {
         text.LayerId = layerId;
         text.ColorIndex = ByLayerColorIndex;
         text.Contents = MTextContents(call);
         text.Location = textPoint;
-        text.TextHeight = TextHeight;
+        text.TextHeight = textHeight;
         text.TextStyleId = textStyleId;
         text.Rotation = placement.TextRotationRadians;
         text.Attachment = placement.AttachAtRightEdge
@@ -752,13 +761,14 @@ public sealed class AutoCadInspectionRenderer
         string contents,
         double rotation,
         ObjectId layerId,
-        ObjectId textStyleId)
+        ObjectId textStyleId,
+        double textHeight)
     {
         text.LayerId = layerId;
         text.ColorIndex = ByLayerColorIndex;
         text.Contents = EscapeMText(contents);
         text.Location = location;
-        text.TextHeight = TextHeight;
+        text.TextHeight = textHeight;
         text.TextStyleId = textStyleId;
         text.Rotation = rotation;
         text.Attachment = AttachmentPoint.MiddleCenter;
