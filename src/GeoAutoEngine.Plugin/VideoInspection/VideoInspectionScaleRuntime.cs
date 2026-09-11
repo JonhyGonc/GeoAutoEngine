@@ -8,7 +8,6 @@ internal static class VideoInspectionScaleRuntime
 {
     private static readonly AutoCadInspectionGeometryService GeometryService = new();
     private static readonly AutoCadInspectionRenderer Renderer = new();
-    private static readonly AutoCadInspectionRenderGeometryBridge RenderGeometryBridge = new();
     private static readonly AutoCadInspectionManagedEntityProbe ManagedEntityProbe = new();
 
     internal static void RequestApply() => QueueCommand("GEOAUTO3VIAPPLYSCALE");
@@ -39,19 +38,12 @@ internal static class VideoInspectionScaleRuntime
             {
                 var positioning = GeometryService.ResolveWithDiagnostics(document, section);
                 section.SetPositioning(positioning.PositionedEvents);
-                AutoCadInspectionCommitResult result;
-                using (RenderGeometryBridge.Prepare(
-                           document,
-                           session.ReportId,
-                           section.Association.GeometryHandle))
-                {
-                    result = Renderer.Commit(
-                        document,
-                        session,
-                        section,
-                        positioning.PositionedEvents,
-                        scale);
-                }
+                var result = Renderer.Commit(
+                    document,
+                    session,
+                    section,
+                    positioning.PositionedEvents,
+                    scale);
                 var invalid = positioning.PositionedEvents.Count(item => !item.CanCommit);
                 if (invalid == 0)
                 {
