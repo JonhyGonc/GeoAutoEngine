@@ -1,12 +1,14 @@
 using System.IO;
 using System.Text.Json;
 using GeoAutoEngine.Application;
+using GeoAutoEngine.Application.VideoInspection;
 
 namespace GeoAutoEngine.Plugin;
 
 internal sealed class PaletteSettingsData
 {
     public bool OpenPaletteOnStartup { get; set; } = true;
+    public int VideoInspectionScaleDenominator { get; set; } = 250;
 }
 
 internal static class PaletteSettingsStore
@@ -23,9 +25,15 @@ internal static class PaletteSettingsStore
     {
         try
         {
-            return File.Exists(SettingsPath)
+            var settings = File.Exists(SettingsPath)
                 ? JsonSerializer.Deserialize<PaletteSettingsData>(File.ReadAllText(SettingsPath)) ?? new()
                 : new();
+            if (!InspectionCalloutScaleProfile.IsSupported(settings.VideoInspectionScaleDenominator))
+            {
+                settings.VideoInspectionScaleDenominator = InspectionCalloutScaleProfile.Default.ScaleDenominator;
+            }
+
+            return settings;
         }
         catch (Exception exception)
         {
@@ -38,6 +46,11 @@ internal static class PaletteSettingsStore
     {
         try
         {
+            if (!InspectionCalloutScaleProfile.IsSupported(settings.VideoInspectionScaleDenominator))
+            {
+                settings.VideoInspectionScaleDenominator = InspectionCalloutScaleProfile.Default.ScaleDenominator;
+            }
+
             Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
             File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, new JsonSerializerOptions
             {
@@ -49,6 +62,9 @@ internal static class PaletteSettingsStore
             PluginLog.Error("Gravação das configurações da interface", exception);
         }
     }
+
+    internal static InspectionCalloutScaleProfile LoadVideoInspectionScaleProfile() =>
+        InspectionCalloutScaleProfile.Resolve(Load().VideoInspectionScaleDenominator);
 
     internal static DrawingPlanBuildOptions LoadDrawingPlanBuildOptions()
     {
