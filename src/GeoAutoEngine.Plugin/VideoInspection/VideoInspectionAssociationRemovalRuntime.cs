@@ -11,7 +11,6 @@ internal static class VideoInspectionAssociationRemovalRuntime
     private static readonly AutoCadInspectionGeometryService GeometryService = new();
     private static readonly AutoCadInspectionCoverageAssociationCleaner CoverageCleaner = new();
     private static readonly AutoCadInspectionAnnotationCleaner AnnotationCleaner = new();
-    private static readonly AutoCadInspectionSharedCoverageService SharedCoverage = new();
     private static Guid? _pendingSectionId;
 
     internal static void Request(Guid sectionId)
@@ -45,65 +44,34 @@ internal static class VideoInspectionAssociationRemovalRuntime
             return;
         }
 
-        var sharedCoverageUpdated = false;
+        // Remover associação não deve recalcular cobertura nem criar novas entidades.
+        // Limpe somente as representações visuais e o estado persistido deste trecho.
+        // O segmento físico criado por um BREAK é preservado pelo cleaner.
         try
         {
-            var settings = PaletteSettingsStore.Load();
-            // Primeiro converte qualquer estado antigo por trecho para o estado compartilhado.
-            // O BREAK fica desativado aqui para que a simples remoção da associação nunca
-            // faça uma nova alteração física na rede.
-            SharedCoverage.Apply(
-                document,
-                session,
-                section,
-                section.PositionedEvents,
-                new AutoCadInspectionCoverageOptions(
-                    settings.AddVideoInspectionCoverageLines,
-                    ApplyBreak: false));
-            SharedCoverage.RemoveContribution(
-                document,
-                session,
-                section,
-                settings.AddVideoInspectionCoverageLines);
-            sharedCoverageUpdated = true;
+            CoverageCleaner.Clear(document, session.ReportId, section.SectionId);
         }
         catch (System.Exception exception) when (
             exception is not StackOverflowException and not OutOfMemoryException)
         {
-            PluginLog.Error("Atualização da cobertura compartilhada ao remover associação", exception);
+            PluginLog.Error("Limpeza da cobertura ao remover associação", exception);
         }
 
         // O estaqueamento pertence à associação geométrica atual. Ao desvincular,
-        // remova apenas essas entidades gerenciadas para que uma futura associação
-        // gere tudo novamente na geometria correta. Segmentos da rede e BREAKs não
-        // possuem componentes de anotação e nunca são apagados por esta limpeza.
+        // remova apenas as entidades gerenciadas para que a próxima associação gere
+        // tudo novamente na geometria escolhida. A rede e os BREAKs não são apagados.
         var removedAnnotations = AnnotationCleaner.Clear(
             document,
             session.ReportId,
             section.SectionId);
 
         GeometryService.RemoveAssociation(document, session.ReportId, section.SectionId);
-        if (sharedCoverageUpdated)
-        {
-            try
-            {
-                // Após a migração, remove apenas eventual registro legado remanescente.
-                // Os segmentos físicos de BREAK continuam no DWG.
-                CoverageCleaner.Clear(document, session.ReportId, section.SectionId);
-            }
-            catch (System.Exception exception) when (
-                exception is not StackOverflowException and not OutOfMemoryException)
-            {
-                PluginLog.Error("Limpeza da cobertura legada ao remover associação", exception);
-            }
-        }
-
         section.RemoveAssociation();
         GeoAutoEnginePalette.RefreshVideoInspection();
         document.Editor.WriteMessage(
             $"\nGeoAutoEngine: associação de geometria removida; " +
             $"entidades de estaqueamento limpas={removedAnnotations}. " +
-            "A Polyline original não foi apagada nem modificada.\n");
+            "Os segmentos da rede e BREAKs existentes foram preservados.\n");
     }
 }
 
