@@ -16,7 +16,7 @@ public sealed record AutoCadInspectionCoverageResult(
 public sealed class AutoCadInspectionCoverageRenderer
 {
     public const string InspectedLayerName = "GF-VideoInspecao-Inspecionado";
-    public const string NotInspectedLayerName = "GF-VideoInspecao-NaoInspecionado";
+    public const string NotInspectedLayerName = "Video-interrompido";
 
     private const string DictionaryName = "GEOAUTOENGINE_VIDEO_INSPECTION_COVERAGE";
     private const short InspectedLayerColorIndex = 3;
