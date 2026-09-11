@@ -19,6 +19,7 @@ internal static class VideoInspectionRuntime
     private static readonly InspectionExchangeSerializer Serializer = new();
     private static readonly AutoCadInspectionGeometryService GeometryService = new();
     private static readonly AutoCadInspectionRenderer Renderer = new();
+    private static readonly AutoCadInspectionCoverageRenderer CoverageRenderer = new();
     private static NamedPipeInspectionServer? _server;
     private static Document? _restoredDocument;
     private static Guid? _restoredReportId;
@@ -152,11 +153,18 @@ internal static class VideoInspectionRuntime
             section,
             positioned,
             PaletteSettingsStore.LoadVideoInspectionScaleProfile());
+        var coverage = CoverageRenderer.Apply(
+            document,
+            CurrentSession!,
+            section,
+            positioned);
         var invalid = positioned.Count(item => !item.CanCommit);
         if (invalid == 0)
         {
             section.MarkGenerated(
-                $"Gerado: {result.CreatedCount} novo(s), {result.UpdatedCount} atualizado(s).");
+                $"Gerado: {result.CreatedCount} novo(s), {result.UpdatedCount} atualizado(s). " +
+                $"Cobertura: {coverage.InspectedLength:0.##} m inspecionados; " +
+                $"{coverage.RemainingLength:0.##} m pendentes.");
         }
 
         GeoAutoEnginePalette.RefreshVideoInspection();
@@ -183,13 +191,18 @@ internal static class VideoInspectionRuntime
                 $"PermanentEntitiesCreated={result.CreatedCount}; " +
                 $"PermanentEntitiesUpdated={result.UpdatedCount}; " +
                 $"TransactionCommitted={result.TransactionCommitted}; CurrentSpace={result.CurrentSpaceName}; " +
-                $"CurrentSpaceIsModelSpace={result.CurrentSpaceIsModelSpace}; TargetSpace={result.TargetSpaceName}.";
+                $"CurrentSpaceIsModelSpace={result.CurrentSpaceIsModelSpace}; TargetSpace={result.TargetSpaceName}; " +
+                $"CoverageInspected={coverage.InspectedLength:F3}; " +
+                $"CoverageRemaining={coverage.RemainingLength:F3}; " +
+                $"CoverageBreakApplied={coverage.BreakApplied}.";
             PluginLog.Information(pipeline);
         }
         WriteSmokeMarker("committed", CurrentSession!, result);
         document.Editor.WriteMessage(
             $"\nGeoAutoEngine: vídeo-inspeção criada={result.CreatedCount}; atualizada={result.UpdatedCount}; " +
-            $"sem posição/atenção={result.SkippedCount}.\n");
+            $"sem posição/atenção={result.SkippedCount}; " +
+            $"inspecionado={coverage.InspectedLength:0.##} m; " +
+            $"não inspecionado={coverage.RemainingLength:0.##} m.\n");
     }
 
     internal static void DeliverPending()
