@@ -52,7 +52,7 @@ public sealed class InspectionCoveragePlannerTests
 
     [Fact]
     [Trait("Category", "FAST")]
-    public void ZeroInvestigatedLengthDoesNotBreakOriginalGeometry()
+    public void ZeroInvestigatedLengthDoesNotBreakOriginalGeometryWithoutPositionedEvidence()
     {
         var plan = InspectionCoveragePlanner.Create(
             0m,
@@ -63,5 +63,55 @@ public sealed class InspectionCoveragePlannerTests
         Assert.Equal(95.0, plan.RemainingLength, 8);
         Assert.False(plan.RequiresBreak);
         Assert.False(plan.IsFullyInspected);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void ZeroInvestigatedLengthFallsBackToFarthestPositionedOccurrence()
+    {
+        var plan = InspectionCoveragePlanner.Create(
+            0m,
+            95.0,
+            InspectionDirection.Forward,
+            [PositionedEventAt(68.0)]);
+
+        Assert.Equal(68.0, plan.InspectedLength, 8);
+        Assert.Equal(27.0, plan.RemainingLength, 8);
+        Assert.Equal(68.0, plan.SplitCadDistance, 8);
+        Assert.True(plan.RequiresBreak);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
+    public void StaleInvestigatedLengthNeverEndsBeforeFarthestPositionedOccurrence()
+    {
+        var plan = InspectionCoveragePlanner.Create(
+            42m,
+            95.0,
+            InspectionDirection.Reverse,
+            [PositionedEventAt(68.0)]);
+
+        Assert.Equal(68.0, plan.InspectedLength, 8);
+        Assert.Equal(27.0, plan.RemainingLength, 8);
+        Assert.Equal(27.0, plan.SplitCadDistance, 8);
+        Assert.True(plan.RequiresBreak);
+    }
+
+    private static PositionedInspectionEvent PositionedEventAt(double inspectionDistance)
+    {
+        var location = new PositionedInspectionLocation(
+            0,
+            PositionedLocationRole.Point,
+            inspectionDistance,
+            inspectionDistance,
+            new LinearPoint(inspectionDistance, 0, 0),
+            new LinearVector(1, 0, 0));
+        return new PositionedInspectionEvent(
+            Guid.NewGuid(),
+            InspectionLocationMode.Point,
+            "ANOMALIA",
+            Array.AsReadOnly([location]),
+            Array.Empty<string>(),
+            true);
     }
 }
