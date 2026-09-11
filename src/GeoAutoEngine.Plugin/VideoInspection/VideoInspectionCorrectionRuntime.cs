@@ -94,9 +94,18 @@ internal static class VideoInspectionCorrectionRuntime
 
         var server = NamedPipeInspectionServer.Current
             ?? throw new InvalidOperationException("O serviço de integração com o GeoAutoDocs não está ativo.");
+
+        ActiveDocument().Editor.WriteMessage(
+            $"\nGeoAutoEngine: enviando {push.Corrections.Count} correção(ões) ao GeoAutoDocs. " +
+            "Revise e confirme as alterações na janela do GeoAutoDocs.\n");
+
+        // A confirmação depende de revisão humana no GeoAutoDocs. Quinze segundos era
+        // insuficiente e fazia o Engine descartar um ACK perfeitamente válido enquanto o
+        // usuário ainda lia a janela de revisão. Mantemos um limite amplo para detectar
+        // conexões realmente abandonadas sem transformar a revisão em uma corrida.
         var acknowledgement = server.SendCorrectionsAsync(
                 push,
-                TimeSpan.FromSeconds(15))
+                TimeSpan.FromMinutes(5))
             .GetAwaiter()
             .GetResult();
 
