@@ -11,7 +11,11 @@ public sealed class AutoCadInspectionRenderGeometryBridge
     public IDisposable Prepare(Document document, Guid reportId, string geometryHandle)
     {
         ArgumentNullException.ThrowIfNull(document);
-        ArgumentException.ThrowIfNullOrWhiteSpace(geometryHandle);
+        if (string.IsNullOrWhiteSpace(geometryHandle))
+        {
+            throw new ArgumentException("Informe o Handle da geometria associada.", nameof(geometryHandle));
+        }
+
         using var documentLock = document.LockDocument();
         using var transaction = document.Database.TransactionManager.StartTransaction();
         var rootHandle = AutoCadInspectionSharedCoverageStore.NormalizeRootHandle(
