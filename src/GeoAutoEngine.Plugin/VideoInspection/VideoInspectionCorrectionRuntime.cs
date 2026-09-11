@@ -11,6 +11,8 @@ internal static class VideoInspectionCorrectionRuntime
     private static readonly object Sync = new();
     private static readonly AutoCadInspectionGeometryService GeometryService = new();
     private static readonly AutoCadInspectionRenderer Renderer = new();
+    private static readonly AutoCadInspectionRenderGeometryBridge RenderGeometryBridge = new();
+    private static readonly AutoCadInspectionSharedCoverageService CoverageService = new();
     private static readonly AutoCadInspectionManagedEntityProbe ManagedEntityProbe = new();
     private static InspectionOccurrenceEdit? _pendingEdit;
     private static (Guid SectionId, Guid OccurrenceId)? _pendingRestore;
@@ -180,17 +182,35 @@ internal static class VideoInspectionCorrectionRuntime
             return;
         }
 
-        var result = Renderer.Commit(
+        var settings = PaletteSettingsStore.Load();
+        AutoCadInspectionCommitResult result;
+        using (RenderGeometryBridge.Prepare(
+                   document,
+                   session.ReportId,
+                   section.Association.GeometryHandle))
+        {
+            result = Renderer.Commit(
+                document,
+                session,
+                section,
+                positioning.PositionedEvents,
+                InspectionCalloutScaleProfile.Resolve(settings.VideoInspectionScaleDenominator));
+        }
+        var coverage = CoverageService.Apply(
             document,
             session,
             section,
             positioning.PositionedEvents,
-            PaletteSettingsStore.LoadVideoInspectionScaleProfile());
+            new AutoCadInspectionCoverageOptions(
+                settings.AddVideoInspectionCoverageLines,
+                settings.ApplyVideoInspectionBreak));
         var invalid = positioning.PositionedEvents.Count(item => !item.CanCommit);
         if (invalid == 0)
         {
             section.MarkGenerated(
-                $"Atualizado após edição: {result.CreatedCount} novo(s), {result.UpdatedCount} atualizado(s).");
+                $"Atualizado após edição: {result.CreatedCount} novo(s), {result.UpdatedCount} atualizado(s). " +
+                $"Cobertura: {coverage.InspectedLength:0.##} m inspecionados; " +
+                $"{coverage.RemainingLength:0.##} m pendentes.");
         }
     }
 
