@@ -249,6 +249,8 @@ public sealed class AutoCadInspectionCoverageController
                 inspectedOverlay = null;
             }
 
+            BringToFront(modelSpace, transaction, inspectedOverlay, notInspectedOverlay);
+
             SaveState(
                 document.Database,
                 transaction,
@@ -465,6 +467,33 @@ public sealed class AutoCadInspectionCoverageController
             source.GetStartWidthAt(index),
             source.GetEndWidthAt(index));
 
+    private static void BringToFront(
+        BlockTableRecord modelSpace,
+        Transaction transaction,
+        params Polyline?[] overlays)
+    {
+        var ids = new ObjectIdCollection();
+        foreach (var overlay in overlays)
+        {
+            if (overlay is null || overlay.IsErased || overlay.ObjectId.IsNull)
+            {
+                continue;
+            }
+
+            ids.Add(overlay.ObjectId);
+        }
+
+        if (ids.Count == 0 || modelSpace.DrawOrderTableId.IsNull)
+        {
+            return;
+        }
+
+        var drawOrder = (DrawOrderTable)transaction.GetObject(
+            modelSpace.DrawOrderTableId,
+            OpenMode.ForWrite);
+        drawOrder.MoveToTop(ids);
+    }
+
     private static void EraseManagedOverlay(Polyline? overlay)
     {
         if (overlay is not null && !overlay.IsErased)
@@ -494,6 +523,9 @@ public sealed class AutoCadInspectionCoverageController
         }
 
         record.Color = Color.FromColorIndex(ColorMethod.ByAci, colorIndex);
+        record.IsOff = false;
+        record.IsFrozen = false;
+        record.IsLocked = false;
         var linetypes = (LinetypeTable)transaction.GetObject(database.LinetypeTableId, OpenMode.ForRead);
         if (linetypes.Has("Continuous"))
         {
