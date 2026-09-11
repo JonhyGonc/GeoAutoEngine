@@ -10,6 +10,7 @@ internal static class VideoInspectionAssociationRemovalRuntime
 {
     private static readonly AutoCadInspectionGeometryService GeometryService = new();
     private static readonly AutoCadInspectionCoverageAssociationCleaner CoverageCleaner = new();
+    private static readonly AutoCadInspectionAnnotationCleaner AnnotationCleaner = new();
     private static readonly AutoCadInspectionSharedCoverageService SharedCoverage = new();
     private static Guid? _pendingSectionId;
 
@@ -72,6 +73,15 @@ internal static class VideoInspectionAssociationRemovalRuntime
             PluginLog.Error("Atualização da cobertura compartilhada ao remover associação", exception);
         }
 
+        // O estaqueamento pertence à associação geométrica atual. Ao desvincular,
+        // remova apenas essas entidades gerenciadas para que uma futura associação
+        // gere tudo novamente na geometria correta. Segmentos da rede e BREAKs não
+        // possuem componentes de anotação e nunca são apagados por esta limpeza.
+        var removedAnnotations = AnnotationCleaner.Clear(
+            document,
+            session.ReportId,
+            section.SectionId);
+
         GeometryService.RemoveAssociation(document, session.ReportId, section.SectionId);
         if (sharedCoverageUpdated)
         {
@@ -91,7 +101,9 @@ internal static class VideoInspectionAssociationRemovalRuntime
         section.RemoveAssociation();
         GeoAutoEnginePalette.RefreshVideoInspection();
         document.Editor.WriteMessage(
-            "\nGeoAutoEngine: associação de geometria removida. A Polyline original não foi apagada nem modificada.\n");
+            $"\nGeoAutoEngine: associação de geometria removida; " +
+            $"entidades de estaqueamento limpas={removedAnnotations}. " +
+            "A Polyline original não foi apagada nem modificada.\n");
     }
 }
 
