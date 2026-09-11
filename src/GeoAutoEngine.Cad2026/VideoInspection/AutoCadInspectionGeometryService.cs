@@ -35,31 +35,26 @@ public sealed class AutoCadInspectionGeometryService
         LinearPoint end;
         using (var transaction = document.Database.TransactionManager.StartOpenCloseTransaction())
         {
-            if (transaction.GetObject(selected.ObjectId, OpenMode.ForRead) is not Polyline polyline)
+            if (transaction.GetObject(selected.ObjectId, OpenMode.ForRead) is not Polyline selectedPolyline)
             {
                 document.Editor.WriteMessage("\nGeoAutoEngine: a entidade selecionada não é uma Polyline 2D.\n");
                 return null;
             }
 
-            handle = ResolveAssociationHandle(
+            var physicalPolyline = ResolvePhysicalSelection(
                 document.Database,
                 transaction,
-                reportId,
-                polyline);
-            using var logicalGeometry = AutoCadInspectionSharedCoverageStore.CreateLogicalGeometry(
-                document.Database,
-                transaction,
-                reportId,
-                handle);
-            length = logicalGeometry.Length;
+                selectedPolyline);
+            handle = physicalPolyline.Handle.ToString();
+            length = physicalPolyline.Length;
             start = new LinearPoint(
-                logicalGeometry.StartPoint.X,
-                logicalGeometry.StartPoint.Y,
-                logicalGeometry.StartPoint.Z);
+                physicalPolyline.StartPoint.X,
+                physicalPolyline.StartPoint.Y,
+                physicalPolyline.StartPoint.Z);
             end = new LinearPoint(
-                logicalGeometry.EndPoint.X,
-                logicalGeometry.EndPoint.Y,
-                logicalGeometry.EndPoint.Z);
+                physicalPolyline.EndPoint.X,
+                physicalPolyline.EndPoint.Y,
+                physicalPolyline.EndPoint.Z);
             transaction.Commit();
         }
 
@@ -94,20 +89,20 @@ public sealed class AutoCadInspectionGeometryService
         }
 
         using var transaction = document.Database.TransactionManager.StartOpenCloseTransaction();
-        var rootHandle = AutoCadInspectionSharedCoverageStore.NormalizeRootHandle(
+        var geometry = AutoCadInspectionSharedCoverageStore.ResolvePolyline(
             document.Database,
             transaction,
-            reportId,
-            association.GeometryHandle);
-        using var logicalGeometry = AutoCadInspectionSharedCoverageStore.CreateLogicalGeometry(
-            document.Database,
-            transaction,
-            reportId,
-            rootHandle);
+            association.GeometryHandle,
+            OpenMode.ForRead);
+        if (geometry is null)
+        {
+            transaction.Commit();
+            return association;
+        }
+
         var restored = association with
         {
-            GeometryHandle = rootHandle,
-            LastKnownGeometryLength = logicalGeometry.Length,
+            LastKnownGeometryLength = geometry.Length,
         };
         transaction.Commit();
         return restored;
@@ -125,18 +120,14 @@ public sealed class AutoCadInspectionGeometryService
         try
         {
             using var transaction = document.Database.TransactionManager.StartOpenCloseTransaction();
-            var rootHandle = AutoCadInspectionSharedCoverageStore.NormalizeRootHandle(
+            var geometry = AutoCadInspectionSharedCoverageStore.ResolvePolyline(
                 document.Database,
                 transaction,
-                association.ReportId,
-                association.GeometryHandle);
-            using var geometry = AutoCadInspectionSharedCoverageStore.CreateLogicalGeometry(
-                document.Database,
-                transaction,
-                association.ReportId,
-                rootHandle);
+                association.GeometryHandle,
+                OpenMode.ForRead);
+            var exists = geometry is not null && geometry.NumberOfVertices > 0;
             transaction.Commit();
-            return geometry.NumberOfVertices > 0;
+            return exists;
         }
         catch (InvalidOperationException)
         {
@@ -158,16 +149,13 @@ public sealed class AutoCadInspectionGeometryService
         var association = section.Association
             ?? throw new InvalidOperationException("O trecho ainda não possui geometria associada.");
         using var transaction = document.Database.TransactionManager.StartOpenCloseTransaction();
-        var rootHandle = AutoCadInspectionSharedCoverageStore.NormalizeRootHandle(
+        var polyline = AutoCadInspectionSharedCoverageStore.ResolvePolyline(
             document.Database,
             transaction,
-            association.ReportId,
-            association.GeometryHandle);
-        using var polyline = AutoCadInspectionSharedCoverageStore.CreateLogicalGeometry(
-            document.Database,
-            transaction,
-            association.ReportId,
-            rootHandle);
+            association.GeometryHandle,
+            OpenMode.ForRead)
+            ?? throw new InvalidOperationException(
+                "O segmento físico associado ao trecho não existe mais. Remova a associação e selecione a geometria novamente.");
 
         var positionedEvents = _linearReferenceEngine.ResolveSection(
             section,
@@ -198,41 +186,25 @@ public sealed class AutoCadInspectionGeometryService
             Array.AsReadOnly(diagnostics));
     }
 
-    private static string ResolveAssociationHandle(
+    private static Polyline ResolvePhysicalSelection(
         Database database,
         Transaction transaction,
-        Guid reportId,
         Polyline selectedPolyline)
     {
-        var selectedHandle = selectedPolyline.Handle.ToString();
-        var normalized = AutoCadInspectionSharedCoverageStore.NormalizeRootHandle(
-            database,
-            transaction,
-            reportId,
-            selectedHandle);
-        if (!string.Equals(normalized, selectedHandle, StringComparison.OrdinalIgnoreCase))
-        {
-            return normalized;
-        }
-
         if (!IsCoverageOverlayLayer(selectedPolyline.Layer))
         {
-            return selectedHandle;
+            return selectedPolyline;
         }
 
         var physical = FindCoincidentPhysicalPolyline(database, transaction, selectedPolyline);
-        if (physical is null)
+        if (physical is not null)
         {
-            throw new InvalidOperationException(
-                "A linha selecionada é uma cobertura visual da vídeo inspeção, mas a Polyline física " +
-                "correspondente não foi encontrada. Selecione diretamente um segmento da rede original.");
+            return physical;
         }
 
-        return AutoCadInspectionSharedCoverageStore.NormalizeRootHandle(
-            database,
-            transaction,
-            reportId,
-            physical.Handle.ToString());
+        throw new InvalidOperationException(
+            "A linha selecionada é uma cobertura visual da vídeo inspeção, mas o segmento físico " +
+            "correspondente não foi encontrado. Selecione diretamente a Polyline da rede por baixo da cobertura.");
     }
 
     private static Polyline? FindCoincidentPhysicalPolyline(
