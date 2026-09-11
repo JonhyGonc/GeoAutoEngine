@@ -180,7 +180,12 @@ internal static class VideoInspectionCorrectionRuntime
             return;
         }
 
-        var result = Renderer.Commit(document, session, section, positioning.PositionedEvents);
+        var result = Renderer.Commit(
+            document,
+            session,
+            section,
+            positioning.PositionedEvents,
+            PaletteSettingsStore.LoadVideoInspectionScaleProfile());
         var invalid = positioning.PositionedEvents.Count(item => !item.CanCommit);
         if (invalid == 0)
         {
