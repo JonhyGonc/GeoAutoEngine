@@ -15,6 +15,7 @@ internal sealed record AutoCadInspectionSharedCoverageState(
 internal static class AutoCadInspectionSharedCoverageStore
 {
     internal const string DictionaryName = "GEOAUTOENGINE_VIDEO_INSPECTION_SHARED_COVERAGE";
+    private const string LegacyDictionaryName = "GEOAUTOENGINE_VIDEO_INSPECTION_COVERAGE";
     private const double GeometryTolerance = 1e-6;
 
     internal static AutoCadInspectionSharedCoverageState? Load(
@@ -98,7 +99,13 @@ internal static class AutoCadInspectionSharedCoverageStore
         string selectedHandle)
     {
         var state = FindStateContainingHandle(database, transaction, reportId, selectedHandle);
-        return state?.RootHandle ?? selectedHandle;
+        if (state is not null)
+        {
+            return state.RootHandle;
+        }
+
+        return FindLegacyRootHandleContaining(database, transaction, reportId, selectedHandle)
+            ?? selectedHandle;
     }
 
     internal static Polyline CreateLogicalGeometry(
@@ -109,6 +116,19 @@ internal static class AutoCadInspectionSharedCoverageStore
     {
         var normalizedRoot = NormalizeRootHandle(database, transaction, reportId, rootHandle);
         var state = Load(database, transaction, reportId, normalizedRoot);
+        if (state is null)
+        {
+            var legacy = TryCreateLegacyLogicalGeometry(
+                database,
+                transaction,
+                reportId,
+                normalizedRoot);
+            if (legacy is not null)
+            {
+                return legacy;
+            }
+        }
+
         var handles = state is { PhysicalSegmentHandles.Count: > 0 }
             ? state.PhysicalSegmentHandles
             : Array.AsReadOnly([normalizedRoot]);
@@ -196,6 +216,109 @@ internal static class AutoCadInspectionSharedCoverageStore
             return null;
         }
     }
+
+    private static string? FindLegacyRootHandleContaining(
+        Database database,
+        Transaction transaction,
+        Guid reportId,
+        string handle)
+    {
+        var namedObjects = (DBDictionary)transaction.GetObject(
+            database.NamedObjectsDictionaryId,
+            OpenMode.ForRead);
+        if (!namedObjects.Contains(LegacyDictionaryName))
+        {
+            return null;
+        }
+
+        var dictionary = (DBDictionary)transaction.GetObject(
+            namedObjects.GetAt(LegacyDictionaryName),
+            OpenMode.ForRead);
+        foreach (DBDictionaryEntry entry in dictionary)
+        {
+            var record = (Xrecord)transaction.GetObject(entry.Value, OpenMode.ForRead);
+            var values = ReadValues(record.Data);
+            if (!SameReport(values, reportId))
+            {
+                continue;
+            }
+
+            var original = Value(values, "ORIGINAL_HANDLE");
+            var remainder = Value(values, "REMAINDER_HANDLE");
+            if (!string.IsNullOrWhiteSpace(original) &&
+                (string.Equals(original, handle, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(remainder, handle, StringComparison.OrdinalIgnoreCase)))
+            {
+                return original;
+            }
+        }
+
+        return null;
+    }
+
+    private static Polyline? TryCreateLegacyLogicalGeometry(
+        Database database,
+        Transaction transaction,
+        Guid reportId,
+        string rootHandle)
+    {
+        var namedObjects = (DBDictionary)transaction.GetObject(
+            database.NamedObjectsDictionaryId,
+            OpenMode.ForRead);
+        if (!namedObjects.Contains(LegacyDictionaryName))
+        {
+            return null;
+        }
+
+        var dictionary = (DBDictionary)transaction.GetObject(
+            namedObjects.GetAt(LegacyDictionaryName),
+            OpenMode.ForRead);
+        foreach (DBDictionaryEntry entry in dictionary)
+        {
+            var record = (Xrecord)transaction.GetObject(entry.Value, OpenMode.ForRead);
+            var values = ReadValues(record.Data);
+            if (!SameReport(values, reportId) ||
+                !string.Equals(
+                    Value(values, "ORIGINAL_HANDLE"),
+                    rootHandle,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var root = ResolvePolyline(database, transaction, rootHandle, OpenMode.ForRead);
+            var remainder = ResolvePolyline(
+                database,
+                transaction,
+                Value(values, "REMAINDER_HANDLE"),
+                OpenMode.ForRead);
+            if (root is null || remainder is null)
+            {
+                continue;
+            }
+
+            if (root.EndPoint.DistanceTo(remainder.StartPoint) <= GeometryTolerance)
+            {
+                var merged = (Polyline)root.Clone();
+                AppendGeometry(merged, remainder);
+                return merged;
+            }
+
+            if (remainder.EndPoint.DistanceTo(root.StartPoint) <= GeometryTolerance)
+            {
+                var merged = (Polyline)remainder.Clone();
+                AppendGeometry(merged, root);
+                return merged;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool SameReport(IReadOnlyDictionary<string, string> values, Guid reportId) =>
+        values.TryGetValue("REPORT_ID", out var reportValue) &&
+        Guid.TryParse(reportValue, out var parsed) &&
+        parsed == reportId;
 
     private static void AppendGeometry(Polyline target, Polyline next)
     {
