@@ -25,14 +25,19 @@ public static class InspectionCoveragePlanner
                 "O comprimento da geometria deve ser finito e não negativo.");
         }
 
-        var requestedLength = investigatedMeters.HasValue
+        var positionedLength = FarthestInspectionDistance(positionedEvents);
+        var reportedLength = investigatedMeters.HasValue
             ? (double)investigatedMeters.Value
-            : FarthestInspectionDistance(positionedEvents);
-        if (double.IsNaN(requestedLength) || double.IsInfinity(requestedLength))
+            : 0.0;
+        if (double.IsNaN(reportedLength) || double.IsInfinity(reportedLength))
         {
             throw new InvalidOperationException("A metragem inspecionada possui valor inválido.");
         }
 
+        // Alguns relatórios antigos podem trazer InvestigatedMeters como zero ou com um
+        // valor anterior à última ocorrência realmente posicionada. A cobertura visual
+        // nunca deve terminar antes de um ponto que o próprio posicionamento CAD confirmou.
+        var requestedLength = Math.Max(Math.Max(0.0, reportedLength), positionedLength);
         var inspectedLength = Math.Max(0.0, Math.Min(requestedLength, geometryLength));
         var remainingLength = Math.Max(0.0, geometryLength - inspectedLength);
         var splitCadDistance = direction == InspectionDirection.Forward
@@ -62,6 +67,7 @@ public static class InspectionCoveragePlanner
             .Where(item => item.CanCommit)
             .SelectMany(item => item.Locations)
             .Select(location => location.InspectionDistance)
+            .Where(distance => !double.IsNaN(distance) && !double.IsInfinity(distance) && distance >= 0)
             .DefaultIfEmpty(0.0)
             .Max();
     }
