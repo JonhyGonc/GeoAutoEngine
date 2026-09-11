@@ -18,23 +18,27 @@ public sealed record AutoCadInspectionCoverageResult(
     string InterruptedLayer);
 
 /// <summary>
-/// Cobertura simples por segmento físico. Não recompõe redes e não combina trechos
-/// em uma geometria lógica. Depois de um BREAK, o segmento restante é tratado como
-/// uma Polyline normal e pode ser associado a outra filmagem.
+/// Cobertura simples por segmento físico.
+/// Cada associação trabalha somente com a Polyline física selecionada. Depois de um
+/// BREAK, o segmento restante é uma nova Polyline física e pode ser associado a outra filmagem.
 /// </summary>
 public sealed class AutoCadInspectionCoverageController
 {
     public const string InspectedLayerName = "GF-VideoInspecao-Inspecionado";
     public const string InterruptedLayerName = "Video-interrompido";
-    public const string CoverageRegisteredApplicationName = "GEOAUTOENGINE_VI_COVERAGE_V2";
+    public const string CoverageRegisteredApplicationName = "GEOAUTOENGINE_VI_COVERAGE_V3";
 
-    private const string DictionaryName = "GEOAUTOENGINE_VIDEO_INSPECTION_COVERAGE_V2";
+    private const string DictionaryName = "GEOAUTOENGINE_VIDEO_INSPECTION_COVERAGE_V3";
+    private const string PreviousRegisteredApplicationName = "GEOAUTOENGINE_VI_COVERAGE_V2";
     private const string InspectedComponent = "COVERAGE_INSPECTED";
     private const string InterruptedComponent = "COVERAGE_INTERRUPTED";
+    private const string LegacySharedInspectedComponent = "COVERAGE_INSPECTED_SHARED";
+    private const string LegacySharedInterruptedComponent = "COVERAGE_NOT_INSPECTED_SHARED";
     private const short InspectedLayerColorIndex = 3;
     private const short InterruptedLayerColorIndex = 1;
     private const short ByLayerColorIndex = 256;
     private const double GeometryTolerance = 1e-6;
+    private const double StateLengthTolerance = 1e-3;
 
     public AutoCadInspectionCoverageResult Apply(
         Document document,
@@ -73,24 +77,32 @@ public sealed class AutoCadInspectionCoverageController
             throw new InvalidOperationException("A Polyline física associada ao trecho não existe mais.");
         }
 
-        // Remove apenas resíduos visuais das implementações antigas para este trecho.
-        // Nenhuma Polyline física é apagada aqui.
-        EraseLegacyCoverageForSection(modelSpace, transaction, session.ReportId, section.SectionId);
+        // Limpa somente overlays visuais antigos. Segmentos físicos criados por BREAKs
+        // anteriores nunca são apagados por esta rotina.
+        EraseLegacyVisualCoverageForSection(
+            modelSpace,
+            transaction,
+            session.ReportId,
+            section.SectionId);
 
         var state = LoadState(document.Database, transaction, session.ReportId, section.SectionId);
-        if (state is not null && !string.Equals(
-                state.SourceHandle,
-                association.GeometryHandle,
-                StringComparison.OrdinalIgnoreCase))
+        if (state is not null &&
+            !string.Equals(state.SourceHandle, association.GeometryHandle, StringComparison.OrdinalIgnoreCase))
         {
-            EraseByHandle(document.Database, transaction, state.InspectedOverlayHandle);
-            EraseByHandle(document.Database, transaction, state.InterruptedOverlayHandle);
+            EraseStateOverlays(document.Database, transaction, state);
             DeleteState(document.Database, transaction, session.ReportId, section.SectionId);
             state = null;
         }
 
-        // Quando uma segunda filmagem usa exatamente o segmento que antes estava marcado
-        // como interrompido, retire a cobertura vermelha anterior. O segmento físico fica.
+        if (state?.BreakApplied == true && !IsBreakStateValid(document.Database, transaction, source, state))
+        {
+            EraseStateOverlays(document.Database, transaction, state);
+            DeleteState(document.Database, transaction, session.ReportId, section.SectionId);
+            state = null;
+        }
+
+        // Se este segmento era a parte vermelha de outra filmagem, ele agora passa a ser
+        // a geometria física desta filmagem. Remove somente o overlay vermelho anterior.
         EraseInterruptedOverlaysForSource(
             modelSpace,
             transaction,
@@ -99,100 +111,23 @@ public sealed class AutoCadInspectionCoverageController
 
         if (state?.BreakApplied == true)
         {
-            var remainder = ResolvePolyline(
-                document.Database,
+            var result = ReapplyExistingBreak(
+                document,
+                modelSpace,
                 transaction,
-                state.RemainderHandle,
-                OpenMode.ForRead);
-            var inspectedOverlay = ResolvePolyline(
-                document.Database,
-                transaction,
-                state.InspectedOverlayHandle,
-                OpenMode.ForWrite);
-            var interruptedOverlay = ResolvePolyline(
-                document.Database,
-                transaction,
-                state.InterruptedOverlayHandle,
-                OpenMode.ForWrite);
-
-            if (options.AddCoverageLines)
-            {
-                var inspectedLayerId = EnsureLayer(
-                    document.Database,
-                    transaction,
-                    InspectedLayerName,
-                    InspectedLayerColorIndex);
-                inspectedOverlay = UpsertOverlay(
-                    document.Database,
-                    modelSpace,
-                    transaction,
-                    inspectedOverlay,
-                    source,
-                    inspectedLayerId,
-                    session.ReportId,
-                    section.SectionId,
-                    InspectedComponent,
-                    source.Handle.ToString());
-
-                if (remainder is not null && !HasInspectedOverlayForSource(
-                        modelSpace,
-                        transaction,
-                        remainder.Handle.ToString()))
-                {
-                    var interruptedLayerId = EnsureLayer(
-                        document.Database,
-                        transaction,
-                        InterruptedLayerName,
-                        InterruptedLayerColorIndex);
-                    interruptedOverlay = UpsertOverlay(
-                        document.Database,
-                        modelSpace,
-                        transaction,
-                        interruptedOverlay,
-                        remainder,
-                        interruptedLayerId,
-                        session.ReportId,
-                        section.SectionId,
-                        InterruptedComponent,
-                        remainder.Handle.ToString());
-                }
-                else
-                {
-                    Erase(interruptedOverlay);
-                    interruptedOverlay = null;
-                }
-
-                BringToFront(modelSpace, transaction, inspectedOverlay, interruptedOverlay);
-            }
-            else
-            {
-                Erase(inspectedOverlay);
-                Erase(interruptedOverlay);
-                inspectedOverlay = null;
-                interruptedOverlay = null;
-            }
-
-            var inspectedLength = source.Length;
-            var remainingLength = remainder?.Length ?? 0.0;
-            SaveState(
-                document.Database,
-                transaction,
-                session.ReportId,
-                section.SectionId,
-                state with
-                {
-                    InspectedOverlayHandle = HandleOf(inspectedOverlay),
-                    InterruptedOverlayHandle = HandleOf(interruptedOverlay),
-                });
+                session,
+                section,
+                source,
+                state,
+                options);
             transaction.Commit();
             document.Editor.Regen();
             document.Editor.UpdateScreen();
-            return new AutoCadInspectionCoverageResult(
-                inspectedLength,
-                remainingLength,
-                true,
-                InspectedLayerName,
-                InterruptedLayerName);
+            document.Editor.WriteMessage(
+                $"\nGeoAutoEngine VI cobertura V3: BREAK existente validado; " +
+                $"inspecionado={result.InspectedLength:0.###} m; restante={result.RemainingLength:0.###} m; " +
+                $"linhas={options.AddCoverageLines}.\n");
+            return result;
         }
 
         var plan = InspectionCoveragePlanner.Create(
@@ -201,12 +136,19 @@ public sealed class AutoCadInspectionCoverageController
             association.Direction,
             positionedEvents);
 
-        Polyline? inspectedOverlayCurrent = ResolvePolyline(
+        document.Editor.WriteMessage(
+            $"\nGeoAutoEngine VI cobertura V3: handle={association.GeometryHandle}; " +
+            $"geometria={plan.GeometryLength:0.###} m; filmado={plan.InspectedLength:0.###} m; " +
+            $"restante={plan.RemainingLength:0.###} m; direção={association.Direction}; " +
+            $"RequiresBreak={plan.RequiresBreak}; linhas={options.AddCoverageLines}; " +
+            $"BREAK={options.ApplyBreak}.\n");
+
+        var inspectedOverlay = ResolvePolyline(
             document.Database,
             transaction,
             state?.InspectedOverlayHandle,
             OpenMode.ForWrite);
-        Polyline? interruptedOverlayCurrent = ResolvePolyline(
+        var interruptedOverlay = ResolvePolyline(
             document.Database,
             transaction,
             state?.InterruptedOverlayHandle,
@@ -224,156 +166,156 @@ public sealed class AutoCadInspectionCoverageController
                 ? split.Second
                 : split.First;
 
+            Polyline inspectedGeometry;
+            Polyline remainingGeometry;
             if (options.ApplyBreak)
             {
-                // Clone antes de alterar a geometria para preservar propriedades/XData da
-                // Polyline física. O ObjectId/Handle da original continua existindo.
                 physicalRemainder = (Polyline)source.Clone();
                 CopyGeometry(remainingPiece, physicalRemainder);
                 CopyGeometry(inspectedPiece, source);
                 modelSpace.AppendEntity(physicalRemainder);
                 transaction.AddNewlyCreatedDBObject(physicalRemainder, true);
+                inspectedGeometry = source;
+                remainingGeometry = physicalRemainder;
                 breakApplied = true;
+            }
+            else
+            {
+                inspectedGeometry = inspectedPiece;
+                remainingGeometry = remainingPiece;
             }
 
             if (options.AddCoverageLines)
             {
-                var inspectedLayerId = EnsureLayer(
+                var inspectedLayer = EnsureLayer(
                     document.Database,
                     transaction,
                     InspectedLayerName,
                     InspectedLayerColorIndex);
-                var interruptedLayerId = EnsureLayer(
+                var interruptedLayer = EnsureLayer(
                     document.Database,
                     transaction,
                     InterruptedLayerName,
                     InterruptedLayerColorIndex);
 
-                var inspectedSource = breakApplied ? source : inspectedPiece;
-                var interruptedSource = breakApplied ? physicalRemainder! : remainingPiece;
-                inspectedOverlayCurrent = UpsertOverlay(
+                inspectedOverlay = UpsertOverlay(
                     document.Database,
                     modelSpace,
                     transaction,
-                    inspectedOverlayCurrent,
-                    inspectedSource,
-                    inspectedLayerId,
+                    inspectedOverlay,
+                    inspectedGeometry,
+                    inspectedLayer,
                     session.ReportId,
                     section.SectionId,
                     InspectedComponent,
                     source.Handle.ToString());
-                interruptedOverlayCurrent = UpsertOverlay(
+                interruptedOverlay = UpsertOverlay(
                     document.Database,
                     modelSpace,
                     transaction,
-                    interruptedOverlayCurrent,
-                    interruptedSource,
-                    interruptedLayerId,
+                    interruptedOverlay,
+                    remainingGeometry,
+                    interruptedLayer,
                     session.ReportId,
                     section.SectionId,
                     InterruptedComponent,
                     breakApplied
                         ? physicalRemainder!.Handle.ToString()
                         : source.Handle.ToString());
-                BringToFront(
-                    modelSpace,
-                    transaction,
-                    inspectedOverlayCurrent,
-                    interruptedOverlayCurrent);
+                BringToFront(modelSpace, transaction, inspectedOverlay, interruptedOverlay);
             }
             else
             {
-                Erase(inspectedOverlayCurrent);
-                Erase(interruptedOverlayCurrent);
-                inspectedOverlayCurrent = null;
-                interruptedOverlayCurrent = null;
+                Erase(inspectedOverlay);
+                Erase(interruptedOverlay);
+                inspectedOverlay = null;
+                interruptedOverlay = null;
             }
         }
         else if (plan.IsFullyInspected)
         {
             if (options.AddCoverageLines)
             {
-                var inspectedLayerId = EnsureLayer(
+                var inspectedLayer = EnsureLayer(
                     document.Database,
                     transaction,
                     InspectedLayerName,
                     InspectedLayerColorIndex);
-                inspectedOverlayCurrent = UpsertOverlay(
+                inspectedOverlay = UpsertOverlay(
                     document.Database,
                     modelSpace,
                     transaction,
-                    inspectedOverlayCurrent,
+                    inspectedOverlay,
                     source,
-                    inspectedLayerId,
+                    inspectedLayer,
                     session.ReportId,
                     section.SectionId,
                     InspectedComponent,
                     source.Handle.ToString());
-                Erase(interruptedOverlayCurrent);
-                interruptedOverlayCurrent = null;
-                BringToFront(modelSpace, transaction, inspectedOverlayCurrent);
+                Erase(interruptedOverlay);
+                interruptedOverlay = null;
+                BringToFront(modelSpace, transaction, inspectedOverlay);
             }
             else
             {
-                Erase(inspectedOverlayCurrent);
-                Erase(interruptedOverlayCurrent);
-                inspectedOverlayCurrent = null;
-                interruptedOverlayCurrent = null;
+                Erase(inspectedOverlay);
+                Erase(interruptedOverlay);
+                inspectedOverlay = null;
+                interruptedOverlay = null;
             }
         }
         else
         {
-            // Sem metragem inspecionada: não existe linha verde nem BREAK; se as linhas
-            // estiverem ativas, o segmento inteiro continua interrompido.
-            Erase(inspectedOverlayCurrent);
-            inspectedOverlayCurrent = null;
+            Erase(inspectedOverlay);
+            inspectedOverlay = null;
             if (options.AddCoverageLines)
             {
-                var interruptedLayerId = EnsureLayer(
+                var interruptedLayer = EnsureLayer(
                     document.Database,
                     transaction,
                     InterruptedLayerName,
                     InterruptedLayerColorIndex);
-                interruptedOverlayCurrent = UpsertOverlay(
+                interruptedOverlay = UpsertOverlay(
                     document.Database,
                     modelSpace,
                     transaction,
-                    interruptedOverlayCurrent,
+                    interruptedOverlay,
                     source,
-                    interruptedLayerId,
+                    interruptedLayer,
                     session.ReportId,
                     section.SectionId,
                     InterruptedComponent,
                     source.Handle.ToString());
-                BringToFront(modelSpace, transaction, interruptedOverlayCurrent);
+                BringToFront(modelSpace, transaction, interruptedOverlay);
             }
             else
             {
-                Erase(interruptedOverlayCurrent);
-                interruptedOverlayCurrent = null;
+                Erase(interruptedOverlay);
+                interruptedOverlay = null;
             }
         }
 
-        if (options.AddCoverageLines || breakApplied || state is not null)
-        {
-            SaveState(
-                document.Database,
-                transaction,
-                session.ReportId,
-                section.SectionId,
-                new CoverageState(
-                    association.GeometryHandle,
-                    HandleOf(physicalRemainder),
-                    HandleOf(inspectedOverlayCurrent),
-                    HandleOf(interruptedOverlayCurrent),
-                    plan.GeometryLength,
-                    plan.InspectedLength,
-                    breakApplied));
-        }
+        SaveState(
+            document.Database,
+            transaction,
+            session.ReportId,
+            section.SectionId,
+            new CoverageState(
+                association.GeometryHandle,
+                HandleOf(physicalRemainder),
+                HandleOf(inspectedOverlay),
+                HandleOf(interruptedOverlay),
+                plan.GeometryLength,
+                plan.InspectedLength,
+                breakApplied));
 
         transaction.Commit();
         document.Editor.Regen();
         document.Editor.UpdateScreen();
+        document.Editor.WriteMessage(
+            $"\nGeoAutoEngine VI cobertura V3 concluída: verde={(inspectedOverlay is null ? "não" : "sim")}; " +
+            $"BREAK={breakApplied}; vermelho={(interruptedOverlay is null ? "não" : "sim")}.\n");
+
         return new AutoCadInspectionCoverageResult(
             plan.InspectedLength,
             plan.RemainingLength,
@@ -382,16 +324,13 @@ public sealed class AutoCadInspectionCoverageController
             InterruptedLayerName);
     }
 
-    public int ClearManagedCoverage(
-        Document document,
-        Guid reportId,
-        Guid sectionId)
+    public int ClearManagedCoverage(Document document, Guid reportId, Guid sectionId)
     {
         ArgumentNullException.ThrowIfNull(document);
         using var documentLock = document.LockDocument();
         using var transaction = document.Database.TransactionManager.StartTransaction();
-        var state = LoadState(document.Database, transaction, reportId, sectionId);
         var erased = 0;
+        var state = LoadState(document.Database, transaction, reportId, sectionId);
         if (state is not null)
         {
             erased += EraseByHandle(document.Database, transaction, state.InspectedOverlayHandle) ? 1 : 0;
@@ -406,6 +345,7 @@ public sealed class AutoCadInspectionCoverageController
             blockTable[BlockTableRecord.ModelSpace],
             OpenMode.ForRead);
         erased += EraseCoverageEntitiesForSection(modelSpace, transaction, reportId, sectionId);
+        EraseLegacyVisualCoverageForSection(modelSpace, transaction, reportId, sectionId);
         transaction.Commit();
         if (erased > 0)
         {
@@ -426,8 +366,7 @@ public sealed class AutoCadInspectionCoverageController
         }
 
         var component = ReadXData(data, "COMPONENT");
-        if (!string.Equals(component, InspectedComponent, StringComparison.Ordinal) &&
-            !string.Equals(component, InterruptedComponent, StringComparison.Ordinal))
+        if (!IsVisualCoverageComponent(component))
         {
             return false;
         }
@@ -436,11 +375,140 @@ public sealed class AutoCadInspectionCoverageController
         return !string.IsNullOrWhiteSpace(sourceHandle);
     }
 
+    private static AutoCadInspectionCoverageResult ReapplyExistingBreak(
+        Document document,
+        BlockTableRecord modelSpace,
+        Transaction transaction,
+        VideoInspectionSession session,
+        InspectionSectionSession section,
+        Polyline source,
+        CoverageState state,
+        AutoCadInspectionCoverageOptions options)
+    {
+        var remainder = ResolvePolyline(
+            document.Database,
+            transaction,
+            state.RemainderHandle,
+            OpenMode.ForRead)!;
+        var inspectedOverlay = ResolvePolyline(
+            document.Database,
+            transaction,
+            state.InspectedOverlayHandle,
+            OpenMode.ForWrite);
+        var interruptedOverlay = ResolvePolyline(
+            document.Database,
+            transaction,
+            state.InterruptedOverlayHandle,
+            OpenMode.ForWrite);
+
+        if (options.AddCoverageLines)
+        {
+            var inspectedLayer = EnsureLayer(
+                document.Database,
+                transaction,
+                InspectedLayerName,
+                InspectedLayerColorIndex);
+            inspectedOverlay = UpsertOverlay(
+                document.Database,
+                modelSpace,
+                transaction,
+                inspectedOverlay,
+                source,
+                inspectedLayer,
+                session.ReportId,
+                section.SectionId,
+                InspectedComponent,
+                source.Handle.ToString());
+
+            if (!HasInspectedOverlayForSource(modelSpace, transaction, remainder.Handle.ToString()))
+            {
+                var interruptedLayer = EnsureLayer(
+                    document.Database,
+                    transaction,
+                    InterruptedLayerName,
+                    InterruptedLayerColorIndex);
+                interruptedOverlay = UpsertOverlay(
+                    document.Database,
+                    modelSpace,
+                    transaction,
+                    interruptedOverlay,
+                    remainder,
+                    interruptedLayer,
+                    session.ReportId,
+                    section.SectionId,
+                    InterruptedComponent,
+                    remainder.Handle.ToString());
+            }
+            else
+            {
+                Erase(interruptedOverlay);
+                interruptedOverlay = null;
+            }
+
+            BringToFront(modelSpace, transaction, inspectedOverlay, interruptedOverlay);
+        }
+        else
+        {
+            Erase(inspectedOverlay);
+            Erase(interruptedOverlay);
+            inspectedOverlay = null;
+            interruptedOverlay = null;
+        }
+
+        SaveState(
+            document.Database,
+            transaction,
+            session.ReportId,
+            section.SectionId,
+            state with
+            {
+                InspectedOverlayHandle = HandleOf(inspectedOverlay),
+                InterruptedOverlayHandle = HandleOf(interruptedOverlay),
+            });
+
+        return new AutoCadInspectionCoverageResult(
+            source.Length,
+            remainder.Length,
+            true,
+            InspectedLayerName,
+            InterruptedLayerName);
+    }
+
+    private static bool IsBreakStateValid(
+        Database database,
+        Transaction transaction,
+        Polyline source,
+        CoverageState state)
+    {
+        if (!state.BreakApplied || string.IsNullOrWhiteSpace(state.RemainderHandle))
+        {
+            return false;
+        }
+
+        var remainder = ResolvePolyline(database, transaction, state.RemainderHandle, OpenMode.ForRead);
+        if (remainder is null)
+        {
+            return false;
+        }
+
+        if (Math.Abs(source.Length - state.InspectedLength) > StateLengthTolerance)
+        {
+            return false;
+        }
+
+        return Math.Abs(source.Length + remainder.Length - state.OriginalLength) <= StateLengthTolerance;
+    }
+
     private static SplitPair Split(Polyline source, double cadDistance)
     {
+        if (cadDistance <= GeometryTolerance || cadDistance >= source.Length - GeometryTolerance)
+        {
+            throw new InvalidOperationException(
+                $"O ponto de BREAK ({cadDistance:0.###} m) não está no interior da Polyline ({source.Length:0.###} m).");
+        }
+
         var point = source.GetPointAtDist(cadDistance);
-        var points = new Point3dCollection { point };
-        var objects = source.GetSplitCurves(points);
+        var objects = source.GetSplitCurves(new Point3dCollection { point });
         var pieces = objects.Cast<DBObject>().OfType<Polyline>().ToArray();
         foreach (var other in objects.Cast<DBObject>().Where(item => item is not Polyline))
         {
@@ -586,10 +654,10 @@ public sealed class AutoCadInspectionCoverageController
     {
         using var data = new ResultBuffer(
             new TypedValue((int)DxfCode.ExtendedDataRegAppName, CoverageRegisteredApplicationName),
-            TextValue("REPORT_ID", reportId.ToString("D")),
-            TextValue("SECTION_ID", sectionId.ToString("D")),
-            TextValue("COMPONENT", component),
-            TextValue("SOURCE_HANDLE", sourceHandle));
+            XDataValue("REPORT_ID", reportId.ToString("D")),
+            XDataValue("SECTION_ID", sectionId.ToString("D")),
+            XDataValue("COMPONENT", component),
+            XDataValue("SOURCE_HANDLE", sourceHandle));
         entity.XData = data;
     }
 
@@ -647,14 +715,14 @@ public sealed class AutoCadInspectionCoverageController
         }
     }
 
-    private static void EraseLegacyCoverageForSection(
+    private static void EraseLegacyVisualCoverageForSection(
         BlockTableRecord modelSpace,
         Transaction transaction,
         Guid reportId,
         Guid sectionId)
     {
-        var report = reportId.ToString("D");
-        var section = sectionId.ToString("D");
+        var expectedReport = reportId.ToString("D");
+        var expectedSection = sectionId.ToString("D");
         foreach (ObjectId id in modelSpace)
         {
             if (transaction.GetObject(id, OpenMode.ForRead, openErased: false) is not Entity entity)
@@ -662,11 +730,33 @@ public sealed class AutoCadInspectionCoverageController
                 continue;
             }
 
-            using var data = entity.GetXDataForApplication(AutoCadInspectionRenderer.RegisteredApplicationName);
-            var component = ReadXData(data, "COMPONENT");
-            if (component?.StartsWith("COVERAGE_", StringComparison.Ordinal) != true ||
-                !string.Equals(ReadXData(data, "REPORT_ID"), report, StringComparison.OrdinalIgnoreCase) ||
-                !string.Equals(ReadXData(data, "SECTION_ID"), section, StringComparison.OrdinalIgnoreCase))
+            // V2: somente overlays visuais. Nunca apagar Polylines físicas.
+            using (var v2 = entity.GetXDataForApplication(PreviousRegisteredApplicationName))
+            {
+                var component = ReadXData(v2, "COMPONENT");
+                if (IsVisualCoverageComponent(component) &&
+                    string.Equals(ReadXData(v2, "REPORT_ID"), expectedReport, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(ReadXData(v2, "SECTION_ID"), expectedSection, StringComparison.OrdinalIgnoreCase))
+                {
+                    entity.UpgradeOpen();
+                    entity.Erase();
+                    continue;
+                }
+            }
+
+            // Implementação shared antiga: explicitamente NÃO apagar
+            // COVERAGE_PHYSICAL_SEGMENT.
+            using var legacy = entity.GetXDataForApplication(AutoCadInspectionRenderer.RegisteredApplicationName);
+            var legacyComponent = ReadXData(legacy, "COMPONENT");
+            if (!IsLegacyVisualCoverageComponent(legacyComponent) ||
+                !string.Equals(ReadXData(legacy, "REPORT_ID"), expectedReport, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var storedSection = ReadXData(legacy, "SECTION_ID");
+            if (!string.IsNullOrWhiteSpace(storedSection) &&
+                !string.Equals(storedSection, expectedSection, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
@@ -676,6 +766,14 @@ public sealed class AutoCadInspectionCoverageController
         }
     }
 
+    private static bool IsVisualCoverageComponent(string? component) =>
+        string.Equals(component, InspectedComponent, StringComparison.Ordinal) ||
+        string.Equals(component, InterruptedComponent, StringComparison.Ordinal);
+
+    private static bool IsLegacyVisualCoverageComponent(string? component) =>
+        string.Equals(component, LegacySharedInspectedComponent, StringComparison.Ordinal) ||
+        string.Equals(component, LegacySharedInterruptedComponent, StringComparison.Ordinal);
+
     private static int EraseCoverageEntitiesForSection(
         BlockTableRecord modelSpace,
         Transaction transaction,
@@ -683,8 +781,8 @@ public sealed class AutoCadInspectionCoverageController
         Guid sectionId)
     {
         var count = 0;
-        var report = reportId.ToString("D");
-        var section = sectionId.ToString("D");
+        var expectedReport = reportId.ToString("D");
+        var expectedSection = sectionId.ToString("D");
         foreach (ObjectId id in modelSpace)
         {
             if (transaction.GetObject(id, OpenMode.ForRead, openErased: false) is not Entity entity)
@@ -693,8 +791,9 @@ public sealed class AutoCadInspectionCoverageController
             }
 
             using var data = entity.GetXDataForApplication(CoverageRegisteredApplicationName);
-            if (!string.Equals(ReadXData(data, "REPORT_ID"), report, StringComparison.OrdinalIgnoreCase) ||
-                !string.Equals(ReadXData(data, "SECTION_ID"), section, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(ReadXData(data, "REPORT_ID"), expectedReport, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(ReadXData(data, "SECTION_ID"), expectedSection, StringComparison.OrdinalIgnoreCase) ||
+                !IsVisualCoverageComponent(ReadXData(data, "COMPONENT")))
             {
                 continue;
             }
@@ -752,17 +851,14 @@ public sealed class AutoCadInspectionCoverageController
             return null;
         }
 
-        var originalLength = ParseDouble(Value(values, "ORIGINAL_LENGTH"));
-        var inspectedLength = ParseDouble(Value(values, "INSPECTED_LENGTH"));
-        var breakApplied = bool.TryParse(Value(values, "BREAK_APPLIED"), out var parsedBreak) && parsedBreak;
         return new CoverageState(
             sourceHandle!,
             Value(values, "REMAINDER_HANDLE"),
             Value(values, "INSPECTED_OVERLAY_HANDLE"),
             Value(values, "INTERRUPTED_OVERLAY_HANDLE"),
-            originalLength,
-            inspectedLength,
-            breakApplied);
+            ParseDouble(Value(values, "ORIGINAL_LENGTH")),
+            ParseDouble(Value(values, "INSPECTED_LENGTH")),
+            bool.TryParse(Value(values, "BREAK_APPLIED"), out var breakApplied) && breakApplied);
     }
 
     private static void SaveState(
@@ -778,9 +874,7 @@ public sealed class AutoCadInspectionCoverageController
         DBDictionary dictionary;
         if (namedObjects.Contains(DictionaryName))
         {
-            dictionary = (DBDictionary)transaction.GetObject(
-                namedObjects.GetAt(DictionaryName),
-                OpenMode.ForWrite);
+            dictionary = (DBDictionary)transaction.GetObject(namedObjects.GetAt(DictionaryName), OpenMode.ForWrite);
         }
         else
         {
@@ -804,7 +898,7 @@ public sealed class AutoCadInspectionCoverageController
         }
 
         record.Data = new ResultBuffer(
-            new TypedValue((int)DxfCode.Text, "STORAGE_VERSION=2"),
+            new TypedValue((int)DxfCode.Text, "STORAGE_VERSION=3"),
             new TypedValue((int)DxfCode.Text, $"SOURCE_HANDLE={state.SourceHandle}"),
             new TypedValue((int)DxfCode.Text, $"REMAINDER_HANDLE={state.RemainderHandle ?? string.Empty}"),
             new TypedValue((int)DxfCode.Text, $"INSPECTED_OVERLAY_HANDLE={state.InspectedOverlayHandle ?? string.Empty}"),
@@ -845,6 +939,12 @@ public sealed class AutoCadInspectionCoverageController
         }
     }
 
+    private static void EraseStateOverlays(Database database, Transaction transaction, CoverageState state)
+    {
+        EraseByHandle(database, transaction, state.InspectedOverlayHandle);
+        EraseByHandle(database, transaction, state.InterruptedOverlayHandle);
+    }
+
     private static Polyline? ResolvePolyline(
         Database database,
         Transaction transaction,
@@ -873,10 +973,7 @@ public sealed class AutoCadInspectionCoverageController
         }
     }
 
-    private static bool EraseByHandle(
-        Database database,
-        Transaction transaction,
-        string? handle)
+    private static bool EraseByHandle(Database database, Transaction transaction, string? handle)
     {
         var entity = ResolvePolyline(database, transaction, handle, OpenMode.ForWrite);
         if (entity is null || entity.IsErased)
@@ -899,7 +996,7 @@ public sealed class AutoCadInspectionCoverageController
     private static string? HandleOf(Polyline? polyline) =>
         polyline is null || polyline.IsErased ? null : polyline.Handle.ToString();
 
-    private static TypedValue TextValue(string key, string value) =>
+    private static TypedValue XDataValue(string key, string value) =>
         new((int)DxfCode.ExtendedDataAsciiString, $"{key}={value}");
 
     private static string? ReadXData(ResultBuffer? data, string key)
