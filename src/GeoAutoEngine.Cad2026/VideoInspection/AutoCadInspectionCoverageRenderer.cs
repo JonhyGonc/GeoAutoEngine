@@ -168,6 +168,11 @@ public sealed class AutoCadInspectionCoverageRenderer
                     remainingPiece,
                     notInspectedLayerId);
 
+                // As coberturas coincidem exatamente com as Polylines físicas. Garanta que
+                // a representação visual fique por cima da rede; caso contrário a linha
+                // vermelha pode existir no DWG e continuar escondida sob a linha original.
+                BringToFront(modelSpace, transaction, inspectedOverlay, notInspectedOverlay);
+
                 SaveState(
                     document.Database,
                     transaction,
@@ -217,6 +222,7 @@ public sealed class AutoCadInspectionCoverageRenderer
                         transaction,
                         state?.NotInspectedOverlayHandle,
                         OpenMode.ForWrite));
+                BringToFront(modelSpace, transaction, inspectedOverlay);
 
                 SaveState(
                     document.Database,
@@ -258,6 +264,7 @@ public sealed class AutoCadInspectionCoverageRenderer
                     transaction,
                     state?.InspectedOverlayHandle,
                     OpenMode.ForWrite));
+            BringToFront(modelSpace, transaction, redOverlay);
             SaveState(
                 document.Database,
                 transaction,
@@ -397,6 +404,33 @@ public sealed class AutoCadInspectionCoverageRenderer
         return overlay;
     }
 
+    private static void BringToFront(
+        BlockTableRecord modelSpace,
+        Transaction transaction,
+        params Polyline?[] overlays)
+    {
+        var ids = new ObjectIdCollection();
+        foreach (var overlay in overlays)
+        {
+            if (overlay is null || overlay.IsErased || overlay.ObjectId.IsNull)
+            {
+                continue;
+            }
+
+            ids.Add(overlay.ObjectId);
+        }
+
+        if (ids.Count == 0 || modelSpace.DrawOrderTableId.IsNull)
+        {
+            return;
+        }
+
+        var drawOrder = (DrawOrderTable)transaction.GetObject(
+            modelSpace.DrawOrderTableId,
+            OpenMode.ForWrite);
+        drawOrder.MoveToTop(ids);
+    }
+
     private static void EraseManagedOverlay(Polyline? overlay)
     {
         if (overlay is not null && !overlay.IsErased)
@@ -426,6 +460,12 @@ public sealed class AutoCadInspectionCoverageRenderer
         }
 
         record.Color = Color.FromColorIndex(ColorMethod.ByAci, colorIndex);
+        // O layer de cobertura é gerenciado pelo GeoAutoEngine e precisa estar visível.
+        // Descongelar/desbloquear aqui evita que um estado antigo do desenho esconda a
+        // linha Video-interrompido mesmo quando a Polyline foi criada corretamente.
+        record.IsOff = false;
+        record.IsFrozen = false;
+        record.IsLocked = false;
         var linetypes = (LinetypeTable)transaction.GetObject(database.LinetypeTableId, OpenMode.ForRead);
         if (linetypes.Has("Continuous"))
         {
