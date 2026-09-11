@@ -98,14 +98,27 @@ internal static class AutoCadInspectionSharedCoverageStore
         Guid reportId,
         string selectedHandle)
     {
+        // Dê prioridade ao estado legado porque linhas de cobertura criadas pelas versões
+        // anteriores podem estar exatamente sobre o segmento físico do BREAK. Se o usuário
+        // selecionar a linha verde/vermelha, ela deve voltar à Polyline raiz, nunca virar
+        // uma nova rede independente.
+        var legacyRoot = FindLegacyRootHandleContaining(
+            database,
+            transaction,
+            reportId,
+            selectedHandle);
+        if (!string.IsNullOrWhiteSpace(legacyRoot))
+        {
+            return legacyRoot;
+        }
+
         var state = FindStateContainingHandle(database, transaction, reportId, selectedHandle);
         if (state is not null)
         {
             return state.RootHandle;
         }
 
-        return FindLegacyRootHandleContaining(database, transaction, reportId, selectedHandle)
-            ?? selectedHandle;
+        return selectedHandle;
     }
 
     internal static Polyline CreateLogicalGeometry(
@@ -249,9 +262,13 @@ internal static class AutoCadInspectionSharedCoverageStore
 
             var original = Value(values, "ORIGINAL_HANDLE");
             var remainder = Value(values, "REMAINDER_HANDLE");
+            var inspectedOverlay = Value(values, "INSPECTED_OVERLAY_HANDLE");
+            var notInspectedOverlay = Value(values, "NOT_INSPECTED_OVERLAY_HANDLE");
             if (!string.IsNullOrWhiteSpace(original) &&
                 (string.Equals(original, handle, StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(remainder, handle, StringComparison.OrdinalIgnoreCase)))
+                 string.Equals(remainder, handle, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(inspectedOverlay, handle, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(notInspectedOverlay, handle, StringComparison.OrdinalIgnoreCase)))
             {
                 return original;
             }
