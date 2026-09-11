@@ -19,7 +19,7 @@ internal static class VideoInspectionRuntime
     private static readonly InspectionExchangeSerializer Serializer = new();
     private static readonly AutoCadInspectionGeometryService GeometryService = new();
     private static readonly AutoCadInspectionRenderer Renderer = new();
-    private static readonly AutoCadInspectionCoverageController CoverageController = new();
+    private static readonly AutoCadInspectionSharedCoverageService CoverageController = new();
     private static NamedPipeInspectionServer? _server;
     private static Document? _restoredDocument;
     private static Guid? _restoredReportId;
