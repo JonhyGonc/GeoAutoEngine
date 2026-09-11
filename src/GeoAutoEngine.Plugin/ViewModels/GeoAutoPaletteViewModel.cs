@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
 using GeoAutoEngine.Application;
+using GeoAutoEngine.Application.VideoInspection;
 using GeoAutoEngine.Domain;
 using Brush = System.Windows.Media.Brush;
 using Color = System.Windows.Media.Color;
@@ -33,6 +34,7 @@ internal sealed class GeoAutoPaletteViewModel : INotifyPropertyChanged
     private string _detailedDiagnosticSummary = "Nenhum lote analisado.";
     private DrawingPlanProcessingMode _selectedProcessingMode = DrawingPlanProcessingMode.Complete;
     private bool _openPaletteOnStartup;
+    private int _videoInspectionScaleDenominator;
     private int _plantScaleDenominator;
     private double _printedTextHeightMillimeters;
     private BlockScaleMode _blockScaleMode;
@@ -43,7 +45,9 @@ internal sealed class GeoAutoPaletteViewModel : INotifyPropertyChanged
 
     internal GeoAutoPaletteViewModel()
     {
-        _openPaletteOnStartup = PaletteSettingsStore.Load().OpenPaletteOnStartup;
+        var uiSettings = PaletteSettingsStore.Load();
+        _openPaletteOnStartup = uiSettings.OpenPaletteOnStartup;
+        _videoInspectionScaleDenominator = uiSettings.VideoInspectionScaleDenominator;
         var presentation = PaletteSettingsStore.DrawingPresentation.Load();
         _plantScaleDenominator = presentation.ScaleDenominator;
         _printedTextHeightMillimeters = presentation.PrintedTextHeightMillimeters;
@@ -74,6 +78,14 @@ internal sealed class GeoAutoPaletteViewModel : INotifyPropertyChanged
         new(500, "1:500"),
         new(750, "1:750"),
         new(1000, "1:1000"),
+    ];
+    public IReadOnlyList<ScaleOptionViewModel> VideoInspectionScaleOptions { get; } =
+    [
+        new(125, "1:125"),
+        new(200, "1:200"),
+        new(250, "1:250"),
+        new(500, "1:500"),
+        new(750, "1:750"),
     ];
     public IReadOnlyList<PrintedHeightOptionViewModel> PrintedHeightOptions { get; } =
     [
@@ -118,11 +130,34 @@ internal sealed class GeoAutoPaletteViewModel : INotifyPropertyChanged
         {
             if (SetField(ref _openPaletteOnStartup, value))
             {
-                PaletteSettingsStore.Save(new PaletteSettingsData
-                {
-                    OpenPaletteOnStartup = value,
-                });
+                var settings = PaletteSettingsStore.Load();
+                settings.OpenPaletteOnStartup = value;
+                PaletteSettingsStore.Save(settings);
             }
+        }
+    }
+    public int VideoInspectionScaleDenominator
+    {
+        get => _videoInspectionScaleDenominator;
+        set
+        {
+            var normalized = InspectionCalloutScaleProfile.Resolve(value).ScaleDenominator;
+            if (SetField(ref _videoInspectionScaleDenominator, normalized))
+            {
+                OnPropertyChanged(nameof(VideoInspectionScaleSummary));
+                var settings = PaletteSettingsStore.Load();
+                settings.VideoInspectionScaleDenominator = normalized;
+                PaletteSettingsStore.Save(settings);
+            }
+        }
+    }
+    public string VideoInspectionScaleSummary
+    {
+        get
+        {
+            var scale = InspectionCalloutScaleProfile.Resolve(VideoInspectionScaleDenominator);
+            return $"Texto: {scale.TextHeight.ToString("0.00", PtBr)} m  ·  " +
+                $"Linha: {scale.BaseCalloutLength.ToString("0.00", PtBr)} m";
         }
     }
     public int PlantScaleDenominator
