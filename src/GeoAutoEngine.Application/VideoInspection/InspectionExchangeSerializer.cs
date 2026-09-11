@@ -39,6 +39,7 @@ public sealed class InspectionExchangeSerializer
         try
         {
             Validate(document);
+            PreserveSectionExportOrder(document);
         }
         finally
         {
@@ -120,6 +121,16 @@ public sealed class InspectionExchangeSerializer
                                           occurrence.Anomalies is null || occurrence.Evidence is null))
         {
             throw new InvalidDataException("O documento contém ocorrência incompleta.");
+        }
+    }
+
+    private static void PreserveSectionExportOrder(InspectionExchangeDocument document)
+    {
+        // The order of the sections in the exported JSON is authoritative. Older
+        // Order values may contain gaps or stale values after sections were edited.
+        for (var index = 0; index < document.Sections.Count; index++)
+        {
+            document.Sections[index].Order = index;
         }
     }
 }
