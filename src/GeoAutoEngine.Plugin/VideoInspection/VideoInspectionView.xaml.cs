@@ -10,6 +10,7 @@ using Control = System.Windows.Controls.Control;
 using UserControl = System.Windows.Controls.UserControl;
 using MessageBox = System.Windows.MessageBox;
 using Color = System.Windows.Media.Color;
+using Binding = System.Windows.Data.Binding;
 
 namespace GeoAutoEngine.Plugin.VideoInspection;
 
