@@ -337,6 +337,30 @@
                                     Margin="0,16,0,0" Content="Restaurar padrões" />
                         </StackPanel>
                     </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,10,0,0">
+                        <StackPanel>
+                            <TextBlock Text="VÍDEO INSPEÇÃO" Style="{StaticResource SectionLabel}" />
+                            <TextBlock Text="Escala do estaqueamento das anomalias"
+                                       Foreground="{StaticResource MutedBrush}" Margin="0,12,0,5" />
+                            <ComboBox ItemsSource="{Binding VideoInspectionScaleOptions}"
+                                      SelectedValuePath="Value"
+                                      SelectedValue="{Binding VideoInspectionScaleDenominator, Mode=TwoWay}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Label}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <TextBlock Text="{Binding VideoInspectionScaleSummary}" Style="{StaticResource MonoText}"
+                                       Foreground="{StaticResource AccentBrush}" Margin="0,6,0,0" />
+                            <TextBlock Text="A escala define a altura dos textos e o comprimento base das linhas de chamado."
+                                       Foreground="{StaticResource VeryMutedBrush}" FontSize="11"
+                                       TextWrapping="Wrap" Margin="0,8,0,0" />
+                            <Button Style="{StaticResource SecondaryButton}" Click="ApplyVideoInspectionScale"
+                                    Margin="0,14,0,0" Content="Aplicar ao desenho atual" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </ScrollViewer>
         </Grid>
