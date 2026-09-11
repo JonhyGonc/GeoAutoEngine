@@ -49,12 +49,13 @@ public sealed record InspectionCalloutScaleProfile(
     {
         var lineFactor = baseCalloutLength / InspectionCalloutLayoutEngine.BaseCalloutLength;
         var textFactor = textHeight / InspectionCalloutLayoutEngine.TextHeight;
+        var proportionalMaximum = InspectionCalloutLayoutEngine.MaxCalloutLength * lineFactor;
         return new InspectionCalloutScaleProfile(
             denominator,
             textHeight,
             baseCalloutLength,
             InspectionCalloutLayoutEngine.CalloutLevelStep * lineFactor,
-            InspectionCalloutLayoutEngine.MaxCalloutLength * lineFactor,
+            Math.Min(InspectionCalloutLayoutEngine.MaxCalloutLength, proportionalMaximum),
             InspectionCalloutLayoutEngine.TextClearance * textFactor,
             InspectionCalloutLayoutEngine.IntervalJunctionOffset * lineFactor,
             InspectionCalloutLayoutEngine.LateralSpacing * lineFactor,
