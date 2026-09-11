@@ -45,9 +45,16 @@ public static class InspectionCalloutLayoutEngine
 
     public static IReadOnlyList<InspectionCalloutPlacement> Arrange(
         IReadOnlyList<InspectionAnnotationCall> calls,
+        IReadOnlyList<InspectionLayoutObstacle>? obstacles = null) =>
+        Arrange(calls, InspectionCalloutScaleProfile.Legacy, obstacles);
+
+    public static IReadOnlyList<InspectionCalloutPlacement> Arrange(
+        IReadOnlyList<InspectionAnnotationCall> calls,
+        InspectionCalloutScaleProfile scaleProfile,
         IReadOnlyList<InspectionLayoutObstacle>? obstacles = null)
     {
         ArgumentNullException.ThrowIfNull(calls);
+        ArgumentNullException.ThrowIfNull(scaleProfile);
         if (calls.Count == 0)
         {
             return Array.Empty<InspectionCalloutPlacement>();
@@ -67,7 +74,7 @@ public static class InspectionCalloutLayoutEngine
             var preferredSide = placed.Count % 2 == 0 ? 1 : -1;
             PlacedCallout? selected = null;
             CandidateScore? selectedScore = null;
-            foreach (var position in CandidatePositions(preferredSide))
+            foreach (var position in CandidatePositions(preferredSide, scaleProfile))
             {
                 var candidate = Candidate(
                     item.Call,
@@ -77,12 +84,14 @@ public static class InspectionCalloutLayoutEngine
                     normalY,
                     position.Side,
                     position.Level,
-                    position.LateralSlot);
+                    position.LateralSlot,
+                    scaleProfile);
                 var score = Score(
                     candidate,
                     placed,
                     preferredSide,
-                    position.AttemptIndex);
+                    position.AttemptIndex,
+                    scaleProfile);
                 if (selectedScore is null || score.CompareTo(selectedScore.Value) < 0)
                 {
                     selected = candidate;
@@ -190,12 +199,13 @@ public static class InspectionCalloutLayoutEngine
         PlacedCallout candidate,
         IReadOnlyList<PlacedCallout> placed,
         int preferredSide,
-        int attemptIndex)
+        int attemptIndex,
+        InspectionCalloutScaleProfile scaleProfile)
     {
         var penalty = 0.0;
         foreach (var existing in placed)
         {
-            if (candidate.Bounds.Intersects(existing.Bounds, TextClearance))
+            if (candidate.Bounds.Intersects(existing.Bounds, scaleProfile.TextClearance))
             {
                 penalty += TextOverlapPenalty;
             }
@@ -204,7 +214,7 @@ public static class InspectionCalloutLayoutEngine
                     candidate.LeaderStart,
                     candidate.LeaderEnd,
                     existing.Bounds,
-                    TextClearance))
+                    scaleProfile.TextClearance))
             {
                 penalty += LineThroughTextPenalty;
             }
@@ -213,16 +223,16 @@ public static class InspectionCalloutLayoutEngine
                     existing.LeaderStart,
                     existing.LeaderEnd,
                     candidate.Bounds,
-                    TextClearance))
+                    scaleProfile.TextClearance))
             {
                 penalty += LineThroughTextPenalty;
             }
         }
 
         var leaderLength = Distance(candidate.LeaderStart, candidate.LeaderEnd);
-        penalty += Math.Max(0.0, leaderLength - BaseCalloutLength) * LengthPenaltyFactor;
+        penalty += Math.Max(0.0, leaderLength - scaleProfile.BaseCalloutLength) * LengthPenaltyFactor;
         penalty += Math.Abs(candidate.Placement.LateralSlot) *
-            LateralSpacing * LateralPenaltyFactor;
+            scaleProfile.LateralSpacing * LateralPenaltyFactor;
         if (candidate.Placement.Side != preferredSide)
         {
             penalty += OppositeSidePenalty;
@@ -240,12 +250,13 @@ public static class InspectionCalloutLayoutEngine
         double normalY,
         int side,
         int level,
-        int lateralSlot)
+        int lateralSlot,
+        InspectionCalloutScaleProfile scaleProfile)
     {
         var length = Math.Min(
-            MaxCalloutLength,
-            BaseCalloutLength + level * CalloutLevelStep);
-        var requestedLateralOffset = lateralSlot * LateralSpacing;
+            scaleProfile.MaxCalloutLength,
+            scaleProfile.BaseCalloutLength + level * scaleProfile.CalloutLevelStep);
+        var requestedLateralOffset = lateralSlot * scaleProfile.LateralSpacing;
         var maximumLateralOffset = Math.Max(0.0, length - NumericTolerance);
         var lateralOffset = Math.Max(
             -maximumLateralOffset,
@@ -259,14 +270,19 @@ public static class InspectionCalloutLayoutEngine
             leaderDeltaX * leaderDeltaX + leaderDeltaY * leaderDeltaY);
         var outwardX = leaderDeltaX / leaderLength;
         var outwardY = leaderDeltaY / leaderLength;
-        var leaderStartPoint = LeaderStartPoint(call, normalX, normalY, side);
+        var leaderStartPoint = LeaderStartPoint(
+            call,
+            normalX,
+            normalY,
+            side,
+            scaleProfile.IntervalJunctionOffset);
         var leaderEndPoint = new LinearPoint(
             leaderStartPoint.X + leaderDeltaX,
             leaderStartPoint.Y + leaderDeltaY,
             leaderStartPoint.Z);
         var textPoint = new LinearPoint(
-            leaderEndPoint.X + outwardX * TextGap,
-            leaderEndPoint.Y + outwardY * TextGap,
+            leaderEndPoint.X + outwardX * scaleProfile.TextGap,
+            leaderEndPoint.Y + outwardY * scaleProfile.TextGap,
             leaderEndPoint.Z);
         var rotation = NormalizeReadableRotation(Math.Atan2(outwardY, outwardX));
         var textDirectionX = Math.Cos(rotation);
@@ -286,14 +302,20 @@ public static class InspectionCalloutLayoutEngine
             placement,
             leaderStartPoint,
             leaderEndPoint,
-            TextBounds.For(call, textPoint, attachAtRightEdge, rotation));
+            TextBounds.For(
+                call,
+                textPoint,
+                attachAtRightEdge,
+                rotation,
+                scaleProfile.TextHeight));
     }
 
     private static LinearPoint LeaderStartPoint(
         InspectionAnnotationCall call,
         double normalX,
         double normalY,
-        int side)
+        int side,
+        double intervalJunctionOffset)
     {
         if (call.IntervalEnd is not { } intervalEnd)
         {
@@ -303,16 +325,19 @@ public static class InspectionCalloutLayoutEngine
         var start = call.Anchor.Position;
         var end = intervalEnd.Position;
         return new LinearPoint(
-            (start.X + end.X) / 2.0 + normalX * side * IntervalJunctionOffset,
-            (start.Y + end.Y) / 2.0 + normalY * side * IntervalJunctionOffset,
+            (start.X + end.X) / 2.0 + normalX * side * intervalJunctionOffset,
+            (start.Y + end.Y) / 2.0 + normalY * side * intervalJunctionOffset,
             (start.Z + end.Z) / 2.0);
     }
 
-    private static IEnumerable<CandidatePosition> CandidatePositions(int preferredSide)
+    private static IEnumerable<CandidatePosition> CandidatePositions(
+        int preferredSide,
+        InspectionCalloutScaleProfile scaleProfile)
     {
         var attemptIndex = 0;
         var maximumLevel = (int)Math.Floor(
-            (MaxCalloutLength - BaseCalloutLength) / CalloutLevelStep + NumericTolerance);
+            (scaleProfile.MaxCalloutLength - scaleProfile.BaseCalloutLength) /
+            scaleProfile.CalloutLevelStep + NumericTolerance);
         for (var level = 0; level <= maximumLevel; level++)
         {
             foreach (var side in new[] { preferredSide, -preferredSide })
@@ -521,13 +546,14 @@ public static class InspectionCalloutLayoutEngine
             InspectionAnnotationCall call,
             LinearPoint textPoint,
             bool attachAtRightEdge,
-            double rotation)
+            double rotation,
+            double textHeight)
         {
             var lines = FormatTextLines(call);
             var width = Math.Max(
-                TextHeight,
-                lines.Max(line => line.Length) * TextHeight * CharacterWidthFactor);
-            var height = lines.Count * TextHeight * LineHeightFactor;
+                textHeight,
+                lines.Max(line => line.Length) * textHeight * CharacterWidthFactor);
+            var height = lines.Count * textHeight * LineHeightFactor;
             var localMinimumX = attachAtRightEdge ? -width : 0;
             var localMaximumX = attachAtRightEdge ? 0 : width;
             var localMinimumY = -height / 2;
