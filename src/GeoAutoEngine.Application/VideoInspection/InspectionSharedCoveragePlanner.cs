@@ -44,7 +44,7 @@ public static class InspectionSharedCoveragePlanner
                 throw new InvalidOperationException("A metragem de uma inspeção possui valor inválido.");
             }
 
-            var length = Math.Clamp(contribution.InspectedLength, 0.0, geometryLength);
+            var length = Math.Max(0.0, Math.Min(contribution.InspectedLength, geometryLength));
             if (length <= InspectionCoveragePlanner.Tolerance)
             {
                 continue;
