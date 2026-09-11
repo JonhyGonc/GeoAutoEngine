@@ -10,6 +10,7 @@ internal static class VideoInspectionAssociationRemovalRuntime
 {
     private static readonly AutoCadInspectionGeometryService GeometryService = new();
     private static readonly AutoCadInspectionCoverageAssociationCleaner CoverageCleaner = new();
+    private static readonly AutoCadInspectionSharedCoverageService SharedCoverage = new();
     private static Guid? _pendingSectionId;
 
     internal static void Request(Guid sectionId)
@@ -43,11 +44,26 @@ internal static class VideoInspectionAssociationRemovalRuntime
             return;
         }
 
+        try
+        {
+            var settings = PaletteSettingsStore.Load();
+            SharedCoverage.RemoveContribution(
+                document,
+                session,
+                section,
+                settings.AddVideoInspectionCoverageLines);
+        }
+        catch (System.Exception exception) when (
+            exception is not StackOverflowException and not OutOfMemoryException)
+        {
+            PluginLog.Error("Atualização da cobertura compartilhada ao remover associação", exception);
+        }
+
         GeometryService.RemoveAssociation(document, session.ReportId, section.SectionId);
         try
         {
-            // Remove somente as linhas visuais derivadas e o estado de cobertura.
-            // A rede original e qualquer BREAK já realizado permanecem intactos.
+            // Limpa qualquer estado legado daquele trecho. Os segmentos físicos de BREAK
+            // continuam no DWG; remover associação nunca une nem apaga a rede original.
             CoverageCleaner.Clear(document, session.ReportId, section.SectionId);
         }
         catch (System.Exception exception) when (
