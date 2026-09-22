@@ -25,7 +25,7 @@ public sealed class SurveyCodeNormalizer
             ["CVLT AF"] = "CVLT-AF", ["CX AF"] = "CXAF", ["CX AFG"] = "CXAFG",
             ["CX AP"] = "CXAP", ["CX AP LAC"] = "CXAP-LAC", ["CXAP LAC"] = "CXAP-LAC", ["CX EL"] = "CXEL",
             ["CX EL LAC"] = "CXEL-LAC", ["CX NI"] = "CXNI", ["CX LAC"] = "CXLAC",
-            ["CX TL"] = "CXTL", ["CX TEL"] = "CXTL",
+            ["CX TL"] = "CXTL", ["CX TEL"] = "CXTL", ["CXTL LAC"] = "CXTL-LAC",
             ["CX E AFG"] = "CXE-AFG", ["CXE AFG"] = "CXE-AFG", ["CXEI AFG"] = "CXEI-AFG",
             ["GR AFG"] = "GR-AFG", ["GR ASS"] = "GR-ASS", ["GRELHA AFG"] = "GRELHA-AFG",
             ["GRELHA ASS"] = "GRELHA-ASS", ["BL AFG"] = "BL-AFG", ["BL ASS"] = "BL-ASS",
@@ -33,8 +33,8 @@ public sealed class SurveyCodeNormalizer
             ["AP SAIDA SP"] = "AP-SAIDA-SP", ["TBQ INC"] = "TBQ-INC", ["INICIA-AF"] = "INICIO-AF",
         };
 
-    private const string CompactPrefixes = "AF|AFT|AP|EI|ES|EL|NI|TEL|TL|FB|GAP";
-    private const string ComplementPrefixes = "AFT|AF|AP|EI|ES|E|EL|NI|TEL|TL|FB|GAP";
+    private const string CompactPrefixes = "AF|AFT|AP|EI|ES|EL|NI|TEL|TL|FB|GAP|GAS|CXTL";
+    private const string ComplementPrefixes = "AFT|AF|AP|EI|ES|E|EL|NI|TEL|TL|FB|GAP|GAS|CXTL";
     private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(1);
     private static readonly ConcurrentDictionary<string, Regex> RegexCache = new(StringComparer.Ordinal);
 
@@ -54,6 +54,8 @@ public sealed class SurveyCodeNormalizer
         text = Replace(text, @"\s*\.\s*", ".");
         text = Replace(text, @"\s*-\s*", "-");
         text = Replace(text, @"\s+", " ").Trim();
+        text = Replace(text, @"^CX\s+(?:TL|TEL)\s*", "CXTL");
+        text = Replace(text, @"^CXTEL", "CXTL");
         text = Replace(text, $@"^({CompactPrefixes})\s+(?=\d)", "$1");
         text = Replace(text, @"\bD\s+(?=\d)", "D");
         text = Replace(text, @"(?<=\d)\s+(?=D\d)", string.Empty);
