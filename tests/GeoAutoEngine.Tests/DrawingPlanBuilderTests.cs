@@ -237,6 +237,27 @@ public sealed class DrawingPlanBuilderTests
 
     [Fact]
     [Trait("Category", "FAST")]
+    public void TelephoneBox_DepthAtEachSurveyPoint_ReconstructsSingleTelephoneBox()
+    {
+        var plan = new DrawingPlanBuilder().Build(Batch(
+            RecordSpec.TextAndBlock("CXTL0.80", 0, 0, "Telefone", "CXTL_PROF", 0.80),
+            RecordSpec.TextAndBlock("CXTL0.82", 2, 0, "Telefone", "CXTL_PROF", 0.82),
+            RecordSpec.TextAndBlock("CXTL0.79", 2.1, 1, "Telefone", "CXTL_PROF", 0.79)));
+
+        var box = Assert.Single(plan.BoxStructures);
+        Assert.Equal("CXTL_PROF", box.Context.Rule);
+        Assert.Equal("GF-Rede Telefone", box.Context.Layer);
+        Assert.Equal(3, box.Context.Origins.Count);
+        Assert.Equal("CXTL", box.Code);
+        Assert.Equal(3, plan.Texts.Count(item => item.Kind == TextPlanKind.Depth));
+        Assert.Contains(plan.Texts, item => item.Content == "P.0.80");
+        Assert.Contains(plan.Texts, item => item.Content == "P.0.82");
+        Assert.Contains(plan.Texts, item => item.Content == "P.0.79");
+        Assert.DoesNotContain(plan.CircleAlerts, item => item.Kind == PlanAlertKind.BoxStructureReview);
+    }
+
+    [Fact]
+    [Trait("Category", "FAST")]
     public void BoxStructures_IncompleteCxRemainsVisibleForReview()
     {
         var plan = new DrawingPlanBuilder().Build(Batch(
@@ -572,6 +593,9 @@ public sealed class DrawingPlanBuilderTests
     {
         public static RecordSpec Text(string code, double x, double y, string network, string rule, double depth, double? diameter = null) =>
             new(code, x, y, network, rule, "Texto", true, depth, diameter);
+
+        public static RecordSpec TextAndBlock(string code, double x, double y, string network, string rule, double depth, double? diameter = null) =>
+            new(code, x, y, network, rule, "Texto + Bloco", true, depth, diameter);
 
         public static RecordSpec Block(string code, double x, double y, string network, string rule) =>
             new(code, x, y, network, rule, "Bloco", true);
