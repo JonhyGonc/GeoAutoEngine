@@ -157,9 +157,16 @@ public sealed class DrawingPlanBuilder
 
             if (interpretation.Recognized && IsOutlineStructureRule(rule))
             {
+                // CXTL com profundidade pode ter uma profundidade diferente em cada
+                // ponto levantado da mesma caixa. A profundidade continua pertencendo
+                // ao texto de cada registro, mas não deve fragmentar a reconstrução
+                // geométrica da caixa em grupos de um único ponto.
+                var structureCode = rule == "CXTL_PROF"
+                    ? "CXTL"
+                    : interpretation.NormalizedCode.Trim().ToUpperInvariant();
                 var key = (
                     Rule: rule,
-                    Code: interpretation.NormalizedCode.Trim().ToUpperInvariant(),
+                    Code: structureCode,
                     Network: (interpretation.Network ?? "Não identificada").Trim(),
                     IsBox: IsBoxRule(rule));
                 if (structureKey.HasValue && structureKey.Value != key)
