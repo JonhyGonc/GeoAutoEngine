@@ -15,7 +15,7 @@ public sealed class SurveyCodeInterpreter
             ["E"] = "Esgoto sanitário", ["ES"] = "Esgoto sanitário", ["EI"] = "Esgoto industrial",
             ["EL"] = "Rede elétrica", ["NI"] = "Não identificada", ["TEL"] = "Telefone",
             ["TL"] = "Telefone", ["FB"] = "Fibra óptica", ["TBQ"] = "Rede de incêndio",
-            ["GAP"] = "Outra",
+            ["GAS"] = "Gás", ["GAP"] = "Outra",
         };
 
     private static readonly string[] Materials = ["PVC", "PEAD", "FOFO", "ACO"];
@@ -48,6 +48,7 @@ public sealed class SurveyCodeInterpreter
         (@"^AFCAP(?<p>\d+(?:\.\d+)?)$", "Água potável", "AFCAP_PROF"),
         (@"^CXAP(?<p>\d+(?:\.\d+)?)$", "Águas pluviais", "CXAP_PROF"),
         (@"^CXEL(?<p>\d+(?:\.\d+)?)$", "Rede elétrica", "CXEL_PROF"),
+        (@"^CX(?:TL|TEL)(?<p>\d+(?:\.\d+)?)(?:-LAC)?$", "Telefone", "CXTL_PROF"),
         (@"^CX(?<p>\d+(?:\.\d+)?)$", "Não identificada", "CX_PROF"),
         (@"^CAP(?<p>\d+(?:\.\d+)?)$", "Não identificada", "CAP_PROF"),
         (@"^PVENCOBERTO-(?<p>\d+(?:\.\d+)?)$", "Esgoto sanitário", "PV_ENCOBERTO_PROF"),
@@ -307,7 +308,7 @@ public sealed class SurveyCodeInterpreter
                 depth: ParseDouble(match.Groups["p"].Value), complement: complement);
         }
 
-        match = Match(code, @"^(?<prefix>AFT|AF|AP|EI|ES|E|EL|NI|TL|FB|GAP)(?<p>\d+(?:\.\d+)?)(?:D(?<d>\d+))?(?<rest>[A-Z0-9-]*)$");
+        match = Match(code, @"^(?<prefix>AFT|AF|AP|EI|ES|E|EL|NI|TL|FB|GAS|GAP)(?<p>\d+(?:\.\d+)?)(?:D(?<d>\d+))?(?<rest>[A-Z0-9-]*)$");
         if (!match.Success)
         {
             return null;
