@@ -35,6 +35,32 @@ public sealed class SurveyCodeRulesTests
 
     [Theory]
     [Trait("Category", "FAST")]
+    [InlineData("CXTL0,80", "CXTL0.80", "Telefone", "Texto + Bloco", "CXTL_PROF", 0.80)]
+    [InlineData("CX TL 0,80", "CXTL0.80", "Telefone", "Texto + Bloco", "CXTL_PROF", 0.80)]
+    [InlineData("CX TEL 0.80 LAC", "CXTL0.80-LAC", "Telefone", "Texto + Bloco", "CXTL_PROF", 0.80)]
+    [InlineData("GAS1,35", "GAS1.35", "Gás", "Texto", "REDE_GAS", 1.35)]
+    [InlineData("GAS 1,35", "GAS1.35", "Gás", "Texto", "REDE_GAS", 1.35)]
+    public void DepthCodes_ForTelephoneBoxesAndGas_ArePreserved(
+        string original,
+        string normalized,
+        string network,
+        string recordType,
+        string rule,
+        double depth)
+    {
+        var actualCode = _normalizer.Normalize(original);
+        var result = _interpreter.Interpret(original, actualCode);
+
+        Assert.Equal(normalized, actualCode);
+        Assert.True(result.Recognized);
+        Assert.Equal(network, result.Network);
+        Assert.Equal(recordType, result.RecordType);
+        Assert.Equal(rule, result.Rule);
+        Assert.Equal(depth, result.Depth);
+    }
+
+    [Theory]
+    [Trait("Category", "FAST")]
     [InlineData("PVAF", "PV_AF", "Água potável")]
     [InlineData("BL ASS", "BOCA_LOBO", "Águas pluviais")]
     [InlineData("GRELHA AFG", "GRELHA", "Águas pluviais")]
