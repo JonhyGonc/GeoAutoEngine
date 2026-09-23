@@ -306,7 +306,7 @@ public sealed class DrawingPlanBuilder
         var context = Context(record, DrawingItemKind.Text, discriminator, mapping.TextLayer);
         var content = kind == TextPlanKind.Depth
             ? $"P.{interpretation.Depth!.Value.ToString("F2", CultureInfo.InvariantCulture)}"
-            : $"∅{FormatCompact(interpretation.Diameter!.Value)}";
+            : $"\u00D8{FormatCompact(interpretation.Diameter!.Value)}";
         var offset = kind == TextPlanKind.Depth
             ? _options.TextOffsetDistance
             : -(_options.TextHeight + _options.TextOffsetDistance);
