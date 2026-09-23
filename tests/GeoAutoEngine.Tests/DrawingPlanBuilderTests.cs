@@ -27,7 +27,7 @@ public sealed class DrawingPlanBuilderTests
         var depth = Assert.Single(plan.Texts, item => item.Kind == TextPlanKind.Depth);
         var diameter = Assert.Single(plan.Texts, item => item.Kind == TextPlanKind.Diameter);
         Assert.Equal("P.1.40", depth.Content);
-        Assert.Equal("∅150", diameter.Content);
+        Assert.Equal("Ø150", diameter.Content);
         Assert.Equal("GF-Rede Esgoto", depth.Context.Layer);
         Assert.Equal(new PlanPoint3(10, 20, 0), depth.Anchor);
         Assert.Equal(0.5, depth.Height);
