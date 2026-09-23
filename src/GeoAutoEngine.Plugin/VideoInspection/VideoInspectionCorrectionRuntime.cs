@@ -83,6 +83,59 @@ internal static class VideoInspectionCorrectionRuntime
             $"\nGeoAutoEngine: ocorrência restaurada; correções locais pendentes={session.EditedOccurrenceCount}.\n");
     }
 
+    // Chamado pela paleta: mantém a interface livre enquanto o usuário revisa no GeoAutoDocs.
+    internal static async Task<string> ExportCorrectionsFromPaletteAsync()
+    {
+        var session = RequiredSession();
+        var push = session.CreateCorrectionPush();
+        if (push.Corrections.Count == 0)
+        {
+            throw new InvalidOperationException("Não existem correções locais para exportar.");
+        }
+
+        var server = NamedPipeInspectionServer.Current
+            ?? throw new InvalidOperationException("O serviço de integração com o GeoAutoDocs não está ativo.");
+        var acknowledgement = await server.SendCorrectionsAsync(
+            push, TimeSpan.FromMinutes(5));
+
+        if (!ReferenceEquals(VideoInspectionRuntime.CurrentSession, session))
+        {
+            throw new InvalidOperationException(
+                "A inspeção carregada mudou durante o envio. Confira os dados no GeoAutoDocs antes de exportar novamente.");
+        }
+
+        var partial = string.Equals(acknowledgement.Status, "Partial", StringComparison.OrdinalIgnoreCase);
+        if (!acknowledgement.Accepted && !partial)
+        {
+            throw new InvalidOperationException(
+                string.IsNullOrWhiteSpace(acknowledgement.Message)
+                    ? "O GeoAutoDocs recusou as correções."
+                    : acknowledgement.Message);
+        }
+
+        if (acknowledgement.Results.Count > 0)
+        {
+            var synchronized = session.AcceptConfirmedCorrectionsAsBaseline(acknowledgement.Results);
+            GeoAutoEnginePalette.RefreshVideoInspection();
+            return $"{synchronized} correção(ões) confirmada(s); " +
+                   $"{session.EditedOccurrenceCount} pendente(s). " +
+                   acknowledgement.Message;
+        }
+
+        if (acknowledgement.Accepted &&
+            acknowledgement.RejectedCount == 0 &&
+            acknowledgement.AppliedCount == push.Corrections.Count)
+        {
+            var synchronized = session.AcceptCurrentCorrectionsAsBaseline();
+            GeoAutoEnginePalette.RefreshVideoInspection();
+            return $"{synchronized} correção(ões) confirmada(s); 0 pendente(s). " +
+                   acknowledgement.Message;
+        }
+
+        return "O GeoAutoDocs não confirmou quais correções foram aplicadas. " +
+               "As alterações permanecem pendentes. " + acknowledgement.Message;
+    }
+
     internal static void ExportCorrections()
     {
         var session = RequiredSession();

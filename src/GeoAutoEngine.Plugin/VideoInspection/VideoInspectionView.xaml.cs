@@ -18,6 +18,7 @@ public partial class VideoInspectionView : UserControl
 {
     private readonly VideoInspectionViewModel _viewModel;
     private bool _removeConfirmationPending;
+    private bool _exportCorrectionsInProgress;
     private Button? _exportCorrectionsButton;
     private TextBlock? _correctionStatusText;
     private VideoInspectionSectionItemViewModel? _observedSection;
@@ -233,8 +234,35 @@ public partial class VideoInspectionView : UserControl
         VideoInspectionAssociationRemovalRuntime.Request(selected.SectionId);
     }
 
-    private void ExportCorrectionsClick(object sender, RoutedEventArgs eventArgs) =>
-        VideoInspectionCorrectionRuntime.RequestExport();
+    private async void ExportCorrectionsClick(object sender, RoutedEventArgs eventArgs)
+    {
+        if (_exportCorrectionsInProgress)
+        {
+            return;
+        }
+
+        _exportCorrectionsInProgress = true;
+        UpdateCorrectionControls();
+        try
+        {
+            var result = await VideoInspectionCorrectionRuntime.ExportCorrectionsFromPaletteAsync();
+            var remaining = VideoInspectionRuntime.CurrentSession?.EditedOccurrenceCount ?? 0;
+            MessageBox.Show(result, "Exportar correções",
+                MessageBoxButton.OK,
+                remaining == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
+        }
+        catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+        {
+            PluginLog.Error("Exportação de correções para o GeoAutoDocs", exception);
+            MessageBox.Show(exception.Message, "Não foi possível exportar as correções",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _exportCorrectionsInProgress = false;
+            UpdateCorrectionControls();
+        }
+    }
 
     private void ObserveSelectedSection()
     {
@@ -267,6 +295,15 @@ public partial class VideoInspectionView : UserControl
     {
         if (_exportCorrectionsButton is null || _correctionStatusText is null)
         {
+            return;
+        }
+
+        if (_exportCorrectionsInProgress)
+        {
+            _exportCorrectionsButton.IsEnabled = false;
+            _exportCorrectionsButton.Content = "Enviando correções...";
+            _correctionStatusText.Text = "Aguarde a revisão no GeoAutoDocs.";
+            _correctionStatusText.Visibility = Visibility.Visible;
             return;
         }
 
