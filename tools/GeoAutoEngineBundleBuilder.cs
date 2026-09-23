@@ -6,6 +6,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
+using System.Windows.Forms;
 
 internal static class GeoAutoEngineBundleBuilder
 {
@@ -20,6 +21,7 @@ internal static class GeoAutoEngineBundleBuilder
         "AdWindows.dll",
     };
 
+    [STAThread]
     private static int Main(string[] args)
     {
         Console.Title = "GeoAutoEngine - Gerador de Bundle";
@@ -242,24 +244,29 @@ internal static class GeoAutoEngineBundleBuilder
         List<CadInstallation> installations,
         string[] args)
     {
-        if (installations.Count == 0)
-        {
-            throw new InvalidOperationException(
-                "Não foram encontradas referências compatíveis do AutoCAD/Civil 3D 2024, 2025 ou 2026 neste computador.");
-        }
-
         string requestedVersion = ArgumentAfter(args, "/version");
         if (!string.IsNullOrWhiteSpace(requestedVersion))
         {
+            ValidateVersion(requestedVersion);
             CadInstallation requested = installations.FirstOrDefault(
                 item => string.Equals(item.Version, requestedVersion, StringComparison.Ordinal));
-            if (requested == null)
+            if (requested != null)
             {
-                throw new InvalidOperationException(
-                    "A versão " + requestedVersion + " foi solicitada, mas as DLLs Autodesk dessa versão não foram encontradas.");
+                return requested;
             }
 
-            return requested;
+            Console.WriteLine(
+                "A versão " + requestedVersion + " não foi localizada automaticamente.");
+            return PromptManualInstallation(requestedVersion);
+        }
+
+        if (installations.Count == 0)
+        {
+            Console.WriteLine(
+                "Não foi possível localizar automaticamente a pasta do AutoCAD/Civil 3D.");
+            Console.WriteLine("Você poderá selecionar a pasta manualmente.");
+            Console.WriteLine();
+            return PromptManualInstallation(null);
         }
 
         if (installations.Count == 1)
@@ -276,9 +283,16 @@ internal static class GeoAutoEngineBundleBuilder
                 " (" + installations[index].Directory + ")");
         }
 
+        Console.WriteLine("M - Informar outra pasta manualmente");
         Console.WriteLine();
-        Console.Write("Digite o número da versão que deseja compilar: ");
-        string input = Console.ReadLine();
+        Console.Write("Escolha uma opção: ");
+        string input = (Console.ReadLine() ?? string.Empty).Trim();
+
+        if (string.Equals(input, "M", StringComparison.OrdinalIgnoreCase))
+        {
+            return PromptManualInstallation(null);
+        }
+
         int selectedIndex;
         if (!int.TryParse(input, out selectedIndex) ||
             selectedIndex < 1 ||
@@ -288,6 +302,89 @@ internal static class GeoAutoEngineBundleBuilder
         }
 
         return installations[selectedIndex - 1];
+    }
+
+    private static CadInstallation PromptManualInstallation(string version)
+    {
+        if (string.IsNullOrWhiteSpace(version))
+        {
+            Console.Write("Qual versão deseja compilar? (2024, 2025 ou 2026): ");
+            version = (Console.ReadLine() ?? string.Empty).Trim();
+        }
+
+        ValidateVersion(version);
+
+        string directory = SelectCadDirectory(version);
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            Console.WriteLine();
+            Console.WriteLine("Nenhuma pasta foi selecionada.");
+            Console.Write("Cole o caminho completo da pasta do AutoCAD/Civil 3D " + version + " ou pressione ENTER para cancelar: ");
+            directory = (Console.ReadLine() ?? string.Empty).Trim().Trim('"');
+        }
+
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            throw new InvalidOperationException("Nenhuma pasta do AutoCAD/Civil 3D foi informada.");
+        }
+
+        directory = Path.GetFullPath(directory);
+        ValidateCadDirectory(directory, version);
+        return new CadInstallation(version, directory);
+    }
+
+    private static string SelectCadDirectory(string version)
+    {
+        string defaultDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            "Autodesk",
+            "AutoCAD " + version);
+
+        using (FolderBrowserDialog dialog = new FolderBrowserDialog())
+        {
+            dialog.Description =
+                "Selecione a pasta do AutoCAD/Civil 3D " + version +
+                " que contém AcCoreMgd.dll, AcDbMgd.dll e AcMgd.dll.";
+            dialog.ShowNewFolderButton = false;
+            if (Directory.Exists(defaultDirectory))
+            {
+                dialog.SelectedPath = defaultDirectory;
+            }
+
+            DialogResult result = dialog.ShowDialog();
+            return result == DialogResult.OK ? dialog.SelectedPath : null;
+        }
+    }
+
+    private static void ValidateVersion(string version)
+    {
+        if (version != "2024" && version != "2025" && version != "2026")
+        {
+            throw new InvalidOperationException(
+                "Versão inválida. Informe 2024, 2025 ou 2026.");
+        }
+    }
+
+    private static void ValidateCadDirectory(string directory, string version)
+    {
+        if (!Directory.Exists(directory))
+        {
+            throw new DirectoryNotFoundException(
+                "A pasta informada não existe: " + directory);
+        }
+
+        List<string> missing = RequiredAutodeskAssemblies
+            .Where(assembly => !File.Exists(Path.Combine(directory, assembly)))
+            .ToList();
+
+        if (missing.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "A pasta selecionada não contém todas as DLLs necessárias do AutoCAD/Civil 3D " +
+                version + "." + Environment.NewLine +
+                "Ausentes: " + string.Join(", ", missing.ToArray()) + Environment.NewLine +
+                "Pasta selecionada: " + directory);
+        }
     }
 
     private static void ExtractPayload(string destination)
