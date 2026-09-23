@@ -245,18 +245,9 @@ public partial class VideoInspectionView : UserControl
         UpdateCorrectionControls();
         try
         {
-            // Exibir o andamento antes de aguardar a revisão no outro aplicativo.
-            await Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Render);
-            // A exportação usa somente a sessão em memória e o Named Pipe; não
-            // precisa aguardar um comando do AutoCAD para acessar o desenho.
-            VideoInspectionCorrectionRuntime.ExportCorrections();
-
+            var result = await VideoInspectionCorrectionRuntime.ExportCorrectionsFromPaletteAsync();
             var remaining = VideoInspectionRuntime.CurrentSession?.EditedOccurrenceCount ?? 0;
-            MessageBox.Show(
-                remaining == 0
-                    ? "Correções aplicadas e confirmadas pelo GeoAutoDocs."
-                    : $"O GeoAutoDocs confirmou apenas parte das correções. Restam {remaining} pendente(s); veja a linha de comando para os detalhes.",
-                "Exportar correções",
+            MessageBox.Show(result, "Exportar correções",
                 MessageBoxButton.OK,
                 remaining == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
         }
