@@ -46,11 +46,9 @@ function Copy-TreeWithoutBuildOutput {
 
     Get-ChildItem -LiteralPath $Source -Force | ForEach-Object {
         if ($_.PSIsContainer) {
-            if ($_.Name -in @("bin", "obj", ".git", ".vs")) {
-                return
+            if ($_.Name -notin @("bin", "obj", ".git", ".vs")) {
+                Copy-TreeWithoutBuildOutput -Source $_.FullName -Destination (Join-Path $Destination $_.Name)
             }
-
-            Copy-TreeWithoutBuildOutput -Source $_.FullName -Destination (Join-Path $Destination $_.Name)
         }
         else {
             Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $Destination $_.Name) -Force
