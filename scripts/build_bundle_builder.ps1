@@ -92,6 +92,7 @@ $compilerArguments = @(
     "/resource:$archivePath,GeoAutoEngine.builder.payload.zip",
     "/reference:System.IO.Compression.dll",
     "/reference:System.IO.Compression.FileSystem.dll",
+    "/reference:System.Windows.Forms.dll",
     $builderSource
 )
 
