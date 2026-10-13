@@ -237,6 +237,7 @@ internal sealed class VideoInspectionViewModel : INotifyPropertyChanged
     {
         ((VideoInspectionCommand)AssociateCommand).RaiseCanExecuteChanged();
         ((VideoInspectionCommand)CommitCommand).RaiseCanExecuteChanged();
+        ((VideoInspectionCommand)SyncNamesCommand).RaiseCanExecuteChanged();
     }
 
     private bool Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
