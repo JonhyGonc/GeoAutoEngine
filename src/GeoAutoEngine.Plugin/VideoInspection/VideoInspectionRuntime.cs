@@ -225,10 +225,11 @@ internal static class VideoInspectionRuntime
 
         var lines = changes
             .Take(30)
-            .Select(change => $"{change.CurrentText ?? "(sem texto no CAD)"}  →  {change.ExpectedText}");
+            .Select(change => $"[{(change.Component == "SECTION_DIAMETER" ? "Ø" : "Nome")}] " +
+                $"{change.CurrentText ?? "(sem texto no CAD)"}  →  {change.ExpectedText}");
         var more = changes.Count > 30 ? $"\n… e mais {changes.Count - 30}." : string.Empty;
         var answer = MessageBox.Show(
-            $"{changes.Count} trecho(s) com texto desatualizado no CAD:\n\n" +
+            $"{changes.Count} texto(s) de trecho desatualizado(s) no CAD:\n\n" +
             $"{string.Join("\n", lines)}{more}\n\nAtualizar os textos de identificação?",
             "Sincronizar nomes — GeoAutoEngine",
             MessageBoxButton.YesNo,

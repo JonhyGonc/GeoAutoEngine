@@ -28,6 +28,7 @@ public sealed record AutoCadInspectionCommitResult(
 public sealed record AutoCadSectionLabelChange(
     Guid SectionId,
     string SectionName,
+    string Component,
     string? CurrentText,
     string ExpectedText);
 
@@ -576,12 +577,25 @@ public sealed class AutoCadInspectionRenderer
         var existing = ReadExisting(modelSpace, transaction);
         foreach (var section in session.Sections.Where(x => x.Association is not null))
         {
-            var expected = EscapeMText(InspectionAnnotationPlanner.CreateSectionIdentification(section).SectionLine);
-            var key = SectionStableKey(session.ReportId, section.SectionId, SectionNameComponent);
-            var current = ReadLabelText(existing, key, transaction);
-            if (!string.Equals(current, expected, StringComparison.Ordinal))
+            var identification = InspectionAnnotationPlanner.CreateSectionIdentification(section);
+            foreach (var (component, line) in new[]
+                     {
+                         (SectionNameComponent, identification.SectionLine),
+                         (SectionDiameterComponent, identification.DiameterLine),
+                     })
             {
-                changes.Add(new AutoCadSectionLabelChange(section.SectionId, section.Name, current, expected));
+                var expected = EscapeMText(line);
+                var key = SectionStableKey(session.ReportId, section.SectionId, component);
+                var current = ReadLabelText(existing, key, transaction);
+                if (!string.Equals(current, expected, StringComparison.Ordinal))
+                {
+                    changes.Add(new AutoCadSectionLabelChange(
+                        section.SectionId,
+                        section.Name,
+                        component,
+                        current,
+                        expected));
+                }
             }
         }
 
