@@ -176,17 +176,28 @@
                                                            FontSize="11" VerticalAlignment="Center" />
                                             </StackPanel>
                                         </Button>
-                                        <Button Style="{StaticResource PrimaryButton}" Command="{Binding ImportCommand}"
-                                                Padding="12,7" FontSize="11" FontWeight="SemiBold">
-                                            <StackPanel Orientation="Horizontal">
-                                                <Path Data="M 1,6 L 6,1 L 11,6 M 6,1 L 6,11 M 2,12 L 2,14 L 10,14 L 10,12"
-                                                      Stroke="White" StrokeThickness="1.4"
-                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                                      Width="12" Height="14" Stretch="Uniform" Margin="0,0,5,0" />
-                                                <TextBlock Text="Importar" Foreground="White" FontSize="11"
-                                                           FontWeight="SemiBold" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                        </Button>
+                                        <StackPanel>
+                                            <Button Style="{StaticResource PrimaryButton}" Command="{Binding ImportCommand}"
+                                                    Padding="12,7" FontSize="11" FontWeight="SemiBold">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Path Data="M 1,6 L 6,1 L 11,6 M 6,1 L 6,11 M 2,12 L 2,14 L 10,14 L 10,12"
+                                                          Stroke="White" StrokeThickness="1.4"
+                                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                          Width="12" Height="14" Stretch="Uniform" Margin="0,0,5,0" />
+                                                    <TextBlock Text="Importar" Foreground="White" FontSize="11"
+                                                               FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Style="{StaticResource SecondaryButton}"
+                                                    Command="{Binding SyncNamesCommand}"
+                                                    Margin="0,6,0,0" Padding="12,7" FontSize="11"
+                                                    HorizontalAlignment="Stretch">
+                                                <TextBlock Text="Sincronizar"
+                                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                           FontSize="11" FontWeight="SemiBold"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Button>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Grid>
                                 <Border Height="1" Background="{StaticResource DividerBrush}" Margin="0,10,0,10" />
@@ -534,13 +545,6 @@
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                            FontSize="14" FontWeight="Bold" />
                             </StackPanel>
-                        </Button>
-                        <Button Style="{StaticResource SecondaryButton}"
-                                Command="{Binding SyncNamesCommand}"
-                                Margin="0,7,0,0" Padding="9">
-                            <TextBlock Text="Sincronizar nomes dos trechos"
-                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                       FontSize="13" FontWeight="Medium" />
                         </Button>
                     </StackPanel>
                 </Border>
