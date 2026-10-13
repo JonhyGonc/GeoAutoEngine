@@ -223,6 +223,12 @@ public sealed class PluginCommands
             VideoInspectionRuntime.Associate(GeoAutoEnginePalette.TakePendingVideoSectionId()));
     }
 
+    [CommandMethod("GEOAUTO3VISYNC", CommandFlags.Modal)]
+    public void SyncVideoInspectionSectionNames()
+    {
+        ExecuteVideoAction("Sincronização de nomes dos trechos", () => VideoInspectionRuntime.SyncSectionNames());
+    }
+
     [CommandMethod("GEOAUTO3VICOMMIT", CommandFlags.Modal)]
     public void CommitVideoInspectionSection()
     {

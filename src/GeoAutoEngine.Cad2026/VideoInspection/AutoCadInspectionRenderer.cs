@@ -25,6 +25,12 @@ public sealed record AutoCadInspectionCommitResult(
     string TargetSpaceName,
     IReadOnlyList<AutoCadInspectionCommittedEntity> Entities);
 
+public sealed record AutoCadSectionLabelChange(
+    Guid SectionId,
+    string SectionName,
+    string? CurrentText,
+    string ExpectedText);
+
 public sealed class AutoCadInspectionRenderer
 {
     public const string RegisteredApplicationName = "GEOAUTOENGINE_VI";
@@ -548,6 +554,116 @@ public sealed class AutoCadInspectionRenderer
                     StringComparison.Ordinal))
             {
                 return entity;
+            }
+        }
+
+        return null;
+    }
+
+    public IReadOnlyList<AutoCadSectionLabelChange> PreviewSectionLabels(
+        Document document,
+        VideoInspectionSession session)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(session);
+        using var documentLock = document.LockDocument();
+        var changes = new List<AutoCadSectionLabelChange>();
+        using var transaction = document.Database.TransactionManager.StartTransaction();
+        var blockTable = (BlockTable)transaction.GetObject(document.Database.BlockTableId, OpenMode.ForRead);
+        var modelSpace = (BlockTableRecord)transaction.GetObject(
+            blockTable[BlockTableRecord.ModelSpace],
+            OpenMode.ForRead);
+        var existing = ReadExisting(modelSpace, transaction);
+        foreach (var section in session.Sections.Where(x => x.Association is not null))
+        {
+            var expected = EscapeMText(InspectionAnnotationPlanner.CreateSectionIdentification(section).SectionLine);
+            var key = SectionStableKey(session.ReportId, section.SectionId, SectionNameComponent);
+            var current = ReadLabelText(existing, key, transaction);
+            if (!string.Equals(current, expected, StringComparison.Ordinal))
+            {
+                changes.Add(new AutoCadSectionLabelChange(section.SectionId, section.Name, current, expected));
+            }
+        }
+
+        return changes;
+    }
+
+    public int ApplySectionLabels(
+        Document document,
+        VideoInspectionSession session,
+        ISet<Guid> sectionIds,
+        InspectionCalloutScaleProfile? scaleProfile = null)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(sectionIds);
+        var scale = scaleProfile ?? InspectionCalloutScaleProfile.Legacy;
+        using var documentLock = document.LockDocument();
+        var updated = 0;
+        using (var transaction = document.Database.TransactionManager.StartTransaction())
+        {
+            EnsureRegisteredApplication(document.Database, transaction);
+            var eventLayerId = EnsureLayer(
+                document.Database,
+                transaction,
+                EventLayerName,
+                EventLayerColorIndex);
+            var eventTextStyleId = EnsureArialTextStyle(document.Database, transaction);
+            var blockTable = (BlockTable)transaction.GetObject(document.Database.BlockTableId, OpenMode.ForRead);
+            var modelSpace = (BlockTableRecord)transaction.GetObject(
+                blockTable[BlockTableRecord.ModelSpace],
+                OpenMode.ForWrite);
+            var existing = ReadExisting(modelSpace, transaction);
+            foreach (var section in session.Sections.Where(x => x.Association is not null && sectionIds.Contains(x.SectionId)))
+            {
+                var association = section.Association!;
+                if (!AutoCadInspectionAssociationStore.TryResolvePolyline(
+                        document.Database,
+                        transaction,
+                        association.GeometryHandle,
+                        OpenMode.ForRead,
+                        out var polyline) || polyline is null)
+                {
+                    throw new InvalidOperationException(
+                        $"A geometria associada ao trecho '{section.Name}' não existe mais.");
+                }
+
+                UpsertSectionIdentification(
+                    document.Database,
+                    modelSpace,
+                    polyline,
+                    session,
+                    section,
+                    existing,
+                    new HashSet<string>(StringComparer.Ordinal),
+                    eventLayerId,
+                    eventTextStyleId,
+                    scale.TextHeight,
+                    transaction);
+                updated++;
+            }
+
+            transaction.Commit();
+        }
+
+        return updated;
+    }
+
+    private static string? ReadLabelText(
+        IReadOnlyDictionary<string, IReadOnlyList<ObjectId>> existing,
+        string key,
+        Transaction transaction)
+    {
+        if (!existing.TryGetValue(key, out var objectIds))
+        {
+            return null;
+        }
+
+        foreach (var objectId in objectIds)
+        {
+            if (transaction.GetObject(objectId, OpenMode.ForRead, openErased: false) is MText text)
+            {
+                return text.Contents;
             }
         }
 

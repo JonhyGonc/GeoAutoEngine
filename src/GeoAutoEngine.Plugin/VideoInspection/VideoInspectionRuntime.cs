@@ -211,6 +211,46 @@ internal static class VideoInspectionRuntime
             $"não inspecionado={coverage.RemainingLength:0.##} m.\n");
     }
 
+    internal static void SyncSectionNames()
+    {
+        var document = ActiveDocument();
+        var session = CurrentSession
+            ?? throw new InvalidOperationException("Importe um arquivo de inspeção antes de sincronizar os nomes.");
+        var changes = Renderer.PreviewSectionLabels(document, session);
+        if (changes.Count == 0)
+        {
+            document.Editor.WriteMessage("\nGeoAutoEngine: os nomes dos trechos já estão sincronizados.\n");
+            return;
+        }
+
+        var lines = changes
+            .Take(30)
+            .Select(change => $"{change.CurrentText ?? "(sem texto no CAD)"}  →  {change.ExpectedText}");
+        var more = changes.Count > 30 ? $"\n… e mais {changes.Count - 30}." : string.Empty;
+        var answer = MessageBox.Show(
+            $"{changes.Count} trecho(s) com texto desatualizado no CAD:\n\n" +
+            $"{string.Join("\n", lines)}{more}\n\nAtualizar os textos de identificação?",
+            "Sincronizar nomes — GeoAutoEngine",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question,
+            MessageBoxResult.No);
+        if (answer != MessageBoxResult.Yes)
+        {
+            document.Editor.WriteMessage("\nGeoAutoEngine: sincronização de nomes cancelada.\n");
+            return;
+        }
+
+        var settings = PaletteSettingsStore.Load();
+        var updated = Renderer.ApplySectionLabels(
+            document,
+            session,
+            changes.Select(change => change.SectionId).ToHashSet(),
+            InspectionCalloutScaleProfile.Resolve(settings.VideoInspectionScaleDenominator));
+        GeoAutoEnginePalette.RefreshVideoInspection();
+        document.Editor.WriteMessage(
+            $"\nGeoAutoEngine: {updated} texto(s) de trecho sincronizado(s). Use Desfazer para reverter.\n");
+    }
+
     internal static void DeliverPending()
     {
         if ((CurrentSession?.EditedOccurrenceCount ?? 0) > 0)
