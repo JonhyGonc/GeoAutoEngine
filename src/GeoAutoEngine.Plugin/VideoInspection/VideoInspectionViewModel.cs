@@ -29,17 +29,22 @@ internal sealed class VideoInspectionViewModel : INotifyPropertyChanged
         CommitCommand = new VideoInspectionCommand(
             () => CommitRequested?.Invoke(SelectedSection!.SectionId),
             () => SelectedSection?.HasAssociation == true);
+        SyncNamesCommand = new VideoInspectionCommand(
+            () => SyncNamesRequested?.Invoke(),
+            () => _session is not null);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? ImportRequested;
     public event Action<Guid>? AssociateRequested;
     public event Action<Guid>? CommitRequested;
+    public event Action? SyncNamesRequested;
 
     public ObservableCollection<VideoInspectionSectionItemViewModel> Sections { get; } = [];
     public ICommand ImportCommand { get; }
     public ICommand AssociateCommand { get; }
     public ICommand CommitCommand { get; }
+    public ICommand SyncNamesCommand { get; }
     public Visibility EmptyVisibility => _session is null ? Visibility.Visible : Visibility.Collapsed;
     public Visibility InspectionVisibility => _session is null ? Visibility.Collapsed : Visibility.Visible;
     public string ReportCode => ValueOrFallback(_session?.ReportCode, _session?.ReportName, "Inspeção");

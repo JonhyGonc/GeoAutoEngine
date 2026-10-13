@@ -535,6 +535,13 @@
                                            FontSize="14" FontWeight="Bold" />
                             </StackPanel>
                         </Button>
+                        <Button Style="{StaticResource SecondaryButton}"
+                                Command="{Binding SyncNamesCommand}"
+                                Margin="0,7,0,0" Padding="9">
+                            <TextBlock Text="Sincronizar nomes dos trechos"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       FontSize="13" FontWeight="Medium" />
+                        </Button>
                     </StackPanel>
                 </Border>
             </Grid>
