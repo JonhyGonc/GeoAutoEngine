@@ -126,6 +126,7 @@ internal sealed class VideoInspectionViewModel : INotifyPropertyChanged
         Raise(nameof(ReportSummary));
         Raise(nameof(SectionCount));
         Raise(nameof(OccurrenceCount));
+        RaiseCommandStates();
         notifications.Stop();
         VideoInspectionPerformanceProbe.Record(
             "PropertyChanged / summary binding",
@@ -238,6 +239,7 @@ internal sealed class VideoInspectionViewModel : INotifyPropertyChanged
         ((VideoInspectionCommand)AssociateCommand).RaiseCanExecuteChanged();
         ((VideoInspectionCommand)CommitCommand).RaiseCanExecuteChanged();
         ((VideoInspectionCommand)SyncNamesCommand).RaiseCanExecuteChanged();
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private bool Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
