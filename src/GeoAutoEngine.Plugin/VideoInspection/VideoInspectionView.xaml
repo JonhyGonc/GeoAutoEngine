@@ -202,6 +202,21 @@
                                     <TextBlock Text=" ocorrências" Foreground="{StaticResource LabelBrush}"
                                                FontSize="14" VerticalAlignment="Center" Margin="2,1,0,0" />
                                 </StackPanel>
+                                <Button Style="{StaticResource SecondaryButton}"
+                                        Command="{Binding UpdateAllTextsCommand}"
+                                        Margin="0,10,0,0" Padding="8"
+                                        ToolTip="Reescreve só o conteúdo dos textos já gerados (ex.: TRINCA → FISSURA) em todos os trechos associados, sem mover nada no desenho.">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="M 1,2 L 11,2 M 6,2 L 6,13"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                              StrokeThickness="1.4" StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round" Width="12" Height="13"
+                                              Stretch="Uniform" Margin="0,0,7,0" />
+                                        <TextBlock Text="Atualizar textos de todos os trechos"
+                                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                   FontSize="12" FontWeight="Medium" />
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
                         </Border>
 
@@ -518,6 +533,20 @@
                                       Fill="Transparent" StrokeThickness="1.3" Width="14" Height="14"
                                       Stretch="Uniform" Margin="0,0,7,0" />
                                 <TextBlock Text="Associar geometria"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                           FontSize="13" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource SecondaryButton}"
+                                Command="{Binding UpdateTextsCommand}" Margin="0,7,0,0" Padding="9"
+                                ToolTip="Reescreve só o conteúdo dos textos já gerados deste trecho (ex.: TRINCA → FISSURA), sem mover textos, leaders ou marcadores.">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="M 1,2 L 11,2 M 6,2 L 6,13"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      StrokeThickness="1.4" StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" Width="12" Height="13"
+                                      Stretch="Uniform" Margin="0,0,7,0" />
+                                <TextBlock Text="Atualizar só os textos"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                            FontSize="13" FontWeight="Medium" />
                             </StackPanel>

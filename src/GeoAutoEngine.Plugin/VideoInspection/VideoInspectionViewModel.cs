@@ -29,17 +29,26 @@ internal sealed class VideoInspectionViewModel : INotifyPropertyChanged
         CommitCommand = new VideoInspectionCommand(
             () => CommitRequested?.Invoke(SelectedSection!.SectionId),
             () => SelectedSection?.HasAssociation == true);
+        UpdateTextsCommand = new VideoInspectionCommand(
+            () => UpdateTextsRequested?.Invoke(SelectedSection!.SectionId),
+            () => SelectedSection?.HasAssociation == true);
+        UpdateAllTextsCommand = new VideoInspectionCommand(
+            () => UpdateTextsRequested?.Invoke(null),
+            () => Sections.Any(item => item.HasAssociation));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? ImportRequested;
     public event Action<Guid>? AssociateRequested;
     public event Action<Guid>? CommitRequested;
+    public event Action<Guid?>? UpdateTextsRequested;
 
     public ObservableCollection<VideoInspectionSectionItemViewModel> Sections { get; } = [];
     public ICommand ImportCommand { get; }
     public ICommand AssociateCommand { get; }
     public ICommand CommitCommand { get; }
+    public ICommand UpdateTextsCommand { get; }
+    public ICommand UpdateAllTextsCommand { get; }
     public Visibility EmptyVisibility => _session is null ? Visibility.Visible : Visibility.Collapsed;
     public Visibility InspectionVisibility => _session is null ? Visibility.Collapsed : Visibility.Visible;
     public string ReportCode => ValueOrFallback(_session?.ReportCode, _session?.ReportName, "Inspeção");
@@ -226,12 +235,15 @@ internal sealed class VideoInspectionViewModel : INotifyPropertyChanged
         Raise(nameof(PendingCountVisibility));
         Raise(nameof(AttentionCountVisibility));
         Raise(nameof(ErrorCountVisibility));
+        ((VideoInspectionCommand)UpdateAllTextsCommand).RaiseCanExecuteChanged();
     }
 
     private void RaiseCommandStates()
     {
         ((VideoInspectionCommand)AssociateCommand).RaiseCanExecuteChanged();
         ((VideoInspectionCommand)CommitCommand).RaiseCanExecuteChanged();
+        ((VideoInspectionCommand)UpdateTextsCommand).RaiseCanExecuteChanged();
+        ((VideoInspectionCommand)UpdateAllTextsCommand).RaiseCanExecuteChanged();
     }
 
     private bool Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
