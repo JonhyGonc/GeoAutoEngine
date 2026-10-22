@@ -230,6 +230,13 @@ public sealed class PluginCommands
             VideoInspectionRuntime.Commit(GeoAutoEnginePalette.TakePendingVideoSectionId()));
     }
 
+    [CommandMethod("GEOAUTO3VIUPDATETEXTS", CommandFlags.Modal)]
+    public void UpdateVideoInspectionTexts()
+    {
+        ExecuteVideoAction("Atualização de textos da vídeo-inspeção", () =>
+            VideoInspectionRuntime.UpdateTexts(GeoAutoEnginePalette.TakePendingVideoTextSectionId()));
+    }
+
     [CommandMethod("GEOAUTO3COMMITCSV", CommandFlags.Modal | CommandFlags.NoUndoMarker)]
     public void CommitDroppedCsvToPalette()
     {

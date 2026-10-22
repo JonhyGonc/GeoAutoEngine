@@ -90,6 +90,7 @@ public sealed class ArchitectureTests
                 "GEOAUTO3VICOMMIT",
                 "GEOAUTO3VIDEO",
                 "GEOAUTO3VIIMPORT",
+                "GEOAUTO3VIUPDATETEXTS",
         };
         Assert.All(manifest.Descendants("ComponentEntry"), component =>
         {
@@ -391,7 +392,14 @@ public sealed class ArchitectureTests
             "InspectionAnnotationPlanner.Create(positionedEvents, filmingStart)",
             renderer,
             StringComparison.Ordinal);
-        Assert.Contains(":FILMING_START\"", renderer, StringComparison.Ordinal);
+        var textRefreshPlanner = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "src",
+            "GeoAutoEngine.Application",
+            "VideoInspection",
+            "InspectionTextRefreshPlanner.cs"));
+        Assert.Contains("InspectionTextRefreshPlanner.StableKey(", renderer, StringComparison.Ordinal);
+        Assert.Contains(":FILMING_START\"", textRefreshPlanner, StringComparison.Ordinal);
         Assert.Contains("call.IsSyntheticStart", renderer, StringComparison.Ordinal);
         Assert.Contains("UpsertSectionIdentification", renderer, StringComparison.Ordinal);
         Assert.Contains("ReadableReferenceRotation", renderer, StringComparison.Ordinal);

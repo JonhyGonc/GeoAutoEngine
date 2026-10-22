@@ -25,6 +25,15 @@ public sealed record AutoCadInspectionCommitResult(
     string TargetSpaceName,
     IReadOnlyList<AutoCadInspectionCommittedEntity> Entities);
 
+public sealed record AutoCadInspectionTextRefreshResult(
+    bool SectionHasDrawing,
+    int UpdatedCount,
+    int UnchangedCount,
+    int PositionChangedCount,
+    int MissingInDrawingCount,
+    int OrphanedCount,
+    int SectionLabelsUpdatedCount);
+
 public sealed class AutoCadInspectionRenderer
 {
     public const string RegisteredApplicationName = "GEOAUTOENGINE_VI";
@@ -305,6 +314,201 @@ public sealed class AutoCadInspectionRenderer
             currentSpaceIsModelSpace,
             targetSpaceName,
             committedEntities);
+    }
+
+    /// <summary>
+    /// Atualiza somente o conteúdo dos textos já gerados do trecho (ex.: TRINCA → FISSURA).
+    /// Não altera posição, rotação, alinhamento, leader, marcador, cobertura nem cria/apaga entidades.
+    /// Chamados cuja metragem mudou, ocorrências novas e ocorrências removidas são apenas relatados.
+    /// </summary>
+    public AutoCadInspectionTextRefreshResult UpdateTexts(
+        Document document,
+        VideoInspectionSession session,
+        InspectionSectionSession section,
+        IReadOnlyList<PositionedInspectionEvent> positionedEvents)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(section);
+        ArgumentNullException.ThrowIfNull(positionedEvents);
+        var association = section.Association
+            ?? throw new InvalidOperationException("O trecho ainda não possui geometria associada.");
+        using var documentLock = document.LockDocument();
+        InspectionTextRefreshPlan plan;
+        bool sectionHasDrawing;
+        var sectionLabelsUpdated = 0;
+
+        using (var transaction = document.Database.TransactionManager.StartTransaction())
+        {
+            var blockTable = (BlockTable)transaction.GetObject(
+                document.Database.BlockTableId,
+                OpenMode.ForRead);
+            var modelSpace = (BlockTableRecord)transaction.GetObject(
+                blockTable[BlockTableRecord.ModelSpace],
+                OpenMode.ForRead);
+            if (!AutoCadInspectionAssociationStore.TryResolvePolyline(
+                    document.Database,
+                    transaction,
+                    association.GeometryHandle,
+                    OpenMode.ForRead,
+                    out var polyline))
+            {
+                throw new InvalidOperationException("A geometria associada não existe mais.");
+            }
+
+            var filmingStart = CreateFilmingStart(polyline!, association.Direction);
+            var calls = InspectionAnnotationPlanner.Create(positionedEvents, filmingStart);
+            var snapshot = ReadSectionTexts(
+                modelSpace,
+                session.ReportId,
+                section.SectionId,
+                transaction);
+            sectionHasDrawing = snapshot.CalloutTexts.Count > 0 || snapshot.SectionTexts.Count > 0;
+            plan = InspectionTextRefreshPlanner.Plan(
+                session.ReportId,
+                section.SectionId,
+                calls,
+                snapshot.CalloutTexts.Values.Select(item => item.Existing).ToArray());
+
+            foreach (var item in plan.Items.Where(item =>
+                         item.Outcome == InspectionTextRefreshOutcome.Updated))
+            {
+                var objectId = snapshot.CalloutTexts[item.StableKey].ObjectId;
+                if (transaction.GetObject(objectId, OpenMode.ForWrite, openErased: false) is MText text)
+                {
+                    text.Contents = item.DesiredContents;
+                }
+            }
+
+            var identification = InspectionAnnotationPlanner.CreateSectionIdentification(section);
+            sectionLabelsUpdated += UpdateSectionLabelContents(
+                snapshot,
+                SectionNameComponent,
+                EscapeMText(identification.SectionLine),
+                transaction);
+            sectionLabelsUpdated += UpdateSectionLabelContents(
+                snapshot,
+                SectionDiameterComponent,
+                EscapeMText(identification.DiameterLine),
+                transaction);
+            transaction.Commit();
+        }
+
+        document.Editor.UpdateScreen();
+        return new AutoCadInspectionTextRefreshResult(
+            sectionHasDrawing,
+            plan.UpdatedCount,
+            plan.UnchangedCount,
+            plan.PositionChangedCount,
+            plan.MissingInDrawingCount,
+            plan.OrphanedCount,
+            sectionLabelsUpdated);
+    }
+
+    private sealed record ExistingCalloutTextEntry(
+        ObjectId ObjectId,
+        InspectionExistingCalloutText Existing);
+
+    private sealed record SectionTextSnapshot(
+        IReadOnlyDictionary<string, ExistingCalloutTextEntry> CalloutTexts,
+        IReadOnlyDictionary<string, (ObjectId ObjectId, string Contents)> SectionTexts);
+
+    private static SectionTextSnapshot ReadSectionTexts(
+        BlockTableRecord modelSpace,
+        Guid reportId,
+        Guid sectionId,
+        Transaction transaction)
+    {
+        var reportKey = reportId.ToString("D");
+        var sectionKey = sectionId.ToString("D");
+        var texts = new Dictionary<string, (ObjectId ObjectId, string Contents, double? Distance)>(
+            StringComparer.Ordinal);
+        var intervalEnds = new Dictionary<string, double?>(StringComparer.Ordinal);
+        var sectionTexts = new Dictionary<string, (ObjectId ObjectId, string Contents)>(
+            StringComparer.Ordinal);
+
+        foreach (ObjectId objectId in modelSpace)
+        {
+            if (transaction.GetObject(objectId, OpenMode.ForRead, openErased: false) is not Entity entity)
+            {
+                continue;
+            }
+
+            using var data = entity.GetXDataForApplication(RegisteredApplicationName);
+            if (data is null ||
+                !string.Equals(ReadXData(data, "REPORT_ID"), reportKey, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(ReadXData(data, "SECTION_ID"), sectionKey, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var stableKey = ReadXData(data, "STABLE_KEY");
+            var component = ReadXData(data, "COMPONENT");
+            if (string.IsNullOrWhiteSpace(stableKey) || string.IsNullOrWhiteSpace(component))
+            {
+                continue;
+            }
+
+            switch (component)
+            {
+                case TextComponent when entity is MText text && !texts.ContainsKey(stableKey!):
+                    texts.Add(stableKey!, (objectId, text.Contents, ReadDistance(data)));
+                    break;
+                case IntervalEndMarkerComponent when !intervalEnds.ContainsKey(stableKey!):
+                    intervalEnds.Add(stableKey!, ReadDistance(data));
+                    break;
+                case SectionNameComponent or SectionDiameterComponent
+                    when entity is MText sectionText && !sectionTexts.ContainsKey(component!):
+                    sectionTexts.Add(component!, (objectId, sectionText.Contents));
+                    break;
+            }
+        }
+
+        var calloutTexts = texts.ToDictionary(
+            pair => pair.Key,
+            pair => new ExistingCalloutTextEntry(
+                pair.Value.ObjectId,
+                new InspectionExistingCalloutText(
+                    pair.Key,
+                    pair.Value.Contents,
+                    pair.Value.Distance,
+                    intervalEnds.TryGetValue(pair.Key, out var end) ? end : null)),
+            StringComparer.Ordinal);
+        return new SectionTextSnapshot(calloutTexts, sectionTexts);
+    }
+
+    private static double? ReadDistance(ResultBuffer data)
+    {
+        var value = ReadXData(data, "INSPECTION_DISTANCE");
+        return double.TryParse(
+            value,
+            System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var distance)
+            ? distance
+            : null;
+    }
+
+    private static int UpdateSectionLabelContents(
+        SectionTextSnapshot snapshot,
+        string component,
+        string desiredContents,
+        Transaction transaction)
+    {
+        if (!snapshot.SectionTexts.TryGetValue(component, out var existing))
+        {
+            return 0;
+        }
+
+        var merged = MTextContentMerger.Merge(existing.Contents, desiredContents);
+        if (string.Equals(existing.Contents, merged, StringComparison.Ordinal) ||
+            transaction.GetObject(existing.ObjectId, OpenMode.ForWrite, openErased: false) is not MText text)
+        {
+            return 0;
+        }
+
+        text.Contents = merged;
+        return 1;
     }
 
     private static IReadOnlyList<AutoCadInspectionCommittedEntity> VerifyCommittedEntities(
@@ -655,14 +859,8 @@ public sealed class AutoCadInspectionRenderer
     private static string CallStableKey(
         Guid reportId,
         Guid sectionId,
-        InspectionAnnotationCall call) => call.IsSyntheticStart
-            ? $"VI:{reportId:D}:{sectionId:D}:FILMING_START"
-            : VideoInspectionStableKey.Create(
-                reportId,
-                sectionId,
-                call.OccurrenceId,
-                call.Anchor.LocationIndex,
-                call.Anchor.Role);
+        InspectionAnnotationCall call) =>
+        InspectionTextRefreshPlanner.StableKey(reportId, sectionId, call);
 
     private static PositionedInspectionLocation CreateFilmingStart(
         Polyline polyline,
@@ -784,14 +982,10 @@ public sealed class AutoCadInspectionRenderer
             plannedPoint.Z - plannedAnchor.Z);
 
     private static string MTextContents(InspectionAnnotationCall call) =>
-        string.Join(
-            "\\P",
-            InspectionCalloutLayoutEngine.FormatTextLines(call).Select(EscapeMText));
+        InspectionTextRefreshPlanner.MTextContents(call);
 
-    private static string EscapeMText(string value) => value
-        .Replace("\\", "\\\\")
-        .Replace("{", "\\{")
-        .Replace("}", "\\}");
+    private static string EscapeMText(string value) =>
+        InspectionTextRefreshPlanner.EscapeMText(value);
 
     private static void SetMetadata(
         Entity entity,

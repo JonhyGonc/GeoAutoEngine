@@ -211,6 +211,107 @@ internal static class VideoInspectionRuntime
             $"não inspecionado={coverage.RemainingLength:0.##} m.\n");
     }
 
+    /// <summary>
+    /// Atualiza somente o conteúdo dos textos já gerados, sem mover nada no desenho.
+    /// Com <paramref name="sectionId"/> nulo, percorre todos os trechos associados.
+    /// </summary>
+    internal static void UpdateTexts(Guid? sectionId)
+    {
+        var document = ActiveDocument();
+        var session = CurrentSession
+            ?? throw new InvalidOperationException("Nenhuma inspeção carregada.");
+        var sections = sectionId is { } id
+            ? new[] { RequiredSection(id) }
+            : session.Sections.Where(section => section.Association is not null).ToArray();
+        if (sections.Length == 0)
+        {
+            document.Editor.WriteMessage(
+                "\nGeoAutoEngine: nenhum trecho associado para atualizar os textos.\n");
+            return;
+        }
+
+        var updated = 0;
+        var unchanged = 0;
+        var positionChanged = 0;
+        var missing = 0;
+        var orphaned = 0;
+        var labels = 0;
+        var notGenerated = 0;
+        var failures = new List<string>();
+        foreach (var section in sections)
+        {
+            try
+            {
+                var positioning = Position(document, section);
+                var result = Renderer.UpdateTexts(
+                    document,
+                    session,
+                    section,
+                    positioning.PositionedEvents);
+                if (!result.SectionHasDrawing)
+                {
+                    notGenerated++;
+                    continue;
+                }
+
+                updated += result.UpdatedCount;
+                unchanged += result.UnchangedCount;
+                positionChanged += result.PositionChangedCount;
+                missing += result.MissingInDrawingCount;
+                orphaned += result.OrphanedCount;
+                labels += result.SectionLabelsUpdatedCount;
+            }
+            catch (InvalidOperationException exception) when (sectionId is null)
+            {
+                failures.Add($"{section.Name}: {exception.Message}");
+                PluginLog.Error($"Atualização de textos do trecho {section.SectionId:D}", exception);
+            }
+        }
+
+        GeoAutoEnginePalette.RefreshVideoInspection();
+        var message = new System.Text.StringBuilder();
+        message.Append(
+            $"\nGeoAutoEngine: textos atualizados={updated}; já estavam corretos={unchanged}");
+        if (labels > 0)
+        {
+            message.Append($"; identificações de trecho atualizadas={labels}");
+        }
+
+        message.Append(". Nenhum texto foi movido.");
+        if (positionChanged > 0)
+        {
+            message.Append(
+                $"\n  {positionChanged} chamado(s) mudaram de metragem e NÃO foram alterados — " +
+                "use GERAR NO DESENHO nesses trechos.");
+        }
+
+        if (missing > 0)
+        {
+            message.Append(
+                $"\n  {missing} ocorrência(s) nova(s) ainda não estão no desenho — use GERAR NO DESENHO.");
+        }
+
+        if (orphaned > 0)
+        {
+            message.Append(
+                $"\n  {orphaned} chamado(s) no desenho não existem mais na inspeção e foram mantidos — " +
+                "use GERAR NO DESENHO para removê-los.");
+        }
+
+        if (notGenerated > 0 && sectionId is { })
+        {
+            message.Append("\n  Este trecho ainda não foi gerado no desenho — use GERAR NO DESENHO.");
+        }
+
+        foreach (var failure in failures)
+        {
+            message.Append($"\n  Falha em {failure}");
+        }
+
+        message.Append('\n');
+        document.Editor.WriteMessage(message.ToString());
+    }
+
     internal static void DeliverPending()
     {
         if ((CurrentSession?.EditedOccurrenceCount ?? 0) > 0)
