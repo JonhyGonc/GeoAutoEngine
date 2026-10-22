@@ -495,14 +495,19 @@ public sealed class AutoCadInspectionRenderer
         string desiredContents,
         Transaction transaction)
     {
-        if (!snapshot.SectionTexts.TryGetValue(component, out var existing) ||
-            string.Equals(existing.Contents, desiredContents, StringComparison.Ordinal) ||
+        if (!snapshot.SectionTexts.TryGetValue(component, out var existing))
+        {
+            return 0;
+        }
+
+        var merged = MTextContentMerger.Merge(existing.Contents, desiredContents);
+        if (string.Equals(existing.Contents, merged, StringComparison.Ordinal) ||
             transaction.GetObject(existing.ObjectId, OpenMode.ForWrite, openErased: false) is not MText text)
         {
             return 0;
         }
 
-        text.Contents = desiredContents;
+        text.Contents = merged;
         return 1;
     }
 

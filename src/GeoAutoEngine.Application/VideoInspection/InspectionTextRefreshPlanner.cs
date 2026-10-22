@@ -88,13 +88,14 @@ public static class InspectionTextRefreshPlanner
             {
                 outcome = InspectionTextRefreshOutcome.PositionChanged;
             }
-            else if (string.Equals(existing.Contents, desiredContents, StringComparison.Ordinal))
-            {
-                outcome = InspectionTextRefreshOutcome.Unchanged;
-            }
             else
             {
-                outcome = InspectionTextRefreshOutcome.Updated;
+                // Preserva a estrutura que o desenhista deixou no MText (linhas unidas,
+                // formatação); só as palavras que mudaram na inspeção são trocadas.
+                desiredContents = MTextContentMerger.Merge(existing.Contents, desiredContents);
+                outcome = string.Equals(existing.Contents, desiredContents, StringComparison.Ordinal)
+                    ? InspectionTextRefreshOutcome.Unchanged
+                    : InspectionTextRefreshOutcome.Updated;
             }
 
             items.Add(new InspectionTextRefreshItem(call, stableKey, outcome, desiredContents));
