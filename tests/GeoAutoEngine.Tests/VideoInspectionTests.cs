@@ -344,7 +344,7 @@ public sealed class InspectionAnnotationPlannerTests
             InspectionCalloutLayoutEngine.FormatTextLines(calls[0]));
         Assert.True(calls[1].IsFilmingEnd);
         Assert.Equal(
-            ["FIM:", "17,00 m", "CHEGADA AO PONTO FINAL DO TRECHO"],
+            ["FIM: 17,00 m", "CHEGADA AO PONTO FINAL DO TRECHO"],
             InspectionCalloutLayoutEngine.FormatTextLines(calls[1]));
     }
 
@@ -370,7 +370,7 @@ public sealed class InspectionAnnotationPlannerTests
         Assert.Equal(["INICIO:"], InspectionCalloutLayoutEngine.FormatTextLines(calls[0]));
         Assert.True(calls[1].IsFilmingEnd);
         Assert.Equal(
-            ["FIM:", "12,00 m", "INFILTRAÇÃO"],
+            ["FIM: 12,00 m", "INFILTRAÇÃO"],
             InspectionCalloutLayoutEngine.FormatTextLines(calls[1]));
     }
 
@@ -574,11 +574,14 @@ public sealed class InspectionCalloutLayoutEngineTests
                 InspectionCalloutLayoutEngine.BaseCalloutLength - 0.00000001,
                 InspectionCalloutLayoutEngine.MaxCalloutLength + 0.00000001);
             Assert.Contains(
-                placement.Call.LocationLine,
-                InspectionCalloutLayoutEngine.FormatTextLines(placement.Call));
+                InspectionCalloutLayoutEngine.FormatTextLines(placement.Call),
+                line => line == placement.Call.LocationLine ||
+                    line == $"FIM: {placement.Call.LocationLine}");
         });
         Assert.Contains("INICIO:", InspectionCalloutLayoutEngine.FormatTextLines(first[0].Call));
-        Assert.Contains("FIM:", InspectionCalloutLayoutEngine.FormatTextLines(first[^1].Call));
+        Assert.Contains(
+            $"FIM: {first[^1].Call.LocationLine}",
+            InspectionCalloutLayoutEngine.FormatTextLines(first[^1].Call));
         Assert.Contains(first, placement => placement.Side == 1);
         Assert.Contains(first, placement => placement.Side == -1);
     }
