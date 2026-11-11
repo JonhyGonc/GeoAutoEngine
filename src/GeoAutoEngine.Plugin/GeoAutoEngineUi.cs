@@ -276,6 +276,7 @@ internal static class GeoAutoEnginePalette
     private static IReadOnlyList<string> _pendingCsvFiles = [];
     private static string? _pendingRemovalPath;
     private static Guid? _pendingVideoSectionId;
+    private static PendingVideoTextUpdate? _pendingVideoTextSectionId;
     private static System.Windows.Threading.Dispatcher? _uiDispatcher;
     private static bool _waitingForStartupShow;
 
@@ -322,6 +323,7 @@ internal static class GeoAutoEnginePalette
         _pendingCsvFiles = [];
         _pendingRemovalPath = null;
         _pendingVideoSectionId = null;
+        _pendingVideoTextSectionId = null;
     }
 
     private static void OnStartupIdle(object? sender, EventArgs eventArgs)
@@ -373,6 +375,7 @@ internal static class GeoAutoEnginePalette
                     RequestVideoImport,
                     RequestVideoAssociation,
                     RequestVideoCommit,
+                    RequestVideoTextUpdate,
                     RequestVideoSyncNames);
             }
 
@@ -445,6 +448,29 @@ internal static class GeoAutoEnginePalette
         _pendingVideoSectionId = sectionId;
         QueueCommand("GEOAUTO3VICOMMIT");
     }
+
+    internal static void RequestVideoTextUpdate(Guid? sectionId)
+    {
+        _pendingVideoTextSectionId = new PendingVideoTextUpdate(sectionId);
+        QueueCommand("GEOAUTO3VIUPDATETEXTS");
+    }
+
+    /// <summary>
+    /// Trecho pedido pela Palette para atualizar textos; nulo significa todos os trechos associados.
+    /// Digitado na linha de comando, usa o trecho selecionado ou, sem seleção, todos.
+    /// </summary>
+    internal static Guid? TakePendingVideoTextSectionId()
+    {
+        if (_pendingVideoTextSectionId is { } pending)
+        {
+            _pendingVideoTextSectionId = null;
+            return pending.SectionId;
+        }
+
+        return _videoViewModel?.SelectedSection?.SectionId;
+    }
+
+    private sealed record PendingVideoTextUpdate(Guid? SectionId);
 
     internal static void RequestVideoSyncNames() => QueueCommand("GEOAUTO3VISYNC");
 
