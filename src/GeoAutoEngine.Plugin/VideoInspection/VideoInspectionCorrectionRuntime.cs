@@ -14,6 +14,7 @@ internal static class VideoInspectionCorrectionRuntime
     private static readonly AutoCadInspectionManagedEntityProbe ManagedEntityProbe = new();
     private static InspectionOccurrenceEdit? _pendingEdit;
     private static (Guid SectionId, Guid OccurrenceId)? _pendingRestore;
+    private static int _exportInProgress;
 
     internal static void RequestEdit(InspectionOccurrenceEdit edit)
     {
@@ -95,8 +96,26 @@ internal static class VideoInspectionCorrectionRuntime
 
         var server = NamedPipeInspectionServer.Current
             ?? throw new InvalidOperationException("O serviço de integração com o GeoAutoDocs não está ativo.");
-        var acknowledgement = await server.SendCorrectionsAsync(
-            push, TimeSpan.FromMinutes(5));
+        if (Interlocked.CompareExchange(ref _exportInProgress, 1, 0) != 0)
+        {
+            throw new InvalidOperationException(
+                "Já existe um envio de correções aguardando a revisão no GeoAutoDocs.");
+        }
+
+        // A confirmação depende de revisão humana no GeoAutoDocs. Quinze segundos era
+        // insuficiente e fazia o Engine descartar um ACK perfeitamente válido enquanto o
+        // usuário ainda lia a janela de revisão. Mantemos um limite amplo para detectar
+        // conexões realmente abandonadas sem transformar a revisão em uma corrida.
+        InspectionCorrectionAcknowledgement acknowledgement;
+        try
+        {
+            acknowledgement = await server.SendCorrectionsAsync(
+                push, TimeSpan.FromMinutes(5));
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _exportInProgress, 0);
+        }
 
         if (!ReferenceEquals(VideoInspectionRuntime.CurrentSession, session))
         {
@@ -136,89 +155,45 @@ internal static class VideoInspectionCorrectionRuntime
                "As alterações permanecem pendentes. " + acknowledgement.Message;
     }
 
+    // Chamado pelo comando GEOAUTO3VIEXPORTCORRECTIONS. Usa o mesmo fluxo assíncrono da
+    // paleta, no Dispatcher da thread principal, para que o comando termine na hora e o
+    // Civil 3D continue livre enquanto o usuário revisa as correções no GeoAutoDocs.
     internal static void ExportCorrections()
     {
         var session = RequiredSession();
-        var push = session.CreateCorrectionPush();
-        if (push.Corrections.Count == 0)
+        var count = session.CreateCorrectionPush().Corrections.Count;
+        if (count == 0)
         {
             throw new InvalidOperationException("Não existem correções locais para exportar.");
         }
 
-        var server = NamedPipeInspectionServer.Current
-            ?? throw new InvalidOperationException("O serviço de integração com o GeoAutoDocs não está ativo.");
+        if (NamedPipeInspectionServer.Current is null)
+        {
+            throw new InvalidOperationException("O serviço de integração com o GeoAutoDocs não está ativo.");
+        }
 
         ActiveDocument().Editor.WriteMessage(
-            $"\nGeoAutoEngine: enviando {push.Corrections.Count} correção(ões) ao GeoAutoDocs. " +
-            "Revise e confirme as alterações na janela do GeoAutoDocs.\n");
+            $"\nGeoAutoEngine: enviando {count} correção(ões) ao GeoAutoDocs. " +
+            "Revise e confirme na janela do GeoAutoDocs; o Civil 3D continua disponível " +
+            "e o resultado aparece aqui quando a revisão terminar.\n");
+        System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeAsync(ExportCorrectionsFromCommandAsync);
+    }
 
-        // A confirmação depende de revisão humana no GeoAutoDocs. Quinze segundos era
-        // insuficiente e fazia o Engine descartar um ACK perfeitamente válido enquanto o
-        // usuário ainda lia a janela de revisão. Mantemos um limite amplo para detectar
-        // conexões realmente abandonadas sem transformar a revisão em uma corrida.
-        var acknowledgement = server.SendCorrectionsAsync(
-                push,
-                TimeSpan.FromMinutes(5))
-            .GetAwaiter()
-            .GetResult();
-
-        var partial = string.Equals(
-            acknowledgement.Status,
-            "Partial",
-            StringComparison.OrdinalIgnoreCase);
-        if (!acknowledgement.Accepted && !partial)
+    private static async Task ExportCorrectionsFromCommandAsync()
+    {
+        string message;
+        try
         {
-            throw new InvalidOperationException(
-                string.IsNullOrWhiteSpace(acknowledgement.Message)
-                    ? "O GeoAutoDocs recusou as correções."
-                    : acknowledgement.Message);
+            message = await ExportCorrectionsFromPaletteAsync();
+        }
+        catch (Exception exception) when (exception is not StackOverflowException and not OutOfMemoryException)
+        {
+            PluginLog.Error("Exportação de correções para o GeoAutoDocs", exception);
+            message = $"não foi possível exportar as correções. {exception.Message}";
         }
 
-        if ((acknowledgement.Accepted || partial) && acknowledgement.Results.Count > 0)
-        {
-            var synchronized = session.AcceptConfirmedCorrectionsAsBaseline(acknowledgement.Results);
-            var remaining = session.EditedOccurrenceCount;
-            GeoAutoEnginePalette.RefreshVideoInspection();
-
-            if (remaining == 0)
-            {
-                ActiveDocument().Editor.WriteMessage(
-                    $"\nGeoAutoEngine: {synchronized} correção(ões) sincronizada(s) com o GeoAutoDocs. " +
-                    $"Confirmadas={acknowledgement.AppliedCount}; rejeitadas={acknowledgement.RejectedCount}. " +
-                    $"{acknowledgement.Message}\n");
-                return;
-            }
-
-            ActiveDocument().Editor.WriteMessage(
-                $"\nGeoAutoEngine: sincronização parcial concluída. " +
-                $"Confirmadas neste retorno={synchronized}; pendentes={remaining}; " +
-                $"rejeitadas={acknowledgement.RejectedCount}. " +
-                "Somente as ocorrências não confirmadas permanecem marcadas como [EDITADO]. " +
-                $"{acknowledgement.Message}\n");
-            return;
-        }
-
-        var fullyApplied = acknowledgement.Accepted &&
-            acknowledgement.RejectedCount == 0 &&
-            acknowledgement.AppliedCount == push.Corrections.Count;
-        if (fullyApplied)
-        {
-            var synchronized = session.AcceptCurrentCorrectionsAsBaseline();
-            GeoAutoEnginePalette.RefreshVideoInspection();
-            ActiveDocument().Editor.WriteMessage(
-                $"\nGeoAutoEngine: {synchronized} correção(ões) sincronizada(s) com o GeoAutoDocs. " +
-                $"Aplicadas={acknowledgement.AppliedCount}; rejeitadas=0. " +
-                $"{acknowledgement.Message}\n");
-            return;
-        }
-
-        var status = partial ? "parcialmente recebidas" : "recebidas sem confirmação completa";
-        GeoAutoEnginePalette.RefreshVideoInspection();
-        ActiveDocument().Editor.WriteMessage(
-            $"\nGeoAutoEngine: {push.Corrections.Count} correção(ões) {status} pelo GeoAutoDocs. " +
-            $"Aplicadas={acknowledgement.AppliedCount}; rejeitadas={acknowledgement.RejectedCount}. " +
-            "O receptor não informou resultados individuais; as correções permanecem pendentes para evitar perda de alterações. " +
-            $"{acknowledgement.Message}\n");
+        AutoCadApplication.DocumentManager.MdiActiveDocument?.Editor.WriteMessage(
+            $"\nGeoAutoEngine: {message}\n");
     }
 
     private static void RefreshPositioningAndDrawing(
