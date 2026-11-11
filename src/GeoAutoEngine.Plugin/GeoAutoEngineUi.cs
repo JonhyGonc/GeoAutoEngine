@@ -375,7 +375,8 @@ internal static class GeoAutoEnginePalette
                     RequestVideoImport,
                     RequestVideoAssociation,
                     RequestVideoCommit,
-                    RequestVideoTextUpdate);
+                    RequestVideoTextUpdate,
+                    RequestVideoSyncNames);
             }
 
             using (VideoInspectionPerformanceProbe.Measure("VideoInspectionView construction"))
@@ -470,6 +471,8 @@ internal static class GeoAutoEnginePalette
     }
 
     private sealed record PendingVideoTextUpdate(Guid? SectionId);
+
+    internal static void RequestVideoSyncNames() => QueueCommand("GEOAUTO3VISYNC");
 
     internal static Guid TakePendingVideoSectionId()
     {
