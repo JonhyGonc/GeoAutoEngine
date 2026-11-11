@@ -18,7 +18,7 @@
   },
   "platform": "Windows-11-10.0.26200-SP0",
   "python": {
-    "executable": "C:\\Users\\João\\Downloads\\GeoAutoEngine\\.venv\\Scripts\\python.exe",
+    "executable": "%USERPROFILE%\\Downloads\\GeoAutoEngine\\.venv\\Scripts\\python.exe",
     "implementation": "CPython",
     "version": "3.14.5"
   },

@@ -235,8 +235,8 @@
 
 (setq *geoauto-instrucoes-blocos*
   '(
-    ("REGISTRO_AGUA_POTAVEL" "rg_agua_potavel" "C:/Users/João/Downloads/GeoAutoEngine/assets/blocks/rg_agua_potavel.dwg" "GF-Rede Água" (85 0.1 0) 1 1 1 "follow_network" 0 "REGISTRO_AF" "RG PROF 0.80" "Água potável" "insertion_point" "BLOCO-000001" ("GF-Rede Água" "REDE_AGUA" "AGUA" "AF" "AFT"))
-    ("PV_ESGOTO_SANITARIO" "pv_esgoto_sanitario" "C:/Users/João/Downloads/GeoAutoEngine/assets/blocks/pv_esgoto_sanitario.dwg" "GF-Rede Esgoto" (20 75 0) 1 1 1 "fixed" 0 "PV_ES" "PVES 1.20D150" "Esgoto sanitário" "insertion_point" "BLOCO-000002" ("GF-Rede Esgoto" "REDE_ESGOTO" "ESGOTO"))
+    ("REGISTRO_AGUA_POTAVEL" "rg_agua_potavel" "%USERPROFILE%/Downloads/GeoAutoEngine/assets/blocks/rg_agua_potavel.dwg" "GF-Rede Água" (85 0.1 0) 1 1 1 "follow_network" 0 "REGISTRO_AF" "RG PROF 0.80" "Água potável" "insertion_point" "BLOCO-000001" ("GF-Rede Água" "REDE_AGUA" "AGUA" "AF" "AFT"))
+    ("PV_ESGOTO_SANITARIO" "pv_esgoto_sanitario" "%USERPROFILE%/Downloads/GeoAutoEngine/assets/blocks/pv_esgoto_sanitario.dwg" "GF-Rede Esgoto" (20 75 0) 1 1 1 "fixed" 0 "PV_ES" "PVES 1.20D150" "Esgoto sanitário" "insertion_point" "BLOCO-000002" ("GF-Rede Esgoto" "REDE_ESGOTO" "ESGOTO"))
   )
 )
 
