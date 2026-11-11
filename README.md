@@ -1,6 +1,14 @@
 # GeoAutoEngine 3
 
-Reconstrução nativa em .NET 8 para AutoCAD 2026 e Civil 3D 2026.
+Plugin nativo em .NET para Civil 3D 2024, 2025 e 2026.
+
+| Civil 3D | Release | Runtime |
+|---|---|---|
+| 2024 | R24.3 | .NET Framework 4.8 |
+| 2025 | R25.0 | .NET 8 |
+| 2026 | R25.1 | .NET 8 |
+
+O bundle traz um host por versão. O estado da validação de cada uma (build e smoke no CAD) está em [COMPATIBILITY.md](COMPATIBILITY.md).
 
 ## Estrutura
 
