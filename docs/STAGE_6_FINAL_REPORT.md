@@ -30,7 +30,7 @@ As evidências CAD finais estão em `docs/evidence/stage4/cad`.
 
 ## Instalação validada
 
-`C:\Users\João\AppData\Roaming\Autodesk\ApplicationPlugins\GeoAutoEngine.bundle`
+`%USERPROFILE%\AppData\Roaming\Autodesk\ApplicationPlugins\GeoAutoEngine.bundle`
 
 AutoCAD/Civil 3D 2025 permanecem fora do escopo.
 
