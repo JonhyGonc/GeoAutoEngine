@@ -80,6 +80,7 @@ public sealed class ArchitectureTests
         {
                 "GEOAUTO3ADDCSV",
                 "GEOAUTO3COMMITCSV",
+                "GEOAUTO3GEOMAPEXPORT",
                 "GEOAUTO3IMPORT",
                 "GEOAUTO3PALETTE",
                 "GEOAUTO3PING",
@@ -89,7 +90,11 @@ public sealed class ArchitectureTests
                 "GEOAUTO3VIASSOCIATE",
                 "GEOAUTO3VICOMMIT",
                 "GEOAUTO3VIDEO",
+                "GEOAUTO3VIEDITOCCURRENCE",
+                "GEOAUTO3VIEXPORTCORRECTIONS",
                 "GEOAUTO3VIIMPORT",
+                "GEOAUTO3VIRESTOREOCCURRENCE",
+                "GEOAUTO3VISYNC",
                 "GEOAUTO3VIUPDATETEXTS",
         };
         Assert.All(manifest.Descendants("ComponentEntry"), component =>
