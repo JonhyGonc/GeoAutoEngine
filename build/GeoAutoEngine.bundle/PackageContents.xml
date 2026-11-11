@@ -5,7 +5,7 @@
   ProductType="Application"
   Name="GeoAutoEngine 3.0"
   Description="GeoAutoEngine 3.0 native CSV and DrawingPlan application"
-  AppVersion="3.1.1"
+  AppVersion="3.2.0"
   ProductCode="{E6CDE1A8-87DB-4712-95A4-072D3674DD17}"
   UpgradeCode="{1A73ED89-D8CB-4BA6-AC63-F02D993F67C7}">
   <CompanyDetails Name="GeoAutoEngine" />
