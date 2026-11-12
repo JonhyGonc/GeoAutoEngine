@@ -25,3 +25,4 @@ jobs:
           dotnet test tests/GeoAutoEngine.Tests/GeoAutoEngine.Tests.csproj
           --configuration Release
           --filter "Category!=EXTERNAL"
+          --logger "console;verbosity=normal"
