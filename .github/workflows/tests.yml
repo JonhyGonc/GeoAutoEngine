@@ -10,18 +10,18 @@ permissions:
 
 jobs:
   all-tests:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    # O plugin só roda no Windows e alguns testes usam caminhos no formato do Windows.
+    runs-on: windows-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-      - name: Run all tests (no filter)
+      # Exclui só os testes que dependem de pastas fora do repositório (../reference e
+      # ../GeoAutoEngine.Legacy). Veja "Testes que dependem de dados externos" no README.
+      - name: Run all tests except EXTERNAL
         run: >-
           dotnet test tests/GeoAutoEngine.Tests/GeoAutoEngine.Tests.csproj
           --configuration Release
+          --filter "Category!=EXTERNAL"
