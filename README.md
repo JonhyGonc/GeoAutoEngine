@@ -50,6 +50,10 @@ Sem essas pastas, os testes `EXTERNAL` falham, inclusive o que também faz parte
 
 O fluxo nativo completo executa `CSV(s) -> ImportBatch -> DrawingPlan -> resolução geométrica -> entidades no DWG` pela Managed .NET API. O fechamento final da versão 3.0.15 está em `docs/STAGE_6_FINAL_REPORT.md`.
 
+## Instalação na equipe
+
+Para instalar uma versão já compilada no computador de outro desenhista, com backup, conferência da versão e rollback, veja [docs/INSTALACAO_EQUIPE.md](docs/INSTALACAO_EQUIPE.md).
+
 ## Integração GeoMap
 
 O comando `GEOAUTO3GEOMAPEXPORT` exporta Polylines 2D do Civil 3D para o contrato GeoMap v0.1. Consulte [docs/GEOMAP_EXPORT.md](docs/GEOMAP_EXPORT.md) para escopo, instalação e uso.
