@@ -790,14 +790,15 @@ public sealed class AutoCadInspectionRenderer
             {
                 var expected = EscapeMText(line);
                 var key = SectionStableKey(session.ReportId, section.SectionId, component);
-                var current = ReadLabelText(existing, key, transaction);
-                if (!string.Equals(current, expected, StringComparison.Ordinal))
+                var current = ReadLabel(existing, key, transaction);
+                var decision = SectionLabelSyncPlanner.Decide(current?.Contents, expected);
+                if (decision.Action != SectionLabelSyncAction.Unchanged)
                 {
                     changes.Add(new AutoCadSectionLabelChange(
                         section.SectionId,
                         section.Name,
                         component,
-                        current,
+                        current?.Contents,
                         expected));
                 }
             }
@@ -834,31 +835,55 @@ public sealed class AutoCadInspectionRenderer
             var existing = ReadExisting(modelSpace, transaction);
             foreach (var section in session.Sections.Where(x => x.Association is not null && sectionIds.Contains(x.SectionId)))
             {
-                var association = section.Association!;
-                if (!AutoCadInspectionAssociationStore.TryResolvePolyline(
-                        document.Database,
-                        transaction,
-                        association.GeometryHandle,
-                        OpenMode.ForRead,
-                        out var polyline) || polyline is null)
+                var identification = InspectionAnnotationPlanner.CreateSectionIdentification(section);
+                foreach (var (component, line) in new[]
+                         {
+                             (SectionNameComponent, identification.SectionLine),
+                             (SectionDiameterComponent, identification.DiameterLine),
+                         })
                 {
-                    throw new InvalidOperationException(
-                        $"A geometria associada ao trecho '{section.Name}' não existe mais.");
-                }
+                    var key = SectionStableKey(session.ReportId, section.SectionId, component);
+                    var current = ReadLabel(existing, key, transaction);
+                    var decision = SectionLabelSyncPlanner.Decide(current?.Contents, EscapeMText(line));
+                    switch (decision.Action)
+                    {
+                        case SectionLabelSyncAction.UpdateContents:
+                            // Só as palavras: posição, rotação, altura, layer, estilo e
+                            // formatação manual do rótulo ficam como estão.
+                            var text = (MText)transaction.GetObject(current!.Value.ObjectId, OpenMode.ForWrite);
+                            text.Contents = decision.Contents;
+                            updated++;
+                            break;
+                        case SectionLabelSyncAction.Recreate:
+                            var association = section.Association!;
+                            if (!AutoCadInspectionAssociationStore.TryResolvePolyline(
+                                    document.Database,
+                                    transaction,
+                                    association.GeometryHandle,
+                                    OpenMode.ForRead,
+                                    out var polyline) || polyline is null)
+                            {
+                                throw new InvalidOperationException(
+                                    $"A geometria associada ao trecho '{section.Name}' não existe mais.");
+                            }
 
-                UpsertSectionIdentification(
-                    document.Database,
-                    modelSpace,
-                    polyline,
-                    session,
-                    section,
-                    existing,
-                    new HashSet<string>(StringComparer.Ordinal),
-                    eventLayerId,
-                    eventTextStyleId,
-                    scale.TextHeight,
-                    transaction);
-                updated++;
+                            UpsertSectionIdentification(
+                                document.Database,
+                                modelSpace,
+                                polyline,
+                                session,
+                                section,
+                                existing,
+                                new HashSet<string>(StringComparer.Ordinal),
+                                eventLayerId,
+                                eventTextStyleId,
+                                scale.TextHeight,
+                                transaction,
+                                onlyComponent: component);
+                            updated++;
+                            break;
+                    }
+                }
             }
 
             transaction.Commit();
@@ -867,7 +892,7 @@ public sealed class AutoCadInspectionRenderer
         return updated;
     }
 
-    private static string? ReadLabelText(
+    private static (ObjectId ObjectId, string Contents)? ReadLabel(
         IReadOnlyDictionary<string, IReadOnlyList<ObjectId>> existing,
         string key,
         Transaction transaction)
@@ -881,7 +906,7 @@ public sealed class AutoCadInspectionRenderer
         {
             if (transaction.GetObject(objectId, OpenMode.ForRead, openErased: false) is MText text)
             {
-                return text.Contents;
+                return (objectId, text.Contents);
             }
         }
 
@@ -899,7 +924,8 @@ public sealed class AutoCadInspectionRenderer
         ObjectId layerId,
         ObjectId textStyleId,
         double textHeight,
-        Transaction transaction)
+        Transaction transaction,
+        string? onlyComponent = null)
     {
         var identification = InspectionAnnotationPlanner.CreateSectionIdentification(section);
         var centerDistance = polyline.Length / 2.0;
@@ -918,36 +944,43 @@ public sealed class AutoCadInspectionRenderer
         }
 
         var identificationOffset = Math.Max(SectionIdentificationOffset, textHeight * 0.90);
-        UpsertSectionText(
-            database,
-            modelSpace,
-            session,
-            section,
-            existing,
-            desiredKeys,
-            SectionNameComponent,
-            identification.SectionLine,
-            center + normal * identificationOffset,
-            textRotation,
-            layerId,
-            textStyleId,
-            textHeight,
-            transaction);
-        UpsertSectionText(
-            database,
-            modelSpace,
-            session,
-            section,
-            existing,
-            desiredKeys,
-            SectionDiameterComponent,
-            identification.DiameterLine,
-            center - normal * identificationOffset,
-            textRotation,
-            layerId,
-            textStyleId,
-            textHeight,
-            transaction);
+        if (onlyComponent is null or SectionNameComponent)
+        {
+            UpsertSectionText(
+                database,
+                modelSpace,
+                session,
+                section,
+                existing,
+                desiredKeys,
+                SectionNameComponent,
+                identification.SectionLine,
+                center + normal * identificationOffset,
+                textRotation,
+                layerId,
+                textStyleId,
+                textHeight,
+                transaction);
+        }
+
+        if (onlyComponent is null or SectionDiameterComponent)
+        {
+            UpsertSectionText(
+                database,
+                modelSpace,
+                session,
+                section,
+                existing,
+                desiredKeys,
+                SectionDiameterComponent,
+                identification.DiameterLine,
+                center - normal * identificationOffset,
+                textRotation,
+                layerId,
+                textStyleId,
+                textHeight,
+                transaction);
+        }
     }
 
     private static void UpsertSectionText(

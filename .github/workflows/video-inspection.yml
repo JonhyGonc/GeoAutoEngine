@@ -7,6 +7,8 @@ on:
       - "src/GeoAutoEngine.Application/VideoInspection/**"
       - "tests/GeoAutoEngine.Tests/VideoInspectionTests.cs"
       - "tests/GeoAutoEngine.Tests/InspectionCorrectionTests.cs"
+      - "tests/GeoAutoEngine.Tests/MTextContentMergerTests.cs"
+      - "tests/GeoAutoEngine.Tests/SectionLabelSyncPlannerTests.cs"
   push:
     branches: [main]
     paths:
@@ -14,6 +16,8 @@ on:
       - "src/GeoAutoEngine.Application/VideoInspection/**"
       - "tests/GeoAutoEngine.Tests/VideoInspectionTests.cs"
       - "tests/GeoAutoEngine.Tests/InspectionCorrectionTests.cs"
+      - "tests/GeoAutoEngine.Tests/MTextContentMergerTests.cs"
+      - "tests/GeoAutoEngine.Tests/SectionLabelSyncPlannerTests.cs"
 
 permissions:
   contents: read
@@ -31,4 +35,4 @@ jobs:
         run: >-
           dotnet test tests/GeoAutoEngine.Tests/GeoAutoEngine.Tests.csproj
           --configuration Release
-          --filter "FullyQualifiedName~GeoAutoEngine.Tests.VideoInspectionContractTests|FullyQualifiedName~GeoAutoEngine.Tests.LinearReferenceEngineTests|FullyQualifiedName~GeoAutoEngine.Tests.InspectionAnnotationPlannerTests|FullyQualifiedName~GeoAutoEngine.Tests.InspectionCalloutLayoutEngineTests|FullyQualifiedName~GeoAutoEngine.Tests.InspectionPipeProtocolTests|FullyQualifiedName~GeoAutoEngine.Tests.InspectionCorrectionTests"
+          --filter "FullyQualifiedName~GeoAutoEngine.Tests.VideoInspectionContractTests|FullyQualifiedName~GeoAutoEngine.Tests.LinearReferenceEngineTests|FullyQualifiedName~GeoAutoEngine.Tests.InspectionAnnotationPlannerTests|FullyQualifiedName~GeoAutoEngine.Tests.InspectionCalloutLayoutEngineTests|FullyQualifiedName~GeoAutoEngine.Tests.InspectionPipeProtocolTests|FullyQualifiedName~GeoAutoEngine.Tests.InspectionCorrectionTests|FullyQualifiedName~GeoAutoEngine.Tests.MTextContentMergerTests|FullyQualifiedName~GeoAutoEngine.Tests.SectionLabelSyncPlannerTests"
