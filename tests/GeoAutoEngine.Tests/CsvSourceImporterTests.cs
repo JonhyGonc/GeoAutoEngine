@@ -10,6 +10,7 @@ namespace GeoAutoEngine.Tests;
 public sealed class CsvSourceImporterTests
 {
     [Fact]
+    [Trait("Category", "EXTERNAL")]
     [Trait("Category", "FAST")]
     public async Task HeterogeneousMultiCsv_ResolvesEachSourceAndConsolidatesOneTraceableBatch()
     {
@@ -106,6 +107,7 @@ public sealed class CsvSourceImporterTests
     }
 
     [Fact]
+    [Trait("Category", "EXTERNAL")]
     [Trait("Category", "FAST")]
     public async Task StructurallyInvalidSource_DoesNotDiscardOtherFilesInTheBatch()
     {
@@ -146,6 +148,7 @@ public sealed class CsvSourceImporterTests
     }
 
     [Theory]
+    [Trait("Category", "EXTERNAL")]
     [Trait("Category", "REGRESSION")]
     [InlineData("Rua S#U00e3o Francisco 1407.csv", 206, 198, 8, "Bloco=40;Revisar=8;Texto=158", "Esgoto sanitário=29;Não identificada=81;Telefone=3;Águas pluviais=85")]
     [InlineData("RUA BOEHMERWALD 1407(1).csv", 152, 132, 19, "Bloco=15;Revisar=19;Texto=117", "Esgoto sanitário=28;Não identificada=76;Água potável=4;Águas pluviais=24")]
@@ -174,6 +177,7 @@ public sealed class CsvSourceImporterTests
     }
 
     [Fact]
+    [Trait("Category", "EXTERNAL")]
     [Trait("Category", "REGRESSION")]
     public async Task EveryUnchangedInterpretedField_MatchesFrozenStage2LegacyOracle()
     {
@@ -217,6 +221,7 @@ public sealed class CsvSourceImporterTests
     }
 
     [Fact]
+    [Trait("Category", "EXTERNAL")]
     [Trait("Category", "REGRESSION")]
     public void CompleteRuleCatalog_MatchesFrozenStage2LegacyOracle()
     {

@@ -271,6 +271,7 @@ public sealed class DrawingPlanBuilderTests
     }
 
     [Fact]
+    [Trait("Category", "EXTERNAL")]
     [Trait("Category", "FAST")]
     public async Task MultiCsv_BuildsOnePlanAndPreservesEverySourceOrigin()
     {
@@ -324,6 +325,7 @@ public sealed class DrawingPlanBuilderTests
     }
 
     [Fact]
+    [Trait("Category", "EXTERNAL")]
     [Trait("Category", "FAST")]
     public async Task Stage4CadSmokeFixture_ProducesFourFixedAndThreeGeometryPendingItems()
     {
@@ -349,6 +351,7 @@ public sealed class DrawingPlanBuilderTests
     }
 
     [Fact]
+    [Trait("Category", "EXTERNAL")]
     [Trait("Category", "FAST")]
     public async Task ReimportedSources_ProduceIdenticalPlanIdentityItemsAndCanonicalJson()
     {
@@ -368,6 +371,7 @@ public sealed class DrawingPlanBuilderTests
     }
 
     [Theory]
+    [Trait("Category", "EXTERNAL")]
     [Trait("Category", "REGRESSION")]
     [InlineData("RUA BOEHMERWALD 1407(1).csv", 72, 6, 3, 0, 19, 0)]
     [InlineData("Rua S#U00e3o Francisco 1407.csv", 93, 4, 3, 9, 8, 0)]
@@ -397,6 +401,7 @@ public sealed class DrawingPlanBuilderTests
     }
 
     [Fact]
+    [Trait("Category", "EXTERNAL")]
     [Trait("Category", "REGRESSION")]
     public async Task RealFixtures_PreserveUnaffectedCadIndependentLegacyFields()
     {

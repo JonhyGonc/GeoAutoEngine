@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 namespace GeoAutoEngine.Tests;
@@ -80,16 +81,23 @@ public sealed class ArchitectureTests
         {
                 "GEOAUTO3ADDCSV",
                 "GEOAUTO3COMMITCSV",
+                "GEOAUTO3GEOMAPEXPORT",
                 "GEOAUTO3IMPORT",
                 "GEOAUTO3PALETTE",
                 "GEOAUTO3PING",
                 "GEOAUTO3PROCESS",
                 "GEOAUTO3REMOVECSV",
                 "GEOAUTO3VERIFY",
+                "GEOAUTO3VIAPPLYSCALE",
                 "GEOAUTO3VIASSOCIATE",
                 "GEOAUTO3VICOMMIT",
                 "GEOAUTO3VIDEO",
+                "GEOAUTO3VIEDITOCCURRENCE",
+                "GEOAUTO3VIEXPORTCORRECTIONS",
                 "GEOAUTO3VIIMPORT",
+                "GEOAUTO3VIREMOVEASSOCIATION",
+                "GEOAUTO3VIRESTOREOCCURRENCE",
+                "GEOAUTO3VISYNC",
                 "GEOAUTO3VIUPDATETEXTS",
         };
         Assert.All(manifest.Descendants("ComponentEntry"), component =>
@@ -155,11 +163,22 @@ public sealed class ArchitectureTests
     public void PaletteBoundary_HasNoAsyncOrApplicationCurrentCallbacks()
     {
         var pluginRoot = Path.Combine(RepositoryRoot, "src", "GeoAutoEngine.Plugin");
-        var source = string.Join(
-            Environment.NewLine,
-            Directory.GetFiles(pluginRoot, "*.cs", SearchOption.AllDirectories).Select(File.ReadAllText));
+        var files = Directory.GetFiles(pluginRoot, "*.cs", SearchOption.AllDirectories);
+        var source = string.Join(Environment.NewLine, files.Select(File.ReadAllText));
 
-        Assert.DoesNotContain("async void", source, StringComparison.Ordinal);
+        // Exceção única e documentada em docs/adr/ADR-004-EXCECAO-ASYNC-VOID-PALETA.md:
+        // o botão de exportar correções da paleta espera a revisão no GeoAutoDocs sem travar
+        // o Civil 3D. Qualquer outro async void continua proibido.
+        var asyncVoids = files
+            .SelectMany(file => Regex.Matches(File.ReadAllText(file), @"\basync\s+void\s+(\w+)")
+                .Select(match => (File: Path.GetFileName(file), Method: match.Groups[1].Value)))
+            .ToArray();
+        Assert.Equal(("VideoInspectionView.xaml.cs", "ExportCorrectionsClick"), Assert.Single(asyncVoids));
+        var view = File.ReadAllText(Path.Combine(pluginRoot, "VideoInspection", "VideoInspectionView.xaml.cs"));
+        var handler = view[view.IndexOf("private async void ExportCorrectionsClick", StringComparison.Ordinal)..];
+        handler = handler[..handler.IndexOf("\n    }", StringComparison.Ordinal)];
+        Assert.Contains("catch (Exception exception)", handler, StringComparison.Ordinal);
+        Assert.Contains("PluginLog.Error(", handler, StringComparison.Ordinal);
         Assert.DoesNotContain("Task.Run", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Application.Current", source, StringComparison.Ordinal);
         Assert.Contains("SendStringToExecute", source, StringComparison.Ordinal);
@@ -174,14 +193,23 @@ public sealed class ArchitectureTests
             "src",
             "GeoAutoEngine.Plugin",
             "SurveyPaletteView.xaml"));
-        var progress = Assert.Single(
+        // Desde o redesign bbcbe3f o progresso é exibido como texto (PercentageText, só leitura)
+        // e não como ProgressBar. Se uma ProgressBar voltar, o binding continua obrigatoriamente OneWay.
+        Assert.All(
+            xaml.Descendants().Where(element => element.Name.LocalName == "ProgressBar"),
+            progress => Assert.Equal("{Binding Percentage, Mode=OneWay}", progress.Attribute("Value")!.Value));
+        Assert.Contains(
             xaml.Descendants(),
-            element => element.Name.LocalName == "ProgressBar");
-
-        Assert.Equal("{Binding Percentage, Mode=OneWay}", progress.Attribute("Value")!.Value);
+            element => element.Name.LocalName == "TextBlock" &&
+                element.Attribute("Text")?.Value == "{Binding PercentageText}");
+        Assert.DoesNotContain(
+            xaml.Descendants().Attributes(),
+            attribute => attribute.Value.Contains("Binding Percentage", StringComparison.Ordinal) &&
+                attribute.Value.Contains("TwoWay", StringComparison.Ordinal));
     }
 
     [Fact]
+    [Trait("Category", "EXTERNAL")]
     [Trait("Category", "FAST")]
     public void Palette_UsesOfficialLogoAndHasNoFeaturePlaceholders()
     {
@@ -268,7 +296,9 @@ public sealed class ArchitectureTests
         Assert.Contains("OpenPaletteOnStartup { get; set; } = true", settings, StringComparison.Ordinal);
         Assert.Contains("JsonSerializer.Serialize", settings, StringComparison.Ordinal);
         Assert.Contains("AutoCadApplication.Idle += OnStartupIdle", palette, StringComparison.Ordinal);
-        Assert.Contains("Abrir GeoAutoEngine ao iniciar o Civil 3D", xaml, StringComparison.Ordinal);
+        // Texto do checkbox encurtado no redesign bbcbe3f.
+        Assert.Contains("Content=\"Abrir ao iniciar o Civil 3D\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("IsChecked=\"{Binding OpenPaletteOnStartup, Mode=TwoWay}\"", xaml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -313,7 +343,8 @@ public sealed class ArchitectureTests
         Assert.DoesNotContain("TransientManager", source, StringComparison.Ordinal);
         Assert.DoesNotContain("AddTransient", source, StringComparison.Ordinal);
         Assert.DoesNotContain("EraseTransient", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("PREVIEW", xaml, StringComparison.OrdinalIgnoreCase);
+        // Token exato: o evento WPF PreviewMouseLeftButtonUp (5d95029) não é um botão de preview.
+        Assert.DoesNotMatch(new Regex(@"\bPREVIEW\b", RegexOptions.IgnoreCase), xaml);
         Assert.DoesNotContain("CANCELAR", xaml, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("var positioning = Position(document, section);", runtime, StringComparison.Ordinal);
         var associateBody = runtime[
